@@ -2,7 +2,7 @@ use crate::lexing::text_range;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct Message {
+pub struct Message {
     range: text_range::TextRange,
     message: String,
 }
@@ -14,7 +14,7 @@ impl fmt::Display for Message {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct SyntaxError {
+pub struct SyntaxError {
     error_code: i32,
     messages: Vec<Message>,
     // TODO: fix

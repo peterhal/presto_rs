@@ -1,5 +1,5 @@
 #[allow(non_upper_case_globals, non_camel_case_types)]
-enum TokenKind {
+pub enum TokenKind {
     // Common kinds
     BOF,
     EOF,

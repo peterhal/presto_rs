@@ -1,11 +1,11 @@
 use crate::lexing::text_range;
 
-enum CommentKind {
+pub enum CommentKind {
     LineComment,
     DelimitedComment,
 }
 
-struct Comment {
+pub struct Comment {
     kind: CommentKind,
     range: text_range::TextRange,
     // Includes leading/trailing //, /*, */
