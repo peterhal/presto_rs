@@ -1,5 +1,5 @@
-use std::fmt;
 use crate::lexing::position;
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TextRange {
@@ -23,7 +23,7 @@ impl TextRange {
     }
 
     fn contains(&self, position: position::Position) -> bool {
-        return position >= self.start && position <= self.end
+        return position >= self.start && position <= self.end;
     }
 
     fn contains_range(&self, range: TextRange) -> bool {
@@ -33,4 +33,7 @@ impl TextRange {
     // TODO: content_from_lines
 }
 
-pub const NONE: TextRange = TextRange{start: position::START, end: position::START};
+pub const NONE: TextRange = TextRange {
+    start: position::START,
+    end: position::START,
+};

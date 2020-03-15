@@ -16,7 +16,7 @@ enum TokenKind {
     CloseSquare,
     Equal,
     LessGreater,
-    BangEqual, 
+    BangEqual,
     LessEqual,
     GreaterEqual,
     Plus,
@@ -34,6 +34,9 @@ enum TokenKind {
     Integer,
     Decimal,
     Double,
+
+    // identifier
+    Identifier,
     QuotedIdentifier,
     BackquotedIdentifier,
 
@@ -119,4 +122,111 @@ enum TokenKind {
     WHEN,
     WHERE,
     WITH,
+}
+
+impl TokenKind {
+    fn is_keyword(&self) -> bool {
+        match self {
+            TokenKind::ALTER
+            | TokenKind::AND
+            | TokenKind::AS
+            | TokenKind::BETWEEN
+            | TokenKind::BIGINT
+            | TokenKind::BOOLEAN
+            | TokenKind::BY
+            | TokenKind::CASE
+            | TokenKind::CAST
+            | TokenKind::CONSTRAINT
+            | TokenKind::CREATE
+            | TokenKind::CROSS
+            | TokenKind::CUBE
+            | TokenKind::CURRENT_DATE
+            | TokenKind::CURRENT_PATH
+            | TokenKind::CURRENT_TIME
+            | TokenKind::CURRENT_TIMESTAMP
+            | TokenKind::CURRENT_USER
+            | TokenKind::DEALLOCATE
+            | TokenKind::DECIMAL
+            | TokenKind::DELETE
+            | TokenKind::DESCRIBE
+            | TokenKind::DISTINCT
+            | TokenKind::DOUBLE
+            | TokenKind::DROP
+            | TokenKind::ELSE
+            | TokenKind::END
+            | TokenKind::ESCAPE
+            | TokenKind::EXCEPT
+            | TokenKind::EXECUTE
+            | TokenKind::EXISTS
+            | TokenKind::EXTRACT
+            | TokenKind::FALSE
+            | TokenKind::FOR
+            | TokenKind::FROM
+            | TokenKind::FULL
+            | TokenKind::FUNCTION
+            | TokenKind::GROUP
+            | TokenKind::GROUPING
+            | TokenKind::HAVING
+            | TokenKind::IN
+            | TokenKind::INNER
+            | TokenKind::INSERT
+            | TokenKind::INTEGER
+            | TokenKind::INTERSECT
+            | TokenKind::INTO
+            | TokenKind::IS
+            | TokenKind::JOIN
+            | TokenKind::LEFT
+            | TokenKind::LIKE
+            | TokenKind::LOCALTIME
+            | TokenKind::LOCALTIMESTAMP
+            | TokenKind::NATURAL
+            | TokenKind::NORMALIZE
+            | TokenKind::NOT
+            | TokenKind::NULL
+            | TokenKind::ON
+            | TokenKind::OR
+            | TokenKind::ORDER
+            | TokenKind::OUTER
+            | TokenKind::PREPARE
+            | TokenKind::REAL
+            | TokenKind::RECURSIVE
+            | TokenKind::RIGHT
+            | TokenKind::ROLLUP
+            | TokenKind::SELECT
+            | TokenKind::SMALLINT
+            | TokenKind::TABLE
+            | TokenKind::THEN
+            | TokenKind::TINYINT
+            | TokenKind::TRUE
+            | TokenKind::UESCAPE
+            | TokenKind::UNION
+            | TokenKind::UNNEST
+            | TokenKind::USING
+            | TokenKind::VALUES
+            | TokenKind::VARBINARY
+            | TokenKind::VARCHAR
+            | TokenKind::WHEN
+            | TokenKind::WHERE
+            | TokenKind::WITH => true,
+            _ => false,
+        }
+    }
+
+    fn is_complex(&self) -> bool {
+        match self {
+            TokenKind::String
+            | TokenKind::UnicodeString
+            | TokenKind::BinaryLiteral
+            | TokenKind::Decimal
+            | TokenKind::Double
+            | TokenKind::Identifier
+            | TokenKind::QuotedIdentifier
+            | TokenKind::BackquotedIdentifier => true,
+            _ => false,
+        }
+    }
+
+    fn is_simple(&self) -> bool {
+        return !self.is_complex();
+    }
 }
