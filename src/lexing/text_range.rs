@@ -3,8 +3,8 @@ use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TextRange {
-    start: position::Position,
-    end: position::Position,
+    pub start: position::Position,
+    pub end: position::Position,
 }
 
 impl fmt::Display for TextRange {
