@@ -2,7 +2,7 @@ use crate::lexing::{
     comment::Comment, syntax_error::SyntaxError, text_range::TextRange, token_kind::TokenKind,
 };
 
-struct Token {
+pub struct Token {
     kind: TokenKind,
     range: TextRange,
     value: String,
