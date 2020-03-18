@@ -1,5 +1,6 @@
 mod chars;
 mod comment;
+mod keywords;
 pub mod lexer;
 mod lexer_position;
 mod position;
