@@ -256,6 +256,18 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn lex_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        self.lex_any_string_literal(start, TokenKind::String)
+    }
+
+    pub fn lex_unicode_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        self.lex_any_string_literal(start, TokenKind::UnicodeString)
+    }
+
+    pub fn lex_any_string_literal(
+        &mut self,
+        start: &LexerPosition<'a>,
+        kind: TokenKind,
+    ) -> Token<'a> {
         loop {
             if self.at_end() {
                 return self.add_and_create_error(
@@ -268,7 +280,7 @@ impl<'a> Lexer<'a> {
                 if self.peek_char('\'') {
                     self.next();
                 } else {
-                    return self.create_token(start, TokenKind::String);
+                    return self.create_token(start, kind);
                 }
             } else {
                 self.next();
@@ -482,8 +494,12 @@ impl<'a> Lexer<'a> {
                 '0'..='9' => self.lex_number(&start, ch),
                 // Identifier start char
                 'a'..='z' | 'A'..='Z' | '_' => {
-                    // TODO: unicode, binary
-                    self.lex_word(&start, ch)
+                    // TODO: binary
+                    if ch.eq_ignore_ascii_case(&'u') && self.eat_opt('\'') {
+                        self.lex_unicode_string_literal(&start)
+                    } else {
+                        self.lex_word(&start, ch)
+                    }
                 }
                 // TODO: multi-identifier lexemes
                 _ => self.add_and_create_error(
