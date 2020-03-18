@@ -147,7 +147,7 @@ impl<'a> Lexer<'a> {
         self.position.peek_char_offset(ch, offset)
     }
 
-    fn at_end(&mut self) -> bool {
+    pub fn at_end(&mut self) -> bool {
         self.position.at_end()
     }
 
