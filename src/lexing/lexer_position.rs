@@ -48,12 +48,13 @@ impl<'a> LexerPosition<'a> {
         self.chars().next().unwrap_or(chars::NULL)
     }
 
-    pub fn peek_offset(&self, offset: i32) -> char {
+    pub fn peek_offset(&self, mut offset: i32) -> char {
         assert!(offset >= 0);
 
         let mut clone = self.clone();
         while offset > 0 {
             clone.next();
+            offset -= 1;
         }
         clone.peek()
     }

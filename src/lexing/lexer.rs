@@ -35,8 +35,13 @@ impl<'a> Lexer<'a> {
         if self.eat_opt(ch) {
             true
         } else {
+            let start = self.mark();
             let actual = self.peek();
-            self.add_error(&format!("Expected '{}'; got '{}'", ch, actual));
+            self.add_error_at(
+                &start,
+                syntax_error::ERROR_EXPECTED_CHAR,
+                &format!("Expected '{}'; got '{}'", ch, actual),
+            );
             false
         }
     }
@@ -89,19 +94,35 @@ impl<'a> Lexer<'a> {
         start.get_text(&self.position)
     }
 
-    fn add_error(&mut self, message: &str) {
-        let mut end = self.position.clone();
-        end.next();
-        self.errors.push(SyntaxError {
-            error_code: syntax_error::ERROR_EXPECTED_CHAR,
+    fn add_error(&mut self, error: SyntaxError) {
+        self.errors.push(error)
+    }
+
+    fn add_error_at(&mut self, start: &LexerPosition, error_code: i32, message: &str) {
+        self.add_error(SyntaxError {
+            error_code,
             messages: vec![Message {
-                range: self.position.get_range(&end),
+                range: self.get_range(start),
                 message: String::from(message),
             }],
         })
     }
 
-    fn create_error(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+    fn add_and_create_error(
+        &mut self,
+        start: &LexerPosition<'a>,
+        error_code: i32,
+        message: &str,
+    ) -> Token {
+        self.add_error_at(start, error_code, message);
+        self.create_error_token(start)
+    }
+
+    fn create_error_token(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        assert!(
+            !self.errors.is_empty(),
+            "must add error before creating error token"
+        );
         self.create_token(start, TokenKind::Error)
     }
 
@@ -138,6 +159,25 @@ impl<'a> Lexer<'a> {
             match ch {
                 chars::CARRIAGE_RETURN | chars::LINE_FEED => break,
                 _ => (),
+            }
+        }
+    }
+
+    fn skip_delimited_comment_tail(&mut self, start: &LexerPosition<'a>) {
+        loop {
+            if self.at_end() {
+                self.add_error_at(
+                    start,
+                    syntax_error::ERROR_UNTERMINATED_DELIMITED_COMMENT,
+                    "Unterminated delimited comment.",
+                );
+                break;
+            } else if self.peek_char('*') && self.peek_char_offset('/', 1) {
+                self.next();
+                self.next();
+                break ();
+            } else {
+                self.next();
             }
         }
     }
@@ -186,28 +226,35 @@ impl<'a> Lexer<'a> {
                     if self.eat('=') {
                         self.create_token(&start, TokenKind::BangEqual)
                     } else {
-                        self.create_error(&start)
+                        self.create_error_token(&start)
                     }
                 }
                 '+' => self.create_token(&start, TokenKind::Plus),
                 '-' => {
                     if self.eat_opt('-') {
                         self.skip_to_end_of_line();
-                        self.create_and_add_comment(&start, CommentKind::DelimitedComment);
+                        self.create_and_add_comment(&start, CommentKind::LineComment);
                         self.lex_token()
                     } else {
                         self.create_token(&start, TokenKind::Minus)
                     }
                 }
                 '*' => self.create_token(&start, TokenKind::Asterisk),
-                // TODO: bracketed comments
-                '/' => self.create_token(&start, TokenKind::Slash),
+                '/' => {
+                    if self.eat_opt('*') {
+                        self.skip_delimited_comment_tail(&start);
+                        self.create_and_add_comment(&start, CommentKind::DelimitedComment);
+                        self.lex_token()
+                    } else {
+                        self.create_token(&start, TokenKind::Slash)
+                    }
+                }
                 '%' => self.create_token(&start, TokenKind::Percent),
                 '|' => {
                     if self.eat('|') {
                         self.create_token(&start, TokenKind::BarBar)
                     } else {
-                        self.create_error(&start)
+                        self.create_error_token(&start)
                     }
                 }
                 _ => panic!("TODO"),

@@ -36,3 +36,4 @@ impl fmt::Display for SyntaxError {
 }
 
 pub const ERROR_EXPECTED_CHAR: i32 = 101;
+pub const ERROR_UNTERMINATED_DELIMITED_COMMENT: i32 = 102;
