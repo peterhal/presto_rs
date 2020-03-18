@@ -263,6 +263,10 @@ impl<'a> Lexer<'a> {
         self.lex_any_string_literal(start, TokenKind::UnicodeString)
     }
 
+    pub fn lex_binary_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        self.lex_any_string_literal(start, TokenKind::BinaryLiteral)
+    }
+
     pub fn lex_any_string_literal(
         &mut self,
         start: &LexerPosition<'a>,
@@ -494,9 +498,10 @@ impl<'a> Lexer<'a> {
                 '0'..='9' => self.lex_number(&start, ch),
                 // Identifier start char
                 'a'..='z' | 'A'..='Z' | '_' => {
-                    // TODO: binary
                     if ch.eq_ignore_ascii_case(&'u') && self.eat_opt('\'') {
                         self.lex_unicode_string_literal(&start)
+                    } else if ch.eq_ignore_ascii_case(&'x') && self.eat_opt('\'') {
+                        self.lex_binary_literal(&start)
                     } else {
                         self.lex_word(&start, ch)
                     }
