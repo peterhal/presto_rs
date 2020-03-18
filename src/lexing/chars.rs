@@ -10,3 +10,11 @@ pub fn is_whitespace(ch: char) -> bool {
         _ => false,
     }
 }
+
+pub fn is_digit(ch: char) -> bool {
+    ch >= '0' && ch <= '9'
+}
+
+pub fn is_sign(ch: char) -> bool {
+    ch == '-' || ch == '+'
+}

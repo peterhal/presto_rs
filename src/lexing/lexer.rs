@@ -55,19 +55,23 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn peek_offset(&mut self, offset: i32) -> char {
+    fn peek_offset(&self, offset: i32) -> char {
         self.position.peek_offset(offset)
     }
 
-    fn peek_char(&mut self, ch: char) -> bool {
+    fn peek_char(&self, ch: char) -> bool {
         self.position.peek_char(ch)
     }
 
-    fn peek_char_offset(&mut self, ch: char, offset: i32) -> bool {
+    fn peek_char_lower(&self, ch: char) -> bool {
+        self.position.peek().eq_ignore_ascii_case(&ch)
+    }
+
+    fn peek_char_offset(&self, ch: char, offset: i32) -> bool {
         self.position.peek_char_offset(ch, offset)
     }
 
-    pub fn at_end(&mut self) -> bool {
+    pub fn at_end(&self) -> bool {
         self.position.at_end()
     }
 
@@ -307,6 +311,73 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub fn skip_digits(&mut self) {
+        while chars::is_digit(self.peek()) {
+            self.next();
+        }
+    }
+
+    pub fn peek_fraction(&self) -> bool {
+        self.peek_char('.') && chars::is_digit(self.peek_offset(1))
+    }
+
+    pub fn peek_exponent(&self) -> bool {
+        self.peek_char_lower('e') && {
+            let next_char = self.peek_offset(1);
+            chars::is_digit(next_char)
+                || (chars::is_sign(next_char) && chars::is_digit(self.peek_offset(2)))
+        }
+    }
+
+    pub fn skip_fraction(&mut self) -> bool {
+        if self.peek_fraction() {
+            // '.'
+            self.next();
+            self.skip_digits();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn skip_exponent(&mut self) -> bool {
+        if self.peek_exponent() {
+            // E
+            self.next();
+            // sign or first digit
+            self.next();
+            // remaining digits
+            self.skip_digits();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn lex_number(&mut self, start: &LexerPosition<'a>, start_char: char) -> Token<'a> {
+        let kind = if start_char == '.' {
+            self.skip_digits();
+            if self.skip_exponent() {
+                TokenKind::Double
+            } else {
+                TokenKind::Decimal
+            }
+        } else {
+            self.skip_digits();
+            if self.peek_fraction() || self.peek_exponent() {
+                self.skip_fraction();
+                if self.skip_exponent() {
+                    TokenKind::Double
+                } else {
+                    TokenKind::Decimal
+                }
+            } else {
+                TokenKind::Integer
+            }
+        };
+        self.create_token(start, kind)
+    }
+
     pub fn lex_token(&mut self) -> Token<'a> {
         self.skip_whitespace();
         let start = self.mark();
@@ -319,7 +390,13 @@ impl<'a> Lexer<'a> {
                 '(' => self.create_token(&start, TokenKind::OpenParen),
                 ')' => self.create_token(&start, TokenKind::CloseParen),
                 ',' => self.create_token(&start, TokenKind::Comma),
-                '.' => self.create_token(&start, TokenKind::Period),
+                '.' => {
+                    if chars::is_digit(self.peek()) {
+                        self.lex_number(&start, ch)
+                    } else {
+                        self.create_token(&start, TokenKind::Period)
+                    }
+                }
                 '<' => match self.peek() {
                     '>' => {
                         self.next();
@@ -385,7 +462,8 @@ impl<'a> Lexer<'a> {
                 '\'' => self.lex_string_literal(&start),
                 '"' => self.lex_quoted_identifier(&start),
                 '`' => self.lex_back_quoted_identifier(&start),
-                // TOOD: number, identifier, unicode, binary
+                '0'..='9' => self.lex_number(&start, ch),
+                // TOOD: identifier, unicode, binary
                 // TODO: multi-identifier lexemes
                 _ => self.add_and_create_error(
                     &start,
