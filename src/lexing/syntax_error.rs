@@ -35,5 +35,7 @@ impl fmt::Display for SyntaxError {
     }
 }
 
+// syntax errors 100-200
 pub const ERROR_EXPECTED_CHAR: i32 = 101;
 pub const ERROR_UNTERMINATED_DELIMITED_COMMENT: i32 = 102;
+pub const ERROR_INVALID_TOKEN_START: i32 = 103;

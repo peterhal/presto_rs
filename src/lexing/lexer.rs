@@ -113,7 +113,7 @@ impl<'a> Lexer<'a> {
         start: &LexerPosition<'a>,
         error_code: i32,
         message: &str,
-    ) -> Token {
+    ) -> Token<'a> {
         self.add_error_at(start, error_code, message);
         self.create_error_token(start)
     }
@@ -257,7 +257,11 @@ impl<'a> Lexer<'a> {
                         self.create_error_token(&start)
                     }
                 }
-                _ => panic!("TODO"),
+                _ => self.add_and_create_error(
+                    &start,
+                    syntax_error::ERROR_INVALID_TOKEN_START,
+                    "Invalid token start character.",
+                ),
             }
         }
     }
