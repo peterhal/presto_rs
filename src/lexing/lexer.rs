@@ -1,7 +1,7 @@
 use crate::lexing::{
-    chars, comment::Comment, comment::CommentKind, lexer_position::LexerPosition, syntax_error,
-    syntax_error::Message, syntax_error::SyntaxError, text_range::TextRange, token::Token,
-    token_kind::TokenKind,
+    chars, comment::Comment, comment::CommentKind, keywords, lexer_position::LexerPosition,
+    syntax_error, syntax_error::Message, syntax_error::SyntaxError, text_range::TextRange,
+    token::Token, token_kind::TokenKind,
 };
 use std::mem;
 
@@ -408,7 +408,11 @@ impl<'a> Lexer<'a> {
     pub fn lex_word(&mut self, start: &LexerPosition<'a>, ch: char) -> Token<'a> {
         assert!(chars::is_identifier_start(ch));
         self.skip_while(chars::is_identifier_part);
-        self.create_token(start, TokenKind::Identifier)
+        if let Some(keyword) = keywords::maybe_get_keyword(self.get_text(start)) {
+            self.create_token(start, keyword.to_token_kind())
+        } else {
+            self.create_token(start, TokenKind::Identifier)
+        }
     }
 
     pub fn lex_token(&mut self) -> Token<'a> {
