@@ -164,8 +164,15 @@ impl<'a> Lexer<'a> {
 
 // Language specific lexing goes here:
 impl<'a> Lexer<'a> {
+    pub fn skip_while<P>(&mut self, predicate: P)
+    where
+        P: Fn(char) -> bool,
+    {
+        self.position.skip_while(predicate)
+    }
+
     fn skip_whitespace(&mut self) {
-        self.position.skip_while(chars::is_whitespace)
+        self.skip_while(chars::is_whitespace)
     }
 
     fn skip_to_end_of_line(&mut self) {
@@ -378,6 +385,12 @@ impl<'a> Lexer<'a> {
         self.create_token(start, kind)
     }
 
+    pub fn lex_word(&mut self, start: &LexerPosition<'a>, ch: char) -> Token<'a> {
+        assert!(chars::is_identifier_start(ch));
+        self.skip_while(chars::is_identifier_part);
+        self.create_token(start, TokenKind::Identifier)
+    }
+
     pub fn lex_token(&mut self) -> Token<'a> {
         self.skip_whitespace();
         let start = self.mark();
@@ -463,7 +476,11 @@ impl<'a> Lexer<'a> {
                 '"' => self.lex_quoted_identifier(&start),
                 '`' => self.lex_back_quoted_identifier(&start),
                 '0'..='9' => self.lex_number(&start, ch),
-                // TOOD: identifier, unicode, binary
+                // Identifier start char
+                'a'..='z' | 'A'..='Z' | '_' => {
+                    // TODO: identifier, digit identifier, unicode, binary
+                    self.lex_word(&start, ch)
+                }
                 // TODO: multi-identifier lexemes
                 _ => self.add_and_create_error(
                     &start,

@@ -18,3 +18,17 @@ pub fn is_digit(ch: char) -> bool {
 pub fn is_sign(ch: char) -> bool {
     ch == '-' || ch == '+'
 }
+
+pub fn is_identifier_start(ch: char) -> bool {
+    match ch {
+        'a'..='z' | 'A'..='Z' | '_' => true,
+        _ => false,
+    }
+}
+
+pub fn is_identifier_part(ch: char) -> bool {
+    match ch {
+        'a'..='z' | 'A'..='Z' | '_' | '0'..='9' | '@' | ':' => true,
+        _ => false,
+    }
+}
