@@ -164,14 +164,14 @@ impl<'a> Lexer<'a> {
 
 // Language specific lexing goes here:
 impl<'a> Lexer<'a> {
-    pub fn skip_while<P>(&mut self, predicate: P)
+    pub fn skip_while<P>(&mut self, predicate: P) -> bool
     where
         P: Fn(char) -> bool,
     {
         self.position.skip_while(predicate)
     }
 
-    fn skip_whitespace(&mut self) {
+    fn skip_whitespace(&mut self) -> bool {
         self.skip_while(chars::is_whitespace)
     }
 
@@ -379,7 +379,11 @@ impl<'a> Lexer<'a> {
                     TokenKind::Decimal
                 }
             } else {
-                TokenKind::Integer
+                if self.skip_while(chars::is_identifier_part) {
+                    TokenKind::DigitIdentifier
+                } else {
+                    TokenKind::Integer
+                }
             }
         };
         self.create_token(start, kind)
@@ -478,7 +482,7 @@ impl<'a> Lexer<'a> {
                 '0'..='9' => self.lex_number(&start, ch),
                 // Identifier start char
                 'a'..='z' | 'A'..='Z' | '_' => {
-                    // TODO: identifier, digit identifier, unicode, binary
+                    // TODO: unicode, binary
                     self.lex_word(&start, ch)
                 }
                 // TODO: multi-identifier lexemes

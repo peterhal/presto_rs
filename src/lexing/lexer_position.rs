@@ -30,13 +30,16 @@ impl<'a> LexerPosition<'a> {
         self.position.line
     }
 
-    pub fn skip_while<P>(&mut self, predicate: P)
+    pub fn skip_while<P>(&mut self, predicate: P) -> bool
     where
         P: Fn(char) -> bool,
     {
+        let mut result = false;
         while predicate(self.peek()) {
             self.next();
+            result = true
         }
+        result
     }
 
     fn chars(&self) -> Chars<'a> {

@@ -40,6 +40,7 @@ pub enum TokenKind {
 
     // identifier
     Identifier,
+    DigitIdentifier,
     QuotedIdentifier,
     BackquotedIdentifier,
 
@@ -223,6 +224,7 @@ impl TokenKind {
             | TokenKind::Decimal
             | TokenKind::Double
             | TokenKind::Identifier
+            | TokenKind::DigitIdentifier
             | TokenKind::QuotedIdentifier
             | TokenKind::BackquotedIdentifier => true,
             _ => false,
