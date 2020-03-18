@@ -244,6 +244,27 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub fn lex_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        loop {
+            if self.at_end() {
+                return self.add_and_create_error(
+                    start,
+                    syntax_error::ERROR_UNTERMINATED_STRING_LITERAL,
+                    "Unterminated string literal",
+                );
+            }
+            if self.eat_opt('\'') {
+                if self.peek_char('\'') {
+                    self.next();
+                } else {
+                    return self.create_token(start, TokenKind::String);
+                }
+            } else {
+                self.next();
+            }
+        }
+    }
+
     pub fn lex_token(&mut self) -> Token<'a> {
         self.skip_whitespace();
         let start = self.mark();
@@ -319,6 +340,9 @@ impl<'a> Lexer<'a> {
                         self.create_error_token(&start)
                     }
                 }
+                '\'' => self.lex_string_literal(&start),
+                // TOOD: string, number, identifier, unicode, binary, back/quoted identifier
+                // TODO: multi-identifier lexemes
                 _ => self.add_and_create_error(
                     &start,
                     syntax_error::ERROR_INVALID_TOKEN_START,
