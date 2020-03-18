@@ -265,6 +265,48 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub fn lex_quoted_identifier(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        loop {
+            if self.at_end() {
+                return self.add_and_create_error(
+                    start,
+                    syntax_error::ERROR_UNTERMINATED_QUOTED_IDENTIFIER,
+                    "Unterminated quoted identifier",
+                );
+            }
+            if self.eat_opt('"') {
+                if self.peek_char('"') {
+                    self.next();
+                } else {
+                    return self.create_token(start, TokenKind::QuotedIdentifier);
+                }
+            } else {
+                self.next();
+            }
+        }
+    }
+
+    pub fn lex_back_quoted_identifier(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        loop {
+            if self.at_end() {
+                return self.add_and_create_error(
+                    start,
+                    syntax_error::ERROR_UNTERMINATED_BACK_QUOTED_IDENTIFIER,
+                    "Unterminated back quoted identifier",
+                );
+            }
+            if self.eat_opt('`') {
+                if self.peek_char('`') {
+                    self.next();
+                } else {
+                    return self.create_token(start, TokenKind::BackquotedIdentifier);
+                }
+            } else {
+                self.next();
+            }
+        }
+    }
+
     pub fn lex_token(&mut self) -> Token<'a> {
         self.skip_whitespace();
         let start = self.mark();
@@ -341,7 +383,9 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 '\'' => self.lex_string_literal(&start),
-                // TOOD: string, number, identifier, unicode, binary, back/quoted identifier
+                '"' => self.lex_quoted_identifier(&start),
+                '`' => self.lex_back_quoted_identifier(&start),
+                // TOOD: number, identifier, unicode, binary
                 // TODO: multi-identifier lexemes
                 _ => self.add_and_create_error(
                     &start,
