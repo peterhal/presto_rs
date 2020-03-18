@@ -76,13 +76,23 @@ impl<'a> Lexer<'a> {
     }
 
     fn create_token(&mut self, start: &LexerPosition<'a>, kind: TokenKind) -> Token<'a> {
+        let range = self.get_range(start);
+        let value = self.get_text(start);
+        let leading_comments = mem::replace(&mut self.comments, Vec::new());
+        let mut errors = mem::replace(&mut self.errors, Vec::new());
+        // TODO: Make consuming trailing trivia optional.
+        self.lex_trailing_trivia();
+        // lex_trailing_trivia may add more errors.
+        errors.append(&mut self.errors);
+        self.errors = Vec::new();
+        let trailing_comments = mem::replace(&mut self.comments, Vec::new());
         Token {
             kind,
-            range: self.get_range(start),
-            value: self.get_text(start),
-            errors: Vec::new(),
-            leading_comments: mem::replace(&mut self.comments, Vec::new()),
-            trailing_comments: Vec::new(),
+            range,
+            value,
+            errors,
+            leading_comments,
+            trailing_comments,
         }
     }
 
@@ -142,6 +152,10 @@ impl<'a> Lexer<'a> {
         let comment = self.create_comment(start, kind);
         self.add_comment(comment)
     }
+
+    fn set_position(&mut self, position: &LexerPosition<'a>) {
+        self.position = *position;
+    }
 }
 
 // Language specific lexing goes here:
@@ -179,6 +193,54 @@ impl<'a> Lexer<'a> {
             } else {
                 self.next();
             }
+        }
+    }
+
+    fn lex_trailing_trivia(&mut self) {
+        assert!(self.comments.is_empty());
+        assert!(self.errors.is_empty());
+        let start = self.mark();
+        while {
+            let whitespace_start = self.mark();
+            self.skip_whitespace();
+            if start.line() != self.position.line() {
+                self.set_position(&whitespace_start);
+                false
+            } else if self.peek_char('-') && self.peek_char_offset('-', 1) {
+                let start_comment = self.mark();
+                self.skip_to_end_of_line();
+                self.create_and_add_comment(&start_comment, CommentKind::LineComment);
+                false
+            } else if self.peek_char('/') && self.peek_char_offset('*', 1) {
+                assert!(self.errors.is_empty());
+                let start_comment = self.mark();
+                self.skip_delimited_comment_tail(&start_comment);
+                if start.line() == self.position.line() {
+                    // multiline comment, starting on the same line as the token
+                    // and ends on the same line. Consume the comment.
+                    self.create_and_add_comment(&start_comment, CommentKind::DelimitedComment);
+                    true
+                } else {
+                    // multiline comment, starting on the same line as the token
+                    // but ends on a different line.
+                    // Keep any previous comments on this line, but rewind before this
+                    // comment so that it gets attached to the next token.
+                    self.set_position(&whitespace_start);
+                    // Need to clear errors, which may only have occured during this
+                    // delimited comment tail, which we're rewinding over.
+                    self.errors = Vec::new();
+                    false
+                }
+            } else {
+                // new token on the same line as the completed token
+                // discard any consumed trivia.
+                self.set_position(&start);
+                self.errors = Vec::new();
+                self.comments = Vec::new();
+                false
+            }
+        } {
+            ()
         }
     }
 

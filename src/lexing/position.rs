@@ -2,8 +2,8 @@ use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Position {
-    line: i32,
-    column: i32,
+    pub line: i32,
+    pub column: i32,
 }
 
 impl Position {

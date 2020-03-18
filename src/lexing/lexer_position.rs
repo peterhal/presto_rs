@@ -26,6 +26,10 @@ impl<'a> LexerPosition<'a> {
         }
     }
 
+    pub fn line(&self) -> i32 {
+        self.position.line
+    }
+
     pub fn skip_while<P>(&mut self, predicate: P)
     where
         P: Fn(char) -> bool,
