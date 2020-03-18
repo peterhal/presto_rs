@@ -4,6 +4,7 @@ mod keywords;
 pub mod lexer;
 mod lexer_position;
 mod position;
+mod predefined_names;
 mod syntax_error;
 mod text_range;
 mod token;
