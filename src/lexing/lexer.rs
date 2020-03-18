@@ -26,7 +26,7 @@ impl<'a> LexerPosition<'a> {
         P: Fn(char) -> bool,
     {
         while predicate(self.peek()) {
-            self.advance();
+            self.next();
         }
     }
 
@@ -57,7 +57,7 @@ impl<'a> LexerPosition<'a> {
         }
     }
 
-    fn advance(&mut self) {
+    fn next(&mut self) -> char {
         let ch = self.chars().next();
         self.advance_index_of_char(ch);
         self.position = match ch {
@@ -71,7 +71,8 @@ impl<'a> LexerPosition<'a> {
             }
             Some(_) => self.position.next_column(),
             None => self.position,
-        }
+        };
+        ch.unwrap_or(chars::NULL)
     }
 
     fn get_range(&self, end: &LexerPosition) -> TextRange {
@@ -129,8 +130,8 @@ impl<'a> Lexer<'a> {
         self.position.at_end()
     }
 
-    fn advance(&mut self) {
-        self.position.advance()
+    fn next(&mut self) -> char {
+        self.position.next()
     }
 
     fn create_token(&self, start: &LexerPosition<'a>, kind: TokenKind) -> Token<'a> {
