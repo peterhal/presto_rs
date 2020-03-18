@@ -8,13 +8,13 @@ pub struct Token<'a> {
     pub kind: TokenKind,
     pub range: TextRange,
     pub value: &'a str,
-    pub leading_comments: Vec<Comment>,
-    pub trailing_comments: Vec<Comment>,
+    pub leading_comments: Vec<Comment<'a>>,
+    pub trailing_comments: Vec<Comment<'a>>,
     pub errors: Vec<SyntaxError>,
 }
 
 impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Token({},{},{})", self.kind, self.range, self.value)
+        write!(f, "{:?}", self)
     }
 }
