@@ -4,8 +4,8 @@ use crate::lexing::{
 };
 use std::str::Chars;
 
-#[derive(Clone, Debug)]
-struct LexerPosition<'a> {
+#[derive(Clone, Copy, Debug)]
+pub struct LexerPosition<'a> {
     source: &'a str,
     position: Position,
     // index into source in bytes
@@ -43,8 +43,22 @@ impl<'a> LexerPosition<'a> {
         self.chars().next().unwrap_or(chars::NULL)
     }
 
+    fn peek_offset(&self, offset: i32) -> char {
+        assert!(offset >= 0);
+
+        let mut clone = self.clone();
+        while offset > 0 {
+            clone.next();
+        }
+        clone.peek()
+    }
+
     fn peek_char(&self, ch: char) -> bool {
         self.peek() == ch
+    }
+
+    fn peek_char_offset(&self, ch: char, offset: i32) -> bool {
+        self.peek_offset(offset) == ch
     }
 
     fn at_end(&self) -> bool {
@@ -88,14 +102,15 @@ impl<'a> LexerPosition<'a> {
     }
 }
 
-struct Lexer<'a> {
+pub struct Lexer<'a> {
     input: &'a str,
     position: LexerPosition<'a>,
     errors: Vec<SyntaxError>,
 }
 
+// All the non-language specific infrastructure goes here
 impl<'a> Lexer<'a> {
-    fn new(input: &'a str) -> Lexer<'a> {
+    pub fn new(input: &'a str) -> Lexer<'a> {
         Lexer {
             input,
             position: LexerPosition::new(input),
@@ -103,27 +118,33 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn lex_token(&mut self) -> Token {
-        self.skip_whitespace();
-        let start = self.position.clone();
-
-        if self.at_end() {
-            self.create_token(&start, TokenKind::END_OF_FILE)
-        } else {
-            panic!()
-        }
-    }
-
-    fn skip_whitespace(&mut self) {
-        self.position.skip_while(chars::is_whitespace)
+    fn mark(&self) -> LexerPosition<'a> {
+        self.position
     }
 
     fn peek(&mut self) -> char {
         self.position.peek()
     }
 
+    fn eat_opt(&mut self, ch: char) -> bool {
+        if self.peek_char(ch) {
+            self.next();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn peek_offset(&mut self, offset: i32) -> char {
+        self.position.peek_offset(offset)
+    }
+
     fn peek_char(&mut self, ch: char) -> bool {
         self.position.peek_char(ch)
+    }
+
+    fn peek_char_offset(&mut self, ch: char, offset: i32) -> bool {
+        self.position.peek_char_offset(ch, offset)
     }
 
     fn at_end(&mut self) -> bool {
@@ -137,11 +158,36 @@ impl<'a> Lexer<'a> {
     fn create_token(&self, start: &LexerPosition<'a>, kind: TokenKind) -> Token<'a> {
         Token {
             kind,
-            range: start.get_range(&self.position),
-            value: start.get_text(&self.position),
+            range: self.get_range(start),
+            value: self.get_text(start),
             errors: Vec::new(),
             leading_comments: Vec::new(),
             trailing_comments: Vec::new(),
+        }
+    }
+
+    fn get_range(&self, start: &LexerPosition<'a>) -> TextRange {
+        start.get_range(&self.position)
+    }
+
+    fn get_text(&self, start: &LexerPosition<'a>) -> &'a str {
+        start.get_text(&self.position)
+    }
+}
+
+// Language specific lexing goes here:
+impl<'a> Lexer<'a> {
+    fn skip_whitespace(&mut self) {
+        self.position.skip_while(chars::is_whitespace)
+    }
+
+    pub fn lex_token(&mut self) -> Token<'a> {
+        self.skip_whitespace();
+        let start = self.mark();
+        if self.at_end() {
+            self.create_token(&start, TokenKind::END_OF_FILE)
+        } else {
+            panic!("TODO")
         }
     }
 }

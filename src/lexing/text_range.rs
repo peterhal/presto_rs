@@ -9,11 +9,7 @@ pub struct TextRange {
 
 impl fmt::Display for TextRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_none() {
-            write!(f, "")
-        } else {
-            write!(f, "{}-{}", self.start, self.end)
-        }
+        write!(f, "{}-{}", self.start, self.end)
     }
 }
 

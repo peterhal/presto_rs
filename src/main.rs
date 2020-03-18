@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use crate::lexing::lexer::Lexer;
 use std::env;
 use std::fs;
 
@@ -15,7 +16,11 @@ fn main() {
     let filename = &args[1];
     let read_result = fs::read_to_string(filename);
     match read_result {
-        Ok(contents) => println!("Hello world!\n{}", contents),
+        Ok(contents) => {
+            let mut lexer = Lexer::new("");
+            println!("{}", lexer.lex_token());
+            println!("Hello world!\n{}", contents)
+        }
         Err(e) => println!("Error reading file {}", e),
     }
 }

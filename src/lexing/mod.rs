@@ -1,6 +1,6 @@
 mod chars;
 mod comment;
-mod lexer;
+pub mod lexer;
 mod position;
 mod syntax_error;
 mod text_range;

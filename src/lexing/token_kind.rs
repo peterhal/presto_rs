@@ -1,3 +1,6 @@
+use std::fmt;
+
+#[derive(Copy, Clone, Debug)]
 #[allow(non_upper_case_globals, non_camel_case_types)]
 pub enum TokenKind {
     // Common kinds
@@ -228,5 +231,11 @@ impl TokenKind {
 
     fn is_simple(&self) -> bool {
         return !self.is_complex();
+    }
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
