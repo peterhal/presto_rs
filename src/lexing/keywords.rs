@@ -27,7 +27,6 @@ pub enum Keyword {
     DELETE,
     DESCRIBE,
     DISTINCT,
-    DOUBLE,
     DROP,
     ELSE,
     END,
@@ -94,6 +93,10 @@ impl fmt::Display for Keyword {
 }
 
 impl Keyword {
+    pub fn matches(&self, value: &str) -> bool {
+        self.to_string().eq_ignore_ascii_case(value)
+    }
+
     pub fn to_token_kind(&self) -> TokenKind {
         match self {
             Keyword::ALTER => TokenKind::ALTER,
@@ -119,7 +122,6 @@ impl Keyword {
             Keyword::DELETE => TokenKind::DELETE,
             Keyword::DESCRIBE => TokenKind::DESCRIBE,
             Keyword::DISTINCT => TokenKind::DISTINCT,
-            Keyword::DOUBLE => TokenKind::DOUBLE,
             Keyword::DROP => TokenKind::DROP,
             Keyword::ELSE => TokenKind::ELSE,
             Keyword::END => TokenKind::END,
@@ -206,7 +208,6 @@ pub fn maybe_get_keyword(value: &str) -> Option<Keyword> {
         "DELETE" => Some(Keyword::DELETE),
         "DESCRIBE" => Some(Keyword::DESCRIBE),
         "DISTINCT" => Some(Keyword::DISTINCT),
-        "DOUBLE" => Some(Keyword::DOUBLE),
         "DROP" => Some(Keyword::DROP),
         "ELSE" => Some(Keyword::ELSE),
         "END" => Some(Keyword::END),

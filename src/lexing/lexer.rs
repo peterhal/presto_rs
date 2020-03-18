@@ -1,10 +1,12 @@
 use crate::lexing::{
-    chars, comment::Comment, comment::CommentKind, keywords, lexer_position::LexerPosition,
-    syntax_error, syntax_error::Message, syntax_error::SyntaxError, text_range::TextRange,
-    token::Token, token_kind::TokenKind,
+    chars, comment::Comment, comment::CommentKind, keywords, keywords::Keyword,
+    lexer_position::LexerPosition, predefined_names::PredefinedName, syntax_error,
+    syntax_error::Message, syntax_error::SyntaxError, text_range::TextRange, token::Token,
+    token_kind::TokenKind,
 };
 use std::mem;
 
+#[derive(Clone, Debug)]
 pub struct Lexer<'a> {
     input: &'a str,
     position: LexerPosition<'a>,
@@ -18,6 +20,15 @@ impl<'a> Lexer<'a> {
         Lexer {
             input,
             position: LexerPosition::new(input),
+            errors: Vec::new(),
+            comments: Vec::new(),
+        }
+    }
+
+    fn try_lexer(&self) -> Lexer<'a> {
+        Lexer {
+            input: self.input,
+            position: self.position,
             errors: Vec::new(),
             comments: Vec::new(),
         }
@@ -405,12 +416,68 @@ impl<'a> Lexer<'a> {
         self.create_token(start, kind)
     }
 
+    fn peek_keyword(&mut self, keyword: Keyword) -> bool {
+        self.skip_whitespace() && {
+            let start = self.mark();
+            self.skip_word();
+            keyword.matches(self.get_text(&start))
+        }
+    }
+
+    fn peek_predefined_name(&mut self, name: PredefinedName) -> bool {
+        self.skip_whitespace() && {
+            let start = self.mark();
+            self.skip_word();
+            name.matches(self.get_text(&start))
+        }
+    }
+
+    fn skip_whitespace_word(&mut self) {
+        self.skip_whitespace();
+        self.skip_word();
+    }
+
+    fn skip_word(&mut self) {
+        self.skip_while(chars::is_identifier_part);
+    }
+
     pub fn lex_word(&mut self, start: &LexerPosition<'a>, ch: char) -> Token<'a> {
         assert!(chars::is_identifier_start(ch));
         self.skip_while(chars::is_identifier_part);
-        if let Some(keyword) = keywords::maybe_get_keyword(self.get_text(start)) {
+        let text = self.get_text(start);
+        if let Some(keyword) = keywords::maybe_get_keyword(text) {
             self.create_token(start, keyword.to_token_kind())
         } else {
+            if PredefinedName::DOUBLE.matches(text) {
+                let mut lookahead = self.try_lexer();
+                if lookahead.peek_predefined_name(PredefinedName::PRECISION) {
+                    self.skip_whitespace_word();
+                    return self.create_token(start, TokenKind::DoublePrecision);
+                }
+            } else if PredefinedName::TIME.matches(text) {
+                let mut lookahead = self.try_lexer();
+                if lookahead.peek_keyword(Keyword::WITH)
+                    && lookahead.peek_predefined_name(PredefinedName::TIME)
+                    && lookahead.peek_predefined_name(PredefinedName::ZONE)
+                {
+                    self.skip_whitespace_word();
+                    self.skip_whitespace_word();
+                    self.skip_whitespace_word();
+                    return self.create_token(start, TokenKind::TimeWithTimeZone);
+                }
+            } else if PredefinedName::TIMESTAMP.matches(text) {
+                let mut lookahead = self.try_lexer();
+                if lookahead.peek_keyword(Keyword::WITH)
+                    && lookahead.peek_predefined_name(PredefinedName::TIME)
+                    && lookahead.peek_predefined_name(PredefinedName::ZONE)
+                {
+                    self.skip_whitespace_word();
+                    self.skip_whitespace_word();
+                    self.skip_whitespace_word();
+                    return self.create_token(start, TokenKind::TimestampWithTimeZone);
+                }
+            }
+
             self.create_token(start, TokenKind::Identifier)
         }
     }

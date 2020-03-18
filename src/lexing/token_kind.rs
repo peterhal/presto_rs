@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[allow(non_upper_case_globals, non_camel_case_types)]
 pub enum TokenKind {
     // Common kinds
@@ -68,7 +68,6 @@ pub enum TokenKind {
     DELETE,
     DESCRIBE,
     DISTINCT,
-    DOUBLE,
     DROP,
     ELSE,
     END,
@@ -126,6 +125,11 @@ pub enum TokenKind {
     WHEN,
     WHERE,
     WITH,
+
+    // multi word lexemes
+    DoublePrecision,
+    TimeWithTimeZone,
+    TimestampWithTimeZone,
 }
 
 impl TokenKind {
@@ -154,7 +158,6 @@ impl TokenKind {
             | TokenKind::DELETE
             | TokenKind::DESCRIBE
             | TokenKind::DISTINCT
-            | TokenKind::DOUBLE
             | TokenKind::DROP
             | TokenKind::ELSE
             | TokenKind::END

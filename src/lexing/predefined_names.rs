@@ -27,6 +27,7 @@ pub enum PredefinedName {
     DAY,
     DESC,
     DISTRIBUTED,
+    DOUBLE,
     EXCLUDING,
     EXPLAIN,
     FILTER,
@@ -72,6 +73,7 @@ pub enum PredefinedName {
     PATH,
     POSITION,
     PRECEDING,
+    PRECISION,
     PRIVILEGES,
     PROPERTIES,
     RANGE,
@@ -128,6 +130,12 @@ impl fmt::Display for PredefinedName {
     }
 }
 
+impl PredefinedName {
+    pub fn matches(&self, value: &str) -> bool {
+        self.to_string().eq_ignore_ascii_case(value)
+    }
+}
+
 fn maybe_get_predefined_name(value: &str) -> Option<PredefinedName> {
     match value.to_ascii_uppercase().as_str() {
         "ADD" => Some(PredefinedName::ADD),
@@ -154,6 +162,7 @@ fn maybe_get_predefined_name(value: &str) -> Option<PredefinedName> {
         "DAY" => Some(PredefinedName::DAY),
         "DESC" => Some(PredefinedName::DESC),
         "DISTRIBUTED" => Some(PredefinedName::DISTRIBUTED),
+        "DOUBLE" => Some(PredefinedName::DOUBLE),
         "EXCLUDING" => Some(PredefinedName::EXCLUDING),
         "EXPLAIN" => Some(PredefinedName::EXPLAIN),
         "FILTER" => Some(PredefinedName::FILTER),
@@ -199,6 +208,7 @@ fn maybe_get_predefined_name(value: &str) -> Option<PredefinedName> {
         "PATH" => Some(PredefinedName::PATH),
         "POSITION" => Some(PredefinedName::POSITION),
         "PRECEDING" => Some(PredefinedName::PRECEDING),
+        "PRECISION" => Some(PredefinedName::PRECISION),
         "PRIVILEGES" => Some(PredefinedName::PRIVILEGES),
         "PROPERTIES" => Some(PredefinedName::PROPERTIES),
         "RANGE" => Some(PredefinedName::RANGE),
