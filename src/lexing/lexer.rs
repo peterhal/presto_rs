@@ -1,6 +1,6 @@
 use crate::lexing::{
-    chars, position, position::Position, syntax_error::SyntaxError, text_range::TextRange,
-    token::Token, token_kind::TokenKind,
+    chars, position, position::Position, syntax_error, syntax_error::Message,
+    syntax_error::SyntaxError, text_range::TextRange, token::Token, token_kind::TokenKind,
 };
 use std::str::Chars;
 
@@ -126,6 +126,16 @@ impl<'a> Lexer<'a> {
         self.position.peek()
     }
 
+    fn eat(&mut self, ch: char) -> bool {
+        if self.eat_opt(ch) {
+            true
+        } else {
+            let actual = self.peek();
+            self.add_error(&format!("Expected '{}'; got '{}'", ch, actual));
+            false
+        }
+    }
+
     fn eat_opt(&mut self, ch: char) -> bool {
         if self.peek_char(ch) {
             self.next();
@@ -173,6 +183,22 @@ impl<'a> Lexer<'a> {
     fn get_text(&self, start: &LexerPosition<'a>) -> &'a str {
         start.get_text(&self.position)
     }
+
+    fn add_error(&mut self, message: &str) {
+        let mut end = self.position.clone();
+        end.next();
+        self.errors.push(SyntaxError {
+            error_code: syntax_error::ERROR_EXPECTED_CHAR,
+            messages: vec![Message {
+                range: self.position.get_range(&end),
+                message: String::from(message),
+            }],
+        })
+    }
+
+    fn create_error(&self, start: &LexerPosition<'a>) -> Token<'a> {
+        self.create_token(start, TokenKind::Error)
+    }
 }
 
 // Language specific lexing goes here:
@@ -185,9 +211,63 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
         let start = self.mark();
         if self.at_end() {
-            self.create_token(&start, TokenKind::END_OF_FILE)
+            self.create_token(&start, TokenKind::EndOfFile)
         } else {
-            panic!("TODO")
+            let ch = self.next();
+            match ch {
+                // operators and punctuators
+                '(' => self.create_token(&start, TokenKind::OpenParen),
+                ')' => self.create_token(&start, TokenKind::CloseParen),
+                ',' => self.create_token(&start, TokenKind::Comma),
+                '.' => self.create_token(&start, TokenKind::Period),
+                '<' => match self.peek() {
+                    '>' => {
+                        self.next();
+                        self.create_token(&start, TokenKind::LessGreater)
+                    }
+                    '=' => {
+                        self.next();
+                        self.create_token(&start, TokenKind::LessEqual)
+                    }
+                    _ => self.create_token(&start, TokenKind::OpenAngle),
+                },
+                '>' => {
+                    if self.eat_opt('=') {
+                        self.create_token(&start, TokenKind::GreaterEqual)
+                    } else {
+                        self.create_token(&start, TokenKind::CloseAngle)
+                    }
+                }
+                '[' => self.create_token(&start, TokenKind::OpenSquare),
+                ']' => self.create_token(&start, TokenKind::CloseSquare),
+                '=' => {
+                    if self.eat_opt('>') {
+                        self.create_token(&start, TokenKind::DoubleArrow)
+                    } else {
+                        self.create_token(&start, TokenKind::Equal)
+                    }
+                }
+                '!' => {
+                    if self.eat('=') {
+                        self.create_token(&start, TokenKind::BangEqual)
+                    } else {
+                        self.create_error(&start)
+                    }
+                }
+                '+' => self.create_token(&start, TokenKind::Plus),
+                '-' => self.create_token(&start, TokenKind::Minus),
+                '*' => self.create_token(&start, TokenKind::Asterisk),
+                '/' => self.create_token(&start, TokenKind::Slash),
+                '%' => self.create_token(&start, TokenKind::Percent),
+                '|' => {
+                    if self.eat('|') {
+                        self.create_token(&start, TokenKind::BarBar)
+                    } else {
+                        self.create_error(&start)
+                    }
+                }
+                _ => panic!("TODO"),
+            }
         }
     }
 }

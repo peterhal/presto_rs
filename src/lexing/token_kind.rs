@@ -4,9 +4,9 @@ use std::fmt;
 #[allow(non_upper_case_globals, non_camel_case_types)]
 pub enum TokenKind {
     // Common kinds
-    BEGINING_OF_FILE,
-    END_OF_FILE,
-    ERROR,
+    BeginingOfFile,
+    EndOfFile,
+    Error,
 
     // operators and punctuators
     OpenParen,

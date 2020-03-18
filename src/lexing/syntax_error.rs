@@ -3,8 +3,8 @@ use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Message {
-    range: text_range::TextRange,
-    message: String,
+    pub range: text_range::TextRange,
+    pub message: String,
 }
 
 impl fmt::Display for Message {
@@ -15,8 +15,8 @@ impl fmt::Display for Message {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SyntaxError {
-    error_code: i32,
-    messages: Vec<Message>,
+    pub error_code: i32,
+    pub messages: Vec<Message>,
     // TODO: fix
 }
 
@@ -34,3 +34,5 @@ impl fmt::Display for SyntaxError {
         )
     }
 }
+
+pub const ERROR_EXPECTED_CHAR: i32 = 101;

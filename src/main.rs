@@ -20,7 +20,9 @@ fn main() {
             let mut lexer = Lexer::new(&contents);
             loop {
                 println!("{}", lexer.lex_token());
-                if lexer.at_end() { break; }
+                if lexer.at_end() {
+                    break;
+                }
             }
             println!("Hello world!\n{}", contents)
         }
