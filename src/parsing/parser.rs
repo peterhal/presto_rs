@@ -1,9 +1,8 @@
 use crate::lexing::{
-    lexer::Lexer, predefined_names::PredefinedName, text_range::TextRange, token::Token,
-    token_kind::TokenKind, position, position::Position,
+    lexer::Lexer, position, position::Position, predefined_names::PredefinedName,
+    text_range::TextRange, token::Token, token_kind::TokenKind,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
-use std::boxed::Box;
 
 // The location and lexing context for a Parser.
 //
@@ -131,15 +130,11 @@ impl<'a> Parser<'a> {
     }
 
     fn eat_empty(&mut self) -> ParseTree<'a> {
-        ParseTree::Empty(parse_tree::Empty {
-            range: TextRange::empty(self.peek_token().range.start),
-        })
+        parse_tree::empty(TextRange::empty(self.peek_token().range.start))
     }
 
     fn eat_token(&mut self) -> ParseTree<'a> {
-        ParseTree::Token(parse_tree::Token {
-            token: self.advance(),
-        })
+        parse_tree::token(self.advance())
     }
 
     fn eat_opt(&mut self, kind: TokenKind) -> ParseTree<'a> {
@@ -157,10 +152,7 @@ impl<'a> Parser<'a> {
         let with = self.parse_with_opt();
         // TODO
         let query_no_with = self.eat_empty();
-        ParseTree::Query(parse_tree::Query {
-            with: Box::new(with),
-            query_no_with: Box::new(query_no_with),
-        })
+        parse_tree::query(with, query_no_with)
     }
 
     fn parse_with_opt(&mut self) -> ParseTree<'a> {
@@ -169,11 +161,7 @@ impl<'a> Parser<'a> {
             let recursive = self.eat_opt(TokenKind::RECURSIVE);
             // TODO
             let named_queries = self.eat_empty();
-            ParseTree::With(parse_tree::With {
-                with: Box::new(with),
-                recursive: Box::new(recursive),
-                named_queries: Box::new(named_queries),
-            })
+            parse_tree::with(with, recursive, named_queries)
         } else {
             self.eat_empty()
         }

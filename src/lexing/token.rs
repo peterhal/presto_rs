@@ -1,6 +1,6 @@
 use crate::lexing::{
-    comment::Comment, syntax_error::SyntaxError, text_range::TextRange, token_kind::TokenKind,
-    position::Position,
+    comment::Comment, position::Position, syntax_error::SyntaxError, text_range::TextRange,
+    token_kind::TokenKind,
 };
 use std::fmt;
 
