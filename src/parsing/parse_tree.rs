@@ -10,10 +10,9 @@ pub enum ParseTree<'a> {
 
     // The language specific trees
 
-    // with_? queryNoWith
     Query(Query<'a>),
-    // WITH RECURSIVE? namedQuery (',' namedQuery)*
     With(With<'a>),
+    NamedQuery(NamedQuery<'a>),
 }
 
 // The core trees
@@ -60,16 +59,15 @@ pub struct Error {
     pub message: String,
 }
 
-pub fn error(range: TextRange, message: &str) -> ParseTree {
+pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
     ParseTree::Error(Error {
         range,
-        message: message.to_string(),
+        message: message,
     })
 }
 
 // The language specific trees
 
-// with_? queryNoWith
 #[derive(Clone, Debug)]
 pub struct Query<'a> {
     pub with: Box<ParseTree<'a>>,
@@ -83,7 +81,6 @@ pub fn query<'a>(with: ParseTree<'a>, query_no_with: ParseTree<'a>) -> ParseTree
     })
 }
 
-// WITH RECURSIVE? namedQuery (',' namedQuery)*
 #[derive(Clone, Debug)]
 pub struct With<'a> {
     pub with: Box<ParseTree<'a>>,
@@ -100,5 +97,33 @@ pub fn with<'a>(
         with: Box::new(with),
         recursive: Box::new(recursive),
         named_queries: Box::new(named_queries),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct NamedQuery<'a> {
+    pub name: Box<ParseTree<'a>>,
+    pub column_aliases_opt: Box<ParseTree<'a>>,
+    pub as_: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn named_query<'a>(
+    name: ParseTree<'a>,
+    column_aliases_opt: ParseTree<'a>,
+    as_: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::NamedQuery(NamedQuery {
+        name: Box::new(name),
+        column_aliases_opt: Box::new(column_aliases_opt),
+        as_: Box::new(as_),
+        open_paren: Box::new(open_paren),
+        query: Box::new(query),
+        close_paren: Box::new(close_paren),
     })
 }

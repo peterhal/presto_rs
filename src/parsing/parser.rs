@@ -129,12 +129,33 @@ impl<'a> Parser<'a> {
         self.position.advance()
     }
 
+    fn get_empty_range(&mut self) -> TextRange {
+        self.position.get_empty_range()
+    }
+
     fn eat_empty(&mut self) -> ParseTree<'a> {
-        parse_tree::empty(TextRange::empty(self.peek_token().range.start))
+        parse_tree::empty(self.get_empty_range())
     }
 
     fn eat_token(&mut self) -> ParseTree<'a> {
         parse_tree::token(self.advance())
+    }
+
+    fn error(&mut self, message: String) -> ParseTree<'a> {
+        parse_tree::error(self.get_empty_range(), message)
+    }
+
+    fn expected_error(&mut self, expected: TokenKind) -> ParseTree<'a> {
+        let message = format!("Expected {}, found {}.", expected, self.peek());
+        self.error(message)
+    }
+
+    fn eat(&mut self, kind: TokenKind) -> ParseTree<'a> {
+        if self.peek_kind(kind) {
+            self.eat_token()
+        } else {
+            self.expected_error(kind)
+        }
     }
 
     fn eat_opt(&mut self, kind: TokenKind) -> ParseTree<'a> {
@@ -148,6 +169,7 @@ impl<'a> Parser<'a> {
 
 // Presto Language specific functions
 impl<'a> Parser<'a> {
+    // with_? queryNoWith
     pub fn parse_query(&mut self) -> ParseTree<'a> {
         let with = self.parse_with_opt();
         // TODO
@@ -155,6 +177,7 @@ impl<'a> Parser<'a> {
         parse_tree::query(with, query_no_with)
     }
 
+    // WITH RECURSIVE? namedQuery (',' namedQuery)*
     fn parse_with_opt(&mut self) -> ParseTree<'a> {
         if self.peek_kind(TokenKind::WITH) {
             let with = self.eat_token();
@@ -165,5 +188,38 @@ impl<'a> Parser<'a> {
         } else {
             self.eat_empty()
         }
+    }
+
+    // name=identifier (columnAliases)? AS '(' query ')'
+    fn parse_named_query(&mut self) -> ParseTree<'a> {
+        let name = self.parse_identifier();
+        let column_aliases = self.parse_column_aliases_opt();
+        let as_ = self.eat(TokenKind::AS);
+        let open_paren = self.eat(TokenKind::OpenParen);
+        let query = self.parse_query();
+        let close_paren = self.eat(TokenKind::CloseParen);
+        parse_tree::named_query(name, column_aliases, as_, open_paren, query, close_paren)
+    }
+
+    // identifier
+    // : IDENTIFIER             #unquotedIdentifier
+    // | QUOTED_IDENTIFIER      #quotedIdentifier
+    // | nonReserved            #unquotedIdentifier
+    // | BACKQUOTED_IDENTIFIER  #backQuotedIdentifier
+    // | DIGIT_IDENTIFIER       #digitIdentifier
+    // ;
+    fn parse_identifier(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TokenKind::Identifier
+            | TokenKind::QuotedIdentifier
+            | TokenKind::BackquotedIdentifier
+            | TokenKind::DigitIdentifier => self.eat_token(),
+            _ => self.expected_error(TokenKind::Identifier),
+        }
+    }
+
+    fn parse_column_aliases_opt(&mut self) -> ParseTree<'a> {
+        // TODO
+        self.eat_empty()
     }
 }
