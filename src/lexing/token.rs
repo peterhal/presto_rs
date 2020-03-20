@@ -1,5 +1,6 @@
 use crate::lexing::{
     comment::Comment, syntax_error::SyntaxError, text_range::TextRange, token_kind::TokenKind,
+    position::Position,
 };
 use std::fmt;
 
@@ -20,17 +21,23 @@ impl fmt::Display for Token<'_> {
 }
 
 impl<'a> Token<'a> {
-    pub fn full_range(&self) -> TextRange {
-        let start = if let Some(comment) = self.leading_comments.last() {
+    pub fn full_start(&self) -> Position {
+        if let Some(comment) = self.leading_comments.last() {
             comment.range.start
         } else {
             self.range.start
-        };
-        let end = if let Some(comment) = self.trailing_comments.last() {
+        }
+    }
+
+    pub fn full_end(&self) -> Position {
+        if let Some(comment) = self.trailing_comments.last() {
             comment.range.end
         } else {
             self.range.end
-        };
-        TextRange::new(start, end)
+        }
+    }
+
+    pub fn full_range(&self) -> TextRange {
+        TextRange::new(self.full_start(), self.full_end())
     }
 }

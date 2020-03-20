@@ -60,7 +60,7 @@ impl<'a> ParsePosition<'a> {
     }
 
     fn get_empty_range(&mut self) -> TextRange {
-        TextRange::empty(self.peek_token().full_range().start)
+        TextRange::empty(self.peek_token().full_start())
     }
 
     fn advance(&mut self) -> Token<'a> {
