@@ -104,10 +104,7 @@ impl<'a> LexerPosition<'a> {
 
     pub fn get_range(&self, end: &LexerPosition<'a>) -> TextRange {
         assert!(end.index >= self.index);
-        TextRange {
-            start: self.position,
-            end: end.position,
-        }
+        TextRange::new(self.position, end.position)
     }
 
     pub fn get_text(&self, end: &LexerPosition<'a>) -> &'a str {

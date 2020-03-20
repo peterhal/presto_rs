@@ -14,15 +14,26 @@ impl fmt::Display for TextRange {
 }
 
 impl TextRange {
-    fn is_none(&self) -> bool {
+    pub fn new(start: position::Position, end: position::Position) -> TextRange {
+        TextRange { start, end }
+    }
+
+    pub fn empty(position: position::Position) -> TextRange {
+        TextRange {
+            start: position,
+            end: position,
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
         self.start == position::START && self.end == position::START
     }
 
-    fn contains(&self, position: position::Position) -> bool {
+    pub fn contains(&self, position: position::Position) -> bool {
         return position >= self.start && position <= self.end;
     }
 
-    fn contains_range(&self, range: TextRange) -> bool {
+    pub fn contains_range(&self, range: TextRange) -> bool {
         self.start <= range.start && self.end >= range.end
     }
 
