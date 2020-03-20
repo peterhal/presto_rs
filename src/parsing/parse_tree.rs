@@ -9,7 +9,6 @@ pub enum ParseTree<'a> {
     Error(Error),
 
     // The language specific trees
-
     Query(Query<'a>),
     With(With<'a>),
     NamedQuery(NamedQuery<'a>),
@@ -67,7 +66,6 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
 }
 
 // The language specific trees
-
 #[derive(Clone, Debug)]
 pub struct Query<'a> {
     pub with: Box<ParseTree<'a>>,
