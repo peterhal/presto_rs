@@ -18,3 +18,19 @@ impl fmt::Display for Token<'_> {
         write!(f, "{:?}", self)
     }
 }
+
+impl<'a> Token<'a> {
+    pub fn full_range(&self) -> TextRange {
+        let start = if let Some(comment) = self.leading_comments.last() {
+            comment.range.start
+        } else {
+            self.range.start
+        };
+        let end = if let Some(comment) = self.trailing_comments.last() {
+            comment.range.end
+        } else {
+            self.range.end
+        };
+        TextRange::new(start, end)
+    }
+}

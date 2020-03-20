@@ -21,7 +21,7 @@ fn lex_and_dump(contents: &str) {
 fn parse(contents: &str) {
     let mut parser = Parser::new(contents);
     let tree = parser.parse_query();
-    println!("{:?}", tree);
+    println!("{:#?}", tree);
 }
 
 fn main() {
@@ -35,7 +35,7 @@ fn main() {
     let read_result = fs::read_to_string(filename);
     match read_result {
         Ok(contents) => {
-            lex_and_dump(&contents);
+            // lex_and_dump(&contents);
             parse("WITH RECURSIVE");
             println!("Hello world!\n{}", contents);
         }
