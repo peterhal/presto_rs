@@ -1,6 +1,6 @@
 use crate::lexing::{
     lexer::Lexer, predefined_names::PredefinedName, text_range::TextRange, token::Token,
-    token_kind::TokenKind,
+    token_kind::TokenKind, position, position::Position,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
 use std::boxed::Box;
@@ -27,9 +27,18 @@ impl<'a> ParsePosition<'a> {
         }
     }
 
+    fn end_position(&self) -> Position {
+        if let Some(token) = self.tokens.last() {
+            token.full_end()
+        } else {
+            position::START
+        }
+    }
+
     fn get_token(&mut self, index: usize) -> &Token<'a> {
         while index >= self.tokens.len() {
             let new_token = self.lexer.lex_token();
+            assert!(self.end_position() <= new_token.full_start());
             self.tokens.push(new_token);
         }
         &self.tokens[index]
