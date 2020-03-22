@@ -180,6 +180,13 @@ impl<'a> Parser<'a> {
         (start, element, end)
     }
 
+    fn parse_parenthesized(
+        &mut self,
+        parse_element: ElementParser<'a>,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        self.parse_delimited(TokenKind::OpenParen, parse_element, TokenKind::CloseParen)
+    }
+
     fn parse_separated_list_elements(
         &mut self,
         separator_kind: TokenKind,
@@ -211,6 +218,12 @@ impl<'a> Parser<'a> {
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
+    // Parse non-empty comma separated list.
+    // Terminating commas are not consumed.
+    fn parse_comma_separated_list(&mut self, parse_element: ElementParser<'a>) -> ParseTree<'a> {
+        self.parse_separated_list(TokenKind::Comma, parse_element)
+    }
+
     // Parse delimited non-empty separated list.
     // Terminating separator is not permitted.
     fn parse_delimited_separated_list(
@@ -225,6 +238,38 @@ impl<'a> Parser<'a> {
             self.parse_separated_list_elements(separator_kind, parse_element);
         let end_delimiter = self.eat(end_kind);
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
+    }
+
+    // Parse parenthesized, non-empty comma separated list.
+    // Terminating commas are not consumed.
+    fn parse_parenthesized_comma_separated_list(
+        &mut self,
+        parse_element: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        self.parse_delimited_separated_list(
+            TokenKind::OpenParen,
+            TokenKind::Comma,
+            parse_element,
+            TokenKind::CloseParen,
+        )
+    }
+
+    // Parse optional parenthesized, non-empty comma separated list.
+    // Terminating commas are not consumed.
+    fn parse_parenthesized_comma_separated_list_opt(
+        &mut self,
+        parse_element: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        if self.peek_kind(TokenKind::OpenParen) {
+            self.parse_delimited_separated_list(
+                TokenKind::OpenParen,
+                TokenKind::Comma,
+                parse_element,
+                TokenKind::CloseParen,
+            )
+        } else {
+            self.eat_empty()
+        }
     }
 }
 
@@ -243,8 +288,8 @@ impl<'a> Parser<'a> {
         if self.peek_kind(TokenKind::WITH) {
             let with = self.eat_token();
             let recursive = self.eat_opt(TokenKind::RECURSIVE);
-            // TODO
-            let named_queries = self.eat_empty();
+            let named_queries =
+                self.parse_comma_separated_list(|parser| parser.parse_named_query());
             parse_tree::with(with, recursive, named_queries)
         } else {
             self.eat_empty()
@@ -256,9 +301,8 @@ impl<'a> Parser<'a> {
         let name = self.parse_identifier();
         let column_aliases = self.parse_column_aliases_opt();
         let as_ = self.eat(TokenKind::AS);
-        let open_paren = self.eat(TokenKind::OpenParen);
-        let query = self.parse_query();
-        let close_paren = self.eat(TokenKind::CloseParen);
+        let (open_paren, query, close_paren) =
+            self.parse_parenthesized(|parser| parser.parse_query());
         parse_tree::named_query(name, column_aliases, as_, open_paren, query, close_paren)
     }
 
@@ -282,15 +326,6 @@ impl<'a> Parser<'a> {
     // columnAliases
     // : '(' identifier (',' identifier)* ')'
     fn parse_column_aliases_opt(&mut self) -> ParseTree<'a> {
-        if self.peek_kind(TokenKind::OpenParen) {
-            self.parse_delimited_separated_list(
-                TokenKind::OpenParen,
-                TokenKind::Comma,
-                |parser| parser.parse_identifier(),
-                TokenKind::CloseParen,
-            )
-        } else {
-            self.eat_empty()
-        }
+        self.parse_parenthesized_comma_separated_list_opt(|parser| parser.parse_identifier())
     }
 }
