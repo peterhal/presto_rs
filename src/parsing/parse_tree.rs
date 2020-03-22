@@ -65,6 +65,17 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
     })
 }
 
+// core impl
+impl<'a> ParseTree<'a> {
+    pub fn is_empty(&self) -> bool {
+        if let ParseTree::Empty(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 // The language specific trees
 #[derive(Clone, Debug)]
 pub struct Query<'a> {

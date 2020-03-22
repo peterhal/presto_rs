@@ -84,6 +84,8 @@ pub struct Parser<'a> {
     position: ParsePosition<'a>,
 }
 
+type ElementParser<'a> = fn(&mut Parser<'a>) -> ParseTree<'a>;
+
 // Language independant parser functions
 impl<'a> Parser<'a> {
     pub fn new(value: &'a str) -> Parser<'a> {
@@ -165,6 +167,65 @@ impl<'a> Parser<'a> {
             self.eat_empty()
         }
     }
+
+    fn parse_delimited(
+        &mut self,
+        start_kind: TokenKind,
+        parse_element: ElementParser<'a>,
+        end_kind: TokenKind,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        let start = self.eat(start_kind);
+        let element = parse_element(self);
+        let end = self.eat(end_kind);
+        (start, element, end)
+    }
+
+    fn parse_separated_list_elements(
+        &mut self,
+        separator_kind: TokenKind,
+        parse_element: ElementParser<'a>,
+    ) -> Vec<(ParseTree<'a>, ParseTree<'a>)> {
+        let mut elements = Vec::new();
+        let mut seperators = Vec::new();
+        elements.push(parse_element(self));
+        while {
+            let separator = self.eat_opt(separator_kind);
+            let at_end = separator.is_empty();
+            seperators.push(separator);
+            !at_end
+        } {}
+        elements.into_iter().zip(seperators.into_iter()).collect()
+    }
+
+    // Parse non-empty separated list.
+    // Terminating separator is not consumed.
+    fn parse_separated_list(
+        &mut self,
+        separator_kind: TokenKind,
+        parse_element: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        let start_delimiter = self.eat_empty();
+        let elements_and_separators =
+            self.parse_separated_list_elements(separator_kind, parse_element);
+        let end_delimiter = self.eat_empty();
+        parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
+    }
+
+    // Parse delimited non-empty separated list.
+    // Terminating separator is not permitted.
+    fn parse_delimited_separated_list(
+        &mut self,
+        start_kind: TokenKind,
+        separator_kind: TokenKind,
+        parse_element: ElementParser<'a>,
+        end_kind: TokenKind,
+    ) -> ParseTree<'a> {
+        let start_delimiter = self.eat(start_kind);
+        let elements_and_separators =
+            self.parse_separated_list_elements(separator_kind, parse_element);
+        let end_delimiter = self.eat(end_kind);
+        parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
+    }
 }
 
 // Presto Language specific functions
@@ -218,8 +279,18 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // columnAliases
+    // : '(' identifier (',' identifier)* ')'
     fn parse_column_aliases_opt(&mut self) -> ParseTree<'a> {
-        // TODO
-        self.eat_empty()
+        if self.peek_kind(TokenKind::OpenParen) {
+            self.parse_delimited_separated_list(
+                TokenKind::OpenParen,
+                TokenKind::Comma,
+                |parser| parser.parse_identifier(),
+                TokenKind::CloseParen,
+            )
+        } else {
+            self.eat_empty()
+        }
     }
 }

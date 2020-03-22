@@ -93,6 +93,15 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
 
 "#;
 
+const CORE_IMPL: &str = r#"// core impl
+impl<'a> ParseTree<'a> {
+    pub fn is_empty(&self) -> bool {
+        if let ParseTree::Empty(_) = self { true } else { false }
+    }
+}
+
+"#;
+
 fn main() {
     let cs = configs();
 
@@ -109,6 +118,7 @@ fn main() {
     print!("{}{}", STRUCT_HEADER, TOKEN_DEFINITION);
     print!("{}{}", STRUCT_HEADER, LIST_DEFINITION);
     print!("{}{}", STRUCT_HEADER, ERROR_DEFINITION);
+    print!("{}", CORE_IMPL);
 
     print!("{}", "// The language specific trees\n");
     for config in &cs {
