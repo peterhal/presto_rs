@@ -518,7 +518,9 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    // qualifiedName
+    // : identifier ('.' identifier)*
     fn parse_qualified_name(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        self.parse_separated_list(TokenKind::Period, |parser| parser.parse_identifier())
     }
 }
