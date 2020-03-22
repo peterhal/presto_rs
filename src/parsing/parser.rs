@@ -462,9 +462,16 @@ impl<'a> Parser<'a> {
         left
     }
 
+    // setQuantifier
+    // : DISTINCT
+    // | ALL
     fn parse_set_quantifier_opt(&mut self) -> ParseTree<'a> {
-        // TODO
-        self.eat_empty()
+        let distinct = self.eat_opt(TokenKind::DISTINCT);
+        if distinct.is_empty() {
+            self.eat_predefined_name_opt(PredefinedName::ALL)
+        } else {
+            distinct
+        }
     }
 
     fn parse_query_primary(&mut self) -> ParseTree<'a> {
