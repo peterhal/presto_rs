@@ -147,16 +147,40 @@ impl<'a> Parser<'a> {
         parse_tree::error(self.get_empty_range(), message)
     }
 
-    fn expected_error(&mut self, expected: TokenKind) -> ParseTree<'a> {
+    fn expected_error(&mut self, expected: &str) -> ParseTree<'a> {
         let message = format!("Expected {}, found {}.", expected, self.peek());
         self.error(message)
+    }
+
+    fn expected_error_kind(&mut self, expected: TokenKind) -> ParseTree<'a> {
+        self.expected_error(expected.to_string().as_str())
+    }
+
+    fn expected_error_name(&mut self, expected: PredefinedName) -> ParseTree<'a> {
+        self.expected_error(expected.to_string().as_str())
     }
 
     fn eat(&mut self, kind: TokenKind) -> ParseTree<'a> {
         if self.peek_kind(kind) {
             self.eat_token()
         } else {
-            self.expected_error(kind)
+            self.expected_error_kind(kind)
+        }
+    }
+
+    fn eat_predefined_name(&mut self, name: PredefinedName) -> ParseTree<'a> {
+        if self.peek_predefined_name(name) {
+            self.eat_token()
+        } else {
+            self.expected_error_name(name)
+        }
+    }
+
+    fn eat_predefined_name_opt(&mut self, name: PredefinedName) -> ParseTree<'a> {
+        if self.peek_predefined_name(name) {
+            self.eat_token()
+        } else {
+            self.eat_empty()
         }
     }
 
@@ -275,15 +299,16 @@ impl<'a> Parser<'a> {
 
 // Presto Language specific functions
 impl<'a> Parser<'a> {
-    // with_? queryNoWith
+    // query
+    // :  with_? queryNoWith
     pub fn parse_query(&mut self) -> ParseTree<'a> {
         let with = self.parse_with_opt();
-        // TODO
-        let query_no_with = self.eat_empty();
+        let query_no_with = self.parse_query_no_with();
         parse_tree::query(with, query_no_with)
     }
 
-    // WITH RECURSIVE? namedQuery (',' namedQuery)*
+    // with_
+    // : WITH RECURSIVE? namedQuery (',' namedQuery)*
     fn parse_with_opt(&mut self) -> ParseTree<'a> {
         if self.peek_kind(TokenKind::WITH) {
             let with = self.eat_token();
@@ -296,7 +321,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // name=identifier (columnAliases)? AS '(' query ')'
+    // namedQuery
+    // : name=identifier (columnAliases)? AS '(' query ')'
     fn parse_named_query(&mut self) -> ParseTree<'a> {
         let name = self.parse_identifier();
         let column_aliases = self.parse_column_aliases_opt();
@@ -319,7 +345,7 @@ impl<'a> Parser<'a> {
             | TokenKind::QuotedIdentifier
             | TokenKind::BackquotedIdentifier
             | TokenKind::DigitIdentifier => self.eat_token(),
-            _ => self.expected_error(TokenKind::Identifier),
+            _ => self.expected_error_kind(TokenKind::Identifier),
         }
     }
 
@@ -327,5 +353,95 @@ impl<'a> Parser<'a> {
     // : '(' identifier (',' identifier)* ')'
     fn parse_column_aliases_opt(&mut self) -> ParseTree<'a> {
         self.parse_parenthesized_comma_separated_list_opt(|parser| parser.parse_identifier())
+    }
+
+    // queryNoWith:
+    //   queryTerm
+    //   (ORDER BY sortItem (',' sortItem)*)?
+    //   (LIMIT limit=(INTEGER_VALUE | ALL))?
+    fn parse_query_no_with(&mut self) -> ParseTree<'a> {
+        let query_term = self.parse_query_term();
+        let order_by_opt = self.parse_order_by_opt();
+        let limit_opt = self.parse_limit_opt();
+        parse_tree::query_no_with(query_term, order_by_opt, limit_opt)
+    }
+
+    fn parse_sort_item(&mut self) -> ParseTree<'a> {
+        // TODO:
+        self.eat_empty()
+    }
+
+    //   (ORDER BY sortItem (',' sortItem)*)?
+    fn parse_order_by_opt(&mut self) -> ParseTree<'a> {
+        let order = self.eat_opt(TokenKind::ORDER);
+        if order.is_empty() {
+            order
+        } else {
+            let by = self.eat(TokenKind::BY);
+            let sort_items = self.parse_comma_separated_list(|parser| parser.parse_sort_item());
+            parse_tree::order_by(order, by, sort_items)
+        }
+    }
+
+    //   (LIMIT limit=(INTEGER_VALUE | ALL))?
+    fn parse_limit_opt(&mut self) -> ParseTree<'a> {
+        let limit = self.eat_predefined_name_opt(PredefinedName::LIMIT);
+        if limit.is_empty() {
+            limit
+        } else {
+            let value = self.eat_predefined_name_opt(PredefinedName::ALL);
+            let value = if value.is_empty() {
+                self.eat(TokenKind::Integer)
+            } else {
+                value
+            };
+            parse_tree::limit(limit, value)
+        }
+    }
+
+    // queryTerm
+    // : queryPrimary                                                             #queryTermDefault
+    // | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm         #setOperation
+    // | left=queryTerm operator=(UNION | EXCEPT) setQuantifier? right=queryTerm  #setOperation
+    fn parse_query_term(&mut self) -> ParseTree<'a> {
+        // handle operator precedence here
+        self.parse_union_query_term()
+    }
+
+    // | left=queryTerm operator=(UNION | EXCEPT) setQuantifier? right=queryTerm  #setOperation
+    fn parse_union_query_term(&mut self) -> ParseTree<'a> {
+        let mut left = self.parse_intersect_query_term();
+        while {
+            let op_kind = self.peek();
+            op_kind == TokenKind::UNION || op_kind == TokenKind::EXCEPT
+        } {
+            let operator = self.eat_token();
+            let set_quantifier_opt = self.parse_set_quantifier_opt();
+            let right = self.parse_intersect_query_term();
+            left = parse_tree::query_set_operation(left, operator, set_quantifier_opt, right);
+        }
+        left
+    }
+
+    // | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm         #setOperation
+    fn parse_intersect_query_term(&mut self) -> ParseTree<'a> {
+        let mut left = self.parse_query_primary();
+        while self.peek_kind(TokenKind::INTERSECT) {
+            let operator = self.eat_token();
+            let set_quantifier_opt = self.parse_set_quantifier_opt();
+            let right = self.parse_query_primary();
+            left = parse_tree::query_set_operation(left, operator, set_quantifier_opt, right);
+        }
+        left
+    }
+
+    fn parse_set_quantifier_opt(&mut self) -> ParseTree<'a> {
+        // TODO
+        self.eat_empty()
+    }
+
+    fn parse_query_primary(&mut self) -> ParseTree<'a> {
+        // TODO
+        self.eat_empty()
     }
 }

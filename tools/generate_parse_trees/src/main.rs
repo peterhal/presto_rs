@@ -3,7 +3,7 @@ type TreeConfig = (&'static str, &'static str, Vec<&'static str>);
 
 fn configs() -> Vec<TreeConfig> {
     vec![
-        // ("class", "ctor", vec!["fields"]),
+        // ("Class", "ctor", vec!["fields"]),
         ("Query", "query", vec!["with", "query_no_with"]),
         ("With", "with", vec!["with", "recursive", "named_queries"]),
         (
@@ -18,6 +18,19 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
+        (
+            "QueryNoWith",
+            "query_no_with",
+            vec!["query_term", "order_by_opt", "limit_opt"],
+        ),
+        ("OrderBy", "order_by", vec!["order", "by", "sort_items"]),
+        ("Limit", "limit", vec!["limit", "value"]),
+        (
+            "QuerySetOperation",
+            "query_set_operation",
+            vec!["left", "operator", "set_quantifier_opt", "right"],
+        ),
+        // ("Class", "ctor", vec!["fields"]),
     ]
 }
 

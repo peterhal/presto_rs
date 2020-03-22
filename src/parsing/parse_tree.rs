@@ -12,6 +12,10 @@ pub enum ParseTree<'a> {
     Query(Query<'a>),
     With(With<'a>),
     NamedQuery(NamedQuery<'a>),
+    QueryNoWith(QueryNoWith<'a>),
+    OrderBy(OrderBy<'a>),
+    Limit(Limit<'a>),
+    QuerySetOperation(QuerySetOperation<'a>),
 }
 
 // The core trees
@@ -134,5 +138,78 @@ pub fn named_query<'a>(
         open_paren: Box::new(open_paren),
         query: Box::new(query),
         close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct QueryNoWith<'a> {
+    pub query_term: Box<ParseTree<'a>>,
+    pub order_by_opt: Box<ParseTree<'a>>,
+    pub limit_opt: Box<ParseTree<'a>>,
+}
+
+pub fn query_no_with<'a>(
+    query_term: ParseTree<'a>,
+    order_by_opt: ParseTree<'a>,
+    limit_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::QueryNoWith(QueryNoWith {
+        query_term: Box::new(query_term),
+        order_by_opt: Box::new(order_by_opt),
+        limit_opt: Box::new(limit_opt),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct OrderBy<'a> {
+    pub order: Box<ParseTree<'a>>,
+    pub by: Box<ParseTree<'a>>,
+    pub sort_items: Box<ParseTree<'a>>,
+}
+
+pub fn order_by<'a>(
+    order: ParseTree<'a>,
+    by: ParseTree<'a>,
+    sort_items: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::OrderBy(OrderBy {
+        order: Box::new(order),
+        by: Box::new(by),
+        sort_items: Box::new(sort_items),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Limit<'a> {
+    pub limit: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+}
+
+pub fn limit<'a>(limit: ParseTree<'a>, value: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Limit(Limit {
+        limit: Box::new(limit),
+        value: Box::new(value),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct QuerySetOperation<'a> {
+    pub left: Box<ParseTree<'a>>,
+    pub operator: Box<ParseTree<'a>>,
+    pub set_quantifier_opt: Box<ParseTree<'a>>,
+    pub right: Box<ParseTree<'a>>,
+}
+
+pub fn query_set_operation<'a>(
+    left: ParseTree<'a>,
+    operator: ParseTree<'a>,
+    set_quantifier_opt: ParseTree<'a>,
+    right: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::QuerySetOperation(QuerySetOperation {
+        left: Box::new(left),
+        operator: Box::new(operator),
+        set_quantifier_opt: Box::new(set_quantifier_opt),
+        right: Box::new(right),
     })
 }
