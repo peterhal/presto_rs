@@ -366,9 +366,36 @@ impl<'a> Parser<'a> {
         parse_tree::query_no_with(query_term, order_by_opt, limit_opt)
     }
 
+    // sortItem
+    // : expression ordering=(ASC | DESC)? (NULLS nullOrdering=(FIRST | LAST))?
     fn parse_sort_item(&mut self) -> ParseTree<'a> {
-        // TODO:
-        self.eat_empty()
+        let expression = self.parse_expression();
+        let ordering_opt = self.parse_ordering_opt();
+        let nulls = self.eat_predefined_name_opt(PredefinedName::NULLS);
+        let null_ordering = if nulls.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_null_ordering()
+        };
+        parse_tree::sort_item(expression, ordering_opt, nulls, null_ordering)
+    }
+
+    fn parse_ordering_opt(&mut self) -> ParseTree<'a> {
+        let asc = self.eat_predefined_name_opt(PredefinedName::ASC);
+        if asc.is_empty() {
+            self.eat_predefined_name_opt(PredefinedName::DESC)
+        } else {
+            asc
+        }
+    }
+
+    fn parse_null_ordering(&mut self) -> ParseTree<'a> {
+        let last = self.eat_predefined_name_opt(PredefinedName::LAST);
+        if last.is_empty() {
+            self.eat_predefined_name(PredefinedName::FIRST)
+        } else {
+            last
+        }
     }
 
     //   (ORDER BY sortItem (',' sortItem)*)?
@@ -441,6 +468,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_query_primary(&mut self) -> ParseTree<'a> {
+        // TODO
+        self.eat_empty()
+    }
+
+    fn parse_expression(&mut self) -> ParseTree<'a> {
         // TODO
         self.eat_empty()
     }

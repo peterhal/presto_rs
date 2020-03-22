@@ -16,6 +16,7 @@ pub enum ParseTree<'a> {
     OrderBy(OrderBy<'a>),
     Limit(Limit<'a>),
     QuerySetOperation(QuerySetOperation<'a>),
+    SortItem(SortItem<'a>),
 }
 
 // The core trees
@@ -211,5 +212,27 @@ pub fn query_set_operation<'a>(
         operator: Box::new(operator),
         set_quantifier_opt: Box::new(set_quantifier_opt),
         right: Box::new(right),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct SortItem<'a> {
+    pub expression: Box<ParseTree<'a>>,
+    pub ordering_opt: Box<ParseTree<'a>>,
+    pub nulls: Box<ParseTree<'a>>,
+    pub null_ordering_opt: Box<ParseTree<'a>>,
+}
+
+pub fn sort_item<'a>(
+    expression: ParseTree<'a>,
+    ordering_opt: ParseTree<'a>,
+    nulls: ParseTree<'a>,
+    null_ordering_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::SortItem(SortItem {
+        expression: Box::new(expression),
+        ordering_opt: Box::new(ordering_opt),
+        nulls: Box::new(nulls),
+        null_ordering_opt: Box::new(null_ordering_opt),
     })
 }

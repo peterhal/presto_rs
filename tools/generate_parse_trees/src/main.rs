@@ -30,8 +30,9 @@ fn configs() -> Vec<TreeConfig> {
             "query_set_operation",
             vec!["left", "operator", "set_quantifier_opt", "right"],
         ),
+        ("SortItem", "sort_item", vec!["expression", "ordering_opt", "nulls", "null_ordering_opt"]),
         // ("Class", "ctor", vec!["fields"]),
-    ]
+        ]
 }
 
 const FILE_HEADER: &str = r#"use crate::lexing::{text_range::TextRange, token};
