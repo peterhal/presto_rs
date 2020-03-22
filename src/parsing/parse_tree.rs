@@ -17,6 +17,9 @@ pub enum ParseTree<'a> {
     Limit(Limit<'a>),
     QuerySetOperation(QuerySetOperation<'a>),
     SortItem(SortItem<'a>),
+    Subquery(Subquery<'a>),
+    InlineTable(InlineTable<'a>),
+    Table(Table<'a>),
 }
 
 // The core trees
@@ -234,5 +237,50 @@ pub fn sort_item<'a>(
         ordering_opt: Box::new(ordering_opt),
         nulls: Box::new(nulls),
         null_ordering_opt: Box::new(null_ordering_opt),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Subquery<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query_no_with: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn subquery<'a>(
+    open_paren: ParseTree<'a>,
+    query_no_with: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Subquery(Subquery {
+        open_paren: Box::new(open_paren),
+        query_no_with: Box::new(query_no_with),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct InlineTable<'a> {
+    pub values: Box<ParseTree<'a>>,
+    pub expressions: Box<ParseTree<'a>>,
+}
+
+pub fn inline_table<'a>(values: ParseTree<'a>, expressions: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::InlineTable(InlineTable {
+        values: Box::new(values),
+        expressions: Box::new(expressions),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Table<'a> {
+    pub table: Box<ParseTree<'a>>,
+    pub qualified_name: Box<ParseTree<'a>>,
+}
+
+pub fn table<'a>(table: ParseTree<'a>, qualified_name: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Table(Table {
+        table: Box::new(table),
+        qualified_name: Box::new(qualified_name),
     })
 }

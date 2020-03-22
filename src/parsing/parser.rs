@@ -474,13 +474,51 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // queryPrimary
+    // : querySpecification                   #queryPrimaryDefault
+    // | TABLE qualifiedName                  #table
+    // | VALUES expression (',' expression)*  #inlineTable
+    // | '(' queryNoWith  ')'                 #subquery
     fn parse_query_primary(&mut self) -> ParseTree<'a> {
-        // TODO
-        self.eat_empty()
+        match self.peek() {
+            TokenKind::SELECT => self.parse_query_specification(),
+            TokenKind::TABLE => self.parse_table(),
+            TokenKind::VALUES => self.parse_inline_table(),
+            TokenKind::OpenParen => self.parse_subquery(),
+            _ => self.eat(TokenKind::SELECT),
+        }
+    }
+
+    // | '(' queryNoWith  ')'                 #subquery
+    fn parse_subquery(&mut self) -> ParseTree<'a> {
+        let (open_paren, query_no_with, close_paren) =
+            self.parse_parenthesized(|parser| parser.parse_query_no_with());
+        parse_tree::subquery(open_paren, query_no_with, close_paren)
+    }
+
+    // | VALUES expression (',' expression)*  #inlineTable
+    fn parse_inline_table(&mut self) -> ParseTree<'a> {
+        let values = self.eat(TokenKind::VALUES);
+        let expressions = self.parse_comma_separated_list(|parser| parser.parse_expression());
+        parse_tree::inline_table(values, expressions)
+    }
+
+    // | TABLE qualifiedName                  #table
+    fn parse_table(&mut self) -> ParseTree<'a> {
+        let table = self.eat(TokenKind::TABLE);
+        let qualified_name = self.parse_qualified_name();
+        parse_tree::table(table, qualified_name)
+    }
+
+    fn parse_query_specification(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
     }
 
     fn parse_expression(&mut self) -> ParseTree<'a> {
-        // TODO
-        self.eat_empty()
+        panic!("TODO")
+    }
+
+    fn parse_qualified_name(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
     }
 }

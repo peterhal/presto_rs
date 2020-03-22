@@ -31,6 +31,9 @@ fn configs() -> Vec<TreeConfig> {
             vec!["left", "operator", "set_quantifier_opt", "right"],
         ),
         ("SortItem", "sort_item", vec!["expression", "ordering_opt", "nulls", "null_ordering_opt"]),
+        ("Subquery", "subquery", vec!["open_paren", "query_no_with", "close_paren"]),
+        ("InlineTable", "inline_table", vec!["values", "expressions"]),
+        ("Table", "table", vec!["table", "qualified_name"]),
         // ("Class", "ctor", vec!["fields"]),
         ]
 }
