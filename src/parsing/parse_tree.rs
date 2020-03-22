@@ -20,6 +20,11 @@ pub enum ParseTree<'a> {
     Subquery(Subquery<'a>),
     InlineTable(InlineTable<'a>),
     Table(Table<'a>),
+    QuerySpecification(QuerySpecification<'a>),
+    QualifiedName(QualifiedName<'a>),
+    SelectAll(SelectAll<'a>),
+    QualifiedSelectAll(QualifiedSelectAll<'a>),
+    SelectItem(SelectItem<'a>),
 }
 
 // The core trees
@@ -282,5 +287,111 @@ pub fn table<'a>(table: ParseTree<'a>, qualified_name: ParseTree<'a>) -> ParseTr
     ParseTree::Table(Table {
         table: Box::new(table),
         qualified_name: Box::new(qualified_name),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct QuerySpecification<'a> {
+    pub select: Box<ParseTree<'a>>,
+    pub set_quantifier_opt: Box<ParseTree<'a>>,
+    pub select_items: Box<ParseTree<'a>>,
+    pub from: Box<ParseTree<'a>>,
+    pub relations: Box<ParseTree<'a>>,
+    pub where_: Box<ParseTree<'a>>,
+    pub where_predicate: Box<ParseTree<'a>>,
+    pub group: Box<ParseTree<'a>>,
+    pub by: Box<ParseTree<'a>>,
+    pub group_by: Box<ParseTree<'a>>,
+    pub having: Box<ParseTree<'a>>,
+    pub having_predicate: Box<ParseTree<'a>>,
+}
+
+pub fn query_specification<'a>(
+    select: ParseTree<'a>,
+    set_quantifier_opt: ParseTree<'a>,
+    select_items: ParseTree<'a>,
+    from: ParseTree<'a>,
+    relations: ParseTree<'a>,
+    where_: ParseTree<'a>,
+    where_predicate: ParseTree<'a>,
+    group: ParseTree<'a>,
+    by: ParseTree<'a>,
+    group_by: ParseTree<'a>,
+    having: ParseTree<'a>,
+    having_predicate: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::QuerySpecification(QuerySpecification {
+        select: Box::new(select),
+        set_quantifier_opt: Box::new(set_quantifier_opt),
+        select_items: Box::new(select_items),
+        from: Box::new(from),
+        relations: Box::new(relations),
+        where_: Box::new(where_),
+        where_predicate: Box::new(where_predicate),
+        group: Box::new(group),
+        by: Box::new(by),
+        group_by: Box::new(group_by),
+        having: Box::new(having),
+        having_predicate: Box::new(having_predicate),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct QualifiedName<'a> {
+    pub names: Box<ParseTree<'a>>,
+}
+
+pub fn qualified_name<'a>(names: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::QualifiedName(QualifiedName {
+        names: Box::new(names),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct SelectAll<'a> {
+    pub asterisk: Box<ParseTree<'a>>,
+}
+
+pub fn select_all<'a>(asterisk: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::SelectAll(SelectAll {
+        asterisk: Box::new(asterisk),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct QualifiedSelectAll<'a> {
+    pub qualifier: Box<ParseTree<'a>>,
+    pub period: Box<ParseTree<'a>>,
+    pub asterisk: Box<ParseTree<'a>>,
+}
+
+pub fn qualified_select_all<'a>(
+    qualifier: ParseTree<'a>,
+    period: ParseTree<'a>,
+    asterisk: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::QualifiedSelectAll(QualifiedSelectAll {
+        qualifier: Box::new(qualifier),
+        period: Box::new(period),
+        asterisk: Box::new(asterisk),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct SelectItem<'a> {
+    pub expression: Box<ParseTree<'a>>,
+    pub as_: Box<ParseTree<'a>>,
+    pub identifier: Box<ParseTree<'a>>,
+}
+
+pub fn select_item<'a>(
+    expression: ParseTree<'a>,
+    as_: ParseTree<'a>,
+    identifier: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::SelectItem(SelectItem {
+        expression: Box::new(expression),
+        as_: Box::new(as_),
+        identifier: Box::new(identifier),
     })
 }

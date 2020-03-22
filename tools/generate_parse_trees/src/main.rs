@@ -34,8 +34,26 @@ fn configs() -> Vec<TreeConfig> {
         ("Subquery", "subquery", vec!["open_paren", "query_no_with", "close_paren"]),
         ("InlineTable", "inline_table", vec!["values", "expressions"]),
         ("Table", "table", vec!["table", "qualified_name"]),
+        ("QuerySpecification", "query_specification", vec![
+            "select", 
+            "set_quantifier_opt",
+            "select_items",
+            "from",
+            "relations",
+            "where_",
+            "where_predicate",
+            "group",
+            "by",
+            "group_by",
+            "having",
+            "having_predicate",
+        ]),
+        ("QualifiedName", "qualified_name", vec!["names"]),
+        ("SelectAll", "select_all", vec!["asterisk"]),
+        ("QualifiedSelectAll", "qualified_select_all", vec!["qualifier", "period", "asterisk"]),
+        ("SelectItem", "select_item", vec!["expression", "as_", "identifier"]),
         // ("Class", "ctor", vec!["fields"]),
-        ]
+    ]
 }
 
 const FILE_HEADER: &str = r#"use crate::lexing::{text_range::TextRange, token};

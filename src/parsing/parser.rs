@@ -340,12 +340,32 @@ impl<'a> Parser<'a> {
     // | DIGIT_IDENTIFIER       #digitIdentifier
     // ;
     fn parse_identifier(&mut self) -> ParseTree<'a> {
-        match self.peek() {
+        if self.peek_identifier() {
+            self.eat_token()
+        } else {
+            self.expected_error_kind(TokenKind::Identifier)
+        }
+    }
+
+    fn peek_identifier_offset(&mut self, offset: usize) -> bool {
+        match self.peek_offset(offset) {
             TokenKind::Identifier
             | TokenKind::QuotedIdentifier
             | TokenKind::BackquotedIdentifier
-            | TokenKind::DigitIdentifier => self.eat_token(),
-            _ => self.expected_error_kind(TokenKind::Identifier),
+            | TokenKind::DigitIdentifier => true,
+            _ => false,
+        }
+    }
+
+    fn peek_identifier(&mut self) -> bool {
+        self.peek_identifier_offset(0)
+    }
+
+    fn parse_identifier_opt(&mut self) -> ParseTree<'a> {
+        if self.peek_identifier() {
+            self.eat_token()
+        } else {
+            self.eat_empty()
         }
     }
 
@@ -510,7 +530,103 @@ impl<'a> Parser<'a> {
         parse_tree::table(table, qualified_name)
     }
 
+    // querySpecification
+    // : SELECT setQuantifier? selectItem (',' selectItem)*
+    //   (FROM relation (',' relation)*)?
+    //   (WHERE where=booleanExpression)?
+    //   (GROUP BY groupBy)?
+    //   (HAVING having=booleanExpression)?
     fn parse_query_specification(&mut self) -> ParseTree<'a> {
+        let select = self.eat(TokenKind::SELECT);
+        let set_quantifier_opt = self.parse_set_quantifier_opt();
+        let select_items = self.parse_comma_separated_list(|parser| parser.parse_select_item());
+        let from = self.eat_opt(TokenKind::FROM);
+        let relations = if from.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_comma_separated_list(|parser| parser.parse_relation())
+        };
+        let where_ = self.eat_opt(TokenKind::WHERE);
+        let where_predicate = if where_.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_boolean_expression()
+        };
+        let group = self.eat_opt(TokenKind::GROUP);
+        let (by, group_by) = if group.is_empty() {
+            (self.eat_empty(), self.eat_empty())
+        } else {
+            let by = self.eat(TokenKind::BY);
+            let group_by = self.parse_group_by();
+            (by, group_by)
+        };
+        let having = self.eat_opt(TokenKind::HAVING);
+        let having_predicate = if having.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_boolean_expression()
+        };
+        parse_tree::query_specification(
+            select,
+            set_quantifier_opt,
+            select_items,
+            from,
+            relations,
+            where_,
+            where_predicate,
+            group,
+            by,
+            group_by,
+            having,
+            having_predicate,
+        )
+    }
+
+    // selectItem
+    // : expression (AS? identifier)?  #selectSingle
+    // | qualifiedName '.' ASTERISK    #selectAll
+    // | ASTERISK                      #selectAll
+    fn parse_select_item(&mut self) -> ParseTree<'a> {
+        let asterisk = self.eat_opt(TokenKind::Asterisk);
+        if asterisk.is_empty() {
+            if self.peek_qualified_select_all() {
+                let qualifier = self.parse_qualified_name();
+                let period = self.eat(TokenKind::Period);
+                let asterisk = self.eat(TokenKind::Asterisk);
+                parse_tree::qualified_select_all(qualifier, period, asterisk)
+            } else {
+                let expression = self.parse_expression();
+                let as_ = self.eat_opt(TokenKind::AS);
+                let identifier = if as_.is_empty() {
+                    self.parse_identifier_opt()
+                } else {
+                    self.parse_identifier()
+                };
+                parse_tree::select_item(expression, as_, identifier)
+            }
+        } else {
+            parse_tree::select_all(asterisk)
+        }
+    }
+
+    fn peek_qualified_select_all(&mut self) -> bool {
+        let mut offset = 0;
+        while self.peek_identifier_offset(offset) {
+            offset += 1;
+            if self.peek_kind_offset(TokenKind::Period, offset) {
+                offset += 1;
+            } else {
+                return false;
+            }
+        }
+        offset > 0 && self.peek_kind(TokenKind::Asterisk)
+    }
+
+    fn parse_relation(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_group_by(&mut self) -> ParseTree<'a> {
         panic!("TODO")
     }
 
@@ -518,9 +634,15 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    fn parse_boolean_expression(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
     // qualifiedName
     // : identifier ('.' identifier)*
     fn parse_qualified_name(&mut self) -> ParseTree<'a> {
-        self.parse_separated_list(TokenKind::Period, |parser| parser.parse_identifier())
+        parse_tree::qualified_name(
+            self.parse_separated_list(TokenKind::Period, |parser| parser.parse_identifier()),
+        )
     }
 }
