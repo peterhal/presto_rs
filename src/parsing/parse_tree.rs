@@ -51,6 +51,7 @@ pub enum ParseTree<'a> {
     Like(Like<'a>),
     InSubquery(InSubquery<'a>),
     InList(InList<'a>),
+    AtTimeZone(AtTimeZone<'a>),
 }
 
 // The core trees
@@ -944,5 +945,30 @@ pub fn in_list<'a>(
         not_opt: Box::new(not_opt),
         in_: Box::new(in_),
         expressions: Box::new(expressions),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct AtTimeZone<'a> {
+    pub value: Box<ParseTree<'a>>,
+    pub at: Box<ParseTree<'a>>,
+    pub time: Box<ParseTree<'a>>,
+    pub zone: Box<ParseTree<'a>>,
+    pub specifier: Box<ParseTree<'a>>,
+}
+
+pub fn at_time_zone<'a>(
+    value: ParseTree<'a>,
+    at: ParseTree<'a>,
+    time: ParseTree<'a>,
+    zone: ParseTree<'a>,
+    specifier: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::AtTimeZone(AtTimeZone {
+        value: Box::new(value),
+        at: Box::new(at),
+        time: Box::new(time),
+        zone: Box::new(zone),
+        specifier: Box::new(specifier),
     })
 }

@@ -1095,8 +1095,81 @@ impl<'a> Parser<'a> {
             && self.peek_query_primary_offset(2)
     }
 
+    // valueExpression
+    // : primaryExpression                                                                 #valueExpressionDefault
+    // | valueExpression AT timeZoneSpecifier                                              #atTimeZone
+    // | operator=(MINUS | PLUS) valueExpression                                           #arithmeticUnary
+    // | left=valueExpression operator=(ASTERISK | SLASH | PERCENT) right=valueExpression  #arithmeticBinary
+    // | left=valueExpression operator=(PLUS | MINUS) right=valueExpression                #arithmeticBinary
+    // | left=valueExpression CONCAT right=valueExpression                                 #concatenation
     fn parse_value_expression(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        self.parse_concat_expression()
+    }
+
+    // | left=valueExpression CONCAT right=valueExpression                                 #concatenation
+    fn parse_concat_expression(&mut self) -> ParseTree<'a> {
+        self.parse_binary_expression(
+            |parser| parser.peek_kind(TokenKind::BarBar),
+            |parser| parser.parse_additive_expression(),
+        )
+    }
+
+    // | left=valueExpression operator=(PLUS | MINUS) right=valueExpression                #arithmeticBinary
+    fn parse_additive_expression(&mut self) -> ParseTree<'a> {
+        self.parse_binary_expression(
+            |parser| parser.peek_additive_operator(),
+            |parser| parser.parse_multiplicative_expression(),
+        )
+    }
+
+    fn peek_additive_operator(&mut self) -> bool {
+        match self.peek() {
+            TokenKind::Plus | TokenKind::Minus => true,
+            _ => false,
+        }
+    }
+
+    // | left=valueExpression operator=(ASTERISK | SLASH | PERCENT) right=valueExpression  #arithmeticBinary
+    fn parse_multiplicative_expression(&mut self) -> ParseTree<'a> {
+        self.parse_binary_expression(
+            |parser| match parser.peek() {
+                TokenKind::Asterisk | TokenKind::Slash | TokenKind::Percent => true,
+                _ => false,
+            },
+            |parser| parser.parse_arithmetic_unary_expression(),
+        )
+    }
+
+    // | operator=(MINUS | PLUS) valueExpression                                           #arithmeticUnary
+    fn parse_arithmetic_unary_expression(&mut self) -> ParseTree<'a> {
+        if self.peek_additive_operator() {
+            let operator = self.eat_token();
+            let operand = self.parse_at_time_zone();
+            parse_tree::unary_expression(operator, operand)
+        } else {
+            self.parse_at_time_zone()
+        }
+    }
+
+    // | valueExpression AT timeZoneSpecifier                                              #atTimeZone
+    // timeZoneSpecifier
+    // : TIME ZONE interval  #timeZoneInterval
+    // | TIME ZONE string    #timeZoneString
+    fn parse_at_time_zone(&mut self) -> ParseTree<'a> {
+        let value = self.parse_primary_expression();
+        let at = self.eat_predefined_name_opt(PredefinedName::AT);
+        if at.is_empty() {
+            value
+        } else {
+            let time = self.eat_predefined_name(PredefinedName::TIME);
+            let zone = self.eat_predefined_name(PredefinedName::ZONE);
+            let specifier = if self.peek_predefined_name(PredefinedName::INTERVAL) {
+                self.parse_interval()
+            } else {
+                self.parse_string()
+            };
+            parse_tree::at_time_zone(value, at, time, zone, specifier)
+        }
     }
 
     // qualifiedName
@@ -1105,6 +1178,18 @@ impl<'a> Parser<'a> {
         parse_tree::qualified_name(
             self.parse_separated_list(TokenKind::Period, |parser| parser.parse_identifier()),
         )
+    }
+
+    fn parse_primary_expression(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_string(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_interval(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
     }
 
     fn parse_statement(&mut self) -> ParseTree<'a> {

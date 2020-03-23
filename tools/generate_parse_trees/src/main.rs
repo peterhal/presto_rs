@@ -223,6 +223,11 @@ fn configs() -> Vec<TreeConfig> {
             "in_list",
             vec!["value", "not_opt", "in_", "expressions"],
         ),
+        (
+            "AtTimeZone",
+            "at_time_zone",
+            vec!["value", "at", "time", "zone", "specifier"],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }
