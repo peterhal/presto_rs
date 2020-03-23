@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[allow(non_upper_case_globals, non_camel_case_types)]
 pub enum PredefinedName {
     ADD,
@@ -136,7 +136,7 @@ impl PredefinedName {
     }
 }
 
-fn maybe_get_predefined_name(value: &str) -> Option<PredefinedName> {
+pub fn maybe_get_predefined_name(value: &str) -> Option<PredefinedName> {
     match value.to_ascii_uppercase().as_str() {
         "ADD" => Some(PredefinedName::ADD),
         "ADMIN" => Some(PredefinedName::ADMIN),

@@ -42,6 +42,15 @@ pub enum ParseTree<'a> {
     Rollup(Rollup<'a>),
     Cube(Cube<'a>),
     GroupingSets(GroupingSets<'a>),
+    BinaryExpression(BinaryExpression<'a>),
+    UnaryExpression(UnaryExpression<'a>),
+    QuanitifiedComparison(QuanitifiedComparison<'a>),
+    NullPredicate(NullPredicate<'a>),
+    DistinctFrom(DistinctFrom<'a>),
+    Between(Between<'a>),
+    Like(Like<'a>),
+    InSubquery(InSubquery<'a>),
+    InList(InList<'a>),
 }
 
 // The core trees
@@ -725,5 +734,215 @@ pub fn grouping_sets<'a>(
         grouping: Box::new(grouping),
         sets: Box::new(sets),
         grouping_sets: Box::new(grouping_sets),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct BinaryExpression<'a> {
+    pub left: Box<ParseTree<'a>>,
+    pub operator: Box<ParseTree<'a>>,
+    pub right: Box<ParseTree<'a>>,
+}
+
+pub fn binary_expression<'a>(
+    left: ParseTree<'a>,
+    operator: ParseTree<'a>,
+    right: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::BinaryExpression(BinaryExpression {
+        left: Box::new(left),
+        operator: Box::new(operator),
+        right: Box::new(right),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct UnaryExpression<'a> {
+    pub operator: Box<ParseTree<'a>>,
+    pub operand: Box<ParseTree<'a>>,
+}
+
+pub fn unary_expression<'a>(operator: ParseTree<'a>, operand: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::UnaryExpression(UnaryExpression {
+        operator: Box::new(operator),
+        operand: Box::new(operand),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct QuanitifiedComparison<'a> {
+    pub operand: Box<ParseTree<'a>>,
+    pub operator: Box<ParseTree<'a>>,
+    pub comparison_quantifier: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn quantified_comparison<'a>(
+    operand: ParseTree<'a>,
+    operator: ParseTree<'a>,
+    comparison_quantifier: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::QuanitifiedComparison(QuanitifiedComparison {
+        operand: Box::new(operand),
+        operator: Box::new(operator),
+        comparison_quantifier: Box::new(comparison_quantifier),
+        open_paren: Box::new(open_paren),
+        query: Box::new(query),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct NullPredicate<'a> {
+    pub value: Box<ParseTree<'a>>,
+    pub is: Box<ParseTree<'a>>,
+    pub not_opt: Box<ParseTree<'a>>,
+    pub null: Box<ParseTree<'a>>,
+}
+
+pub fn null_predicate<'a>(
+    value: ParseTree<'a>,
+    is: ParseTree<'a>,
+    not_opt: ParseTree<'a>,
+    null: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::NullPredicate(NullPredicate {
+        value: Box::new(value),
+        is: Box::new(is),
+        not_opt: Box::new(not_opt),
+        null: Box::new(null),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct DistinctFrom<'a> {
+    pub left: Box<ParseTree<'a>>,
+    pub distinct: Box<ParseTree<'a>>,
+    pub from: Box<ParseTree<'a>>,
+    pub right: Box<ParseTree<'a>>,
+}
+
+pub fn distinct_from<'a>(
+    left: ParseTree<'a>,
+    distinct: ParseTree<'a>,
+    from: ParseTree<'a>,
+    right: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::DistinctFrom(DistinctFrom {
+        left: Box::new(left),
+        distinct: Box::new(distinct),
+        from: Box::new(from),
+        right: Box::new(right),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Between<'a> {
+    pub value: Box<ParseTree<'a>>,
+    pub not_opt: Box<ParseTree<'a>>,
+    pub between: Box<ParseTree<'a>>,
+    pub lower: Box<ParseTree<'a>>,
+    pub and: Box<ParseTree<'a>>,
+    pub upper: Box<ParseTree<'a>>,
+}
+
+pub fn between<'a>(
+    value: ParseTree<'a>,
+    not_opt: ParseTree<'a>,
+    between: ParseTree<'a>,
+    lower: ParseTree<'a>,
+    and: ParseTree<'a>,
+    upper: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Between(Between {
+        value: Box::new(value),
+        not_opt: Box::new(not_opt),
+        between: Box::new(between),
+        lower: Box::new(lower),
+        and: Box::new(and),
+        upper: Box::new(upper),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Like<'a> {
+    pub value: Box<ParseTree<'a>>,
+    pub not_opt: Box<ParseTree<'a>>,
+    pub like: Box<ParseTree<'a>>,
+    pub patrern: Box<ParseTree<'a>>,
+    pub escape_opt: Box<ParseTree<'a>>,
+    pub escape_value_opt: Box<ParseTree<'a>>,
+}
+
+pub fn like<'a>(
+    value: ParseTree<'a>,
+    not_opt: ParseTree<'a>,
+    like: ParseTree<'a>,
+    patrern: ParseTree<'a>,
+    escape_opt: ParseTree<'a>,
+    escape_value_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Like(Like {
+        value: Box::new(value),
+        not_opt: Box::new(not_opt),
+        like: Box::new(like),
+        patrern: Box::new(patrern),
+        escape_opt: Box::new(escape_opt),
+        escape_value_opt: Box::new(escape_value_opt),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct InSubquery<'a> {
+    pub value: Box<ParseTree<'a>>,
+    pub not_opt: Box<ParseTree<'a>>,
+    pub in_: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn in_subquery<'a>(
+    value: ParseTree<'a>,
+    not_opt: ParseTree<'a>,
+    in_: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::InSubquery(InSubquery {
+        value: Box::new(value),
+        not_opt: Box::new(not_opt),
+        in_: Box::new(in_),
+        open_paren: Box::new(open_paren),
+        query: Box::new(query),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct InList<'a> {
+    pub value: Box<ParseTree<'a>>,
+    pub not_opt: Box<ParseTree<'a>>,
+    pub in_: Box<ParseTree<'a>>,
+    pub expressions: Box<ParseTree<'a>>,
+}
+
+pub fn in_list<'a>(
+    value: ParseTree<'a>,
+    not_opt: ParseTree<'a>,
+    in_: ParseTree<'a>,
+    expressions: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::InList(InList {
+        value: Box::new(value),
+        not_opt: Box::new(not_opt),
+        in_: Box::new(in_),
+        expressions: Box::new(expressions),
     })
 }

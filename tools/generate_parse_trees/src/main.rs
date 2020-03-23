@@ -157,6 +157,72 @@ fn configs() -> Vec<TreeConfig> {
             "grouping_sets",
             vec!["grouping", "sets", "grouping_sets"],
         ),
+        (
+            "BinaryExpression",
+            "binary_expression",
+            vec!["left", "operator", "right"],
+        ),
+        (
+            "UnaryExpression",
+            "unary_expression",
+            vec!["operator", "operand"],
+        ),
+        (
+            "QuanitifiedComparison",
+            "quantified_comparison",
+            vec![
+                "operand",
+                "operator",
+                "comparison_quantifier",
+                "open_paren",
+                "query",
+                "close_paren",
+            ],
+        ),
+        (
+            "NullPredicate",
+            "null_predicate",
+            vec!["value", "is", "not_opt", "null"],
+        ),
+        (
+            "DistinctFrom",
+            "distinct_from",
+            vec!["left", "distinct", "from", "right"],
+        ),
+        (
+            "Between",
+            "between",
+            vec!["value", "not_opt", "between", "lower", "and", "upper"],
+        ),
+        (
+            "Like",
+            "like",
+            vec![
+                "value",
+                "not_opt",
+                "like",
+                "patrern",
+                "escape_opt",
+                "escape_value_opt",
+            ],
+        ),
+        (
+            "InSubquery",
+            "in_subquery",
+            vec![
+                "value",
+                "not_opt",
+                "in_",
+                "open_paren",
+                "query",
+                "close_paren",
+            ],
+        ),
+        (
+            "InList",
+            "in_list",
+            vec!["value", "not_opt", "in_", "expressions"],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }

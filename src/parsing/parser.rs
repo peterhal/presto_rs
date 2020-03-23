@@ -1,5 +1,5 @@
 use crate::lexing::{
-    lexer::Lexer, position, position::Position, predefined_names::PredefinedName,
+    lexer::Lexer, position, position::Position, predefined_names, predefined_names::PredefinedName,
     text_range::TextRange, token::Token, token_kind::TokenKind,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
@@ -85,6 +85,7 @@ pub struct Parser<'a> {
 }
 
 type ElementParser<'a> = fn(&mut Parser<'a>) -> ParseTree<'a>;
+type Peeker<'a> = fn(&mut Parser<'a>) -> bool;
 
 // Language independant parser functions
 impl<'a> Parser<'a> {
@@ -118,9 +119,21 @@ impl<'a> Parser<'a> {
         self.position.peek()
     }
 
-    fn peek_predefined_name_offset(&mut self, name: PredefinedName, offset: usize) -> bool {
+    fn maybe_peek_predefined_name_offset(&mut self, offset: usize) -> Option<PredefinedName> {
         let token = self.peek_token_offset(offset);
-        token.kind == TokenKind::Identifier && token.value == name.to_string()
+        if token.kind == TokenKind::Identifier {
+            None
+        } else {
+            predefined_names::maybe_get_predefined_name(token.value)
+        }
+    }
+
+    fn maybe_peek_predefined_name(&mut self) -> Option<PredefinedName> {
+        self.maybe_peek_predefined_name_offset(0)
+    }
+
+    fn peek_predefined_name_offset(&mut self, name: PredefinedName, offset: usize) -> bool {
+        self.maybe_peek_predefined_name_offset(offset) == Some(name)
     }
 
     fn peek_predefined_name(&mut self, name: PredefinedName) -> bool {
@@ -874,11 +887,215 @@ impl<'a> Parser<'a> {
         self.parse_expression()
     }
 
+    // expression
+    // : booleanExpression
     fn parse_expression(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        self.parse_boolean_expression()
     }
 
+    // booleanExpression
+    // : valueExpression predicate[$valueExpression.ctx]?             #predicated
+    // | NOT booleanExpression                                        #logicalNot
+    // | left=booleanExpression operator=AND right=booleanExpression  #logicalBinary
+    // | left=booleanExpression operator=OR right=booleanExpression   #logicalBinary
     fn parse_boolean_expression(&mut self) -> ParseTree<'a> {
+        self.parse_or_expression()
+    }
+
+    fn parse_binary_expression(
+        &mut self,
+        peek_operator: Peeker<'a>,
+        parse_operand: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        let mut left = parse_operand(self);
+        while peek_operator(self) {
+            let operator = self.eat_token();
+            let right = parse_operand(self);
+            left = parse_tree::binary_expression(left, operator, right);
+        }
+        left
+    }
+
+    // | left=booleanExpression operator=OR right=booleanExpression   #logicalBinary
+    fn parse_or_expression(&mut self) -> ParseTree<'a> {
+        self.parse_binary_expression(
+            |parser| parser.peek_kind(TokenKind::OR),
+            |parser| parser.parse_and_expression(),
+        )
+    }
+
+    // | left=booleanExpression operator=AND right=booleanExpression  #logicalBinary
+    fn parse_and_expression(&mut self) -> ParseTree<'a> {
+        self.parse_binary_expression(
+            |parser| parser.peek_kind(TokenKind::AND),
+            |parser| parser.parse_not_expression(),
+        )
+    }
+
+    // | NOT booleanExpression                                        #logicalNot
+    fn parse_not_expression(&mut self) -> ParseTree<'a> {
+        let not = self.eat_opt(TokenKind::NOT);
+        if !not.is_empty() {
+            let operand = self.parse_not_expression();
+            parse_tree::unary_expression(not, operand)
+        } else {
+            self.parse_predicated_expression()
+        }
+    }
+
+    // : comparisonOperator right=valueExpression                            #comparison
+    // | comparisonOperator comparisonQuantifier '(' query ')'               #quantifiedComparison
+    fn parse_comparison_operator_suffix(&mut self, value: ParseTree<'a>) -> ParseTree<'a> {
+        assert!(self.peek_comparison_operator());
+        let operator = self.eat_token();
+        if self.peek_quantified_comparison() {
+            let comparison_quantifier = self.eat_token();
+            let (open_paren, query, close_paren) =
+                self.parse_parenthesized(|parser| parser.parse_query());
+            parse_tree::quantified_comparison(
+                value,
+                operator,
+                comparison_quantifier,
+                open_paren,
+                query,
+                close_paren,
+            )
+        } else {
+            let right = self.parse_value_expression();
+            parse_tree::binary_expression(value, operator, right)
+        }
+    }
+
+    fn peek_comparison_operator(&mut self) -> bool {
+        match self.peek() {
+            TokenKind::Equal
+            | TokenKind::LessGreater
+            | TokenKind::BangEqual
+            | TokenKind::OpenAngle
+            | TokenKind::CloseAngle
+            | TokenKind::LessEqual
+            | TokenKind::GreaterEqual => true,
+            _ => false,
+        }
+    }
+
+    // | IS NOT? NULL                                                        #nullPredicate
+    // | IS NOT? DISTINCT FROM right=valueExpression                         #distinctFrom
+    fn parse_is_suffix(&mut self, value: ParseTree<'a>) -> ParseTree<'a> {
+        assert!(self.peek_kind(TokenKind::IS));
+        let is = self.eat_token();
+        let not_opt = self.eat_opt(TokenKind::NOT);
+        match self.peek() {
+            TokenKind::NULL => {
+                let null = self.eat_token();
+                parse_tree::null_predicate(value, is, not_opt, null)
+            }
+            TokenKind::DISTINCT => {
+                let distinct = self.eat_token();
+                let from = self.eat(TokenKind::FROM);
+                let right = self.parse_value_expression();
+                parse_tree::distinct_from(value, distinct, from, right)
+            }
+            _ => self.expected_error("NULL, DISTINCT"),
+        }
+    }
+
+    // | NOT? BETWEEN lower=valueExpression AND upper=valueExpression        #between
+    fn parse_between_suffix(
+        &mut self,
+        value: ParseTree<'a>,
+        not_opt: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        let between = self.eat(TokenKind::BETWEEN);
+        let lower = self.parse_value_expression();
+        let and = self.eat(TokenKind::AND);
+        let upper = self.parse_value_expression();
+        parse_tree::between(value, not_opt, between, lower, and, upper)
+    }
+
+    // | NOT? LIKE pattern=valueExpression (ESCAPE escape=valueExpression)?  #like
+    fn parse_like_suffix(&mut self, value: ParseTree<'a>, not_opt: ParseTree<'a>) -> ParseTree<'a> {
+        let like = self.eat(TokenKind::LIKE);
+        let pattern = self.parse_value_expression();
+        let escape_opt = self.eat_opt(TokenKind::ESCAPE);
+        let escape_value_opt = if escape_opt.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_value_expression()
+        };
+        parse_tree::like(value, not_opt, like, pattern, escape_opt, escape_value_opt)
+    }
+
+    // | NOT? IN '(' expression (',' expression)* ')'                        #inList
+    // | NOT? IN '(' query ')'                                               #inSubquery
+    fn parse_in_suffix(&mut self, value: ParseTree<'a>, not_opt: ParseTree<'a>) -> ParseTree<'a> {
+        let in_ = self.eat(TokenKind::IN);
+        if self.peek_kind(TokenKind::OpenParen) && self.peek_query_primary_offset(1) {
+            let (open_paren, query, close_paren) =
+                self.parse_parenthesized(|parser| parser.parse_query());
+            parse_tree::in_subquery(value, not_opt, in_, open_paren, query, close_paren)
+        } else {
+            let expressions =
+                self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
+            parse_tree::in_list(value, not_opt, in_, expressions)
+        }
+    }
+
+    // : valueExpression predicate[$valueExpression.ctx]?             #predicated
+    // predicate[ParserRuleContext value]
+    // : comparisonOperator right=valueExpression                            #comparison
+    // | comparisonOperator comparisonQuantifier '(' query ')'               #quantifiedComparison
+    // | NOT? BETWEEN lower=valueExpression AND upper=valueExpression        #between
+    // | NOT? IN '(' expression (',' expression)* ')'                        #inList
+    // | NOT? IN '(' query ')'                                               #inSubquery
+    // | NOT? LIKE pattern=valueExpression (ESCAPE escape=valueExpression)?  #like
+    // | IS NOT? NULL                                                        #nullPredicate
+    // | IS NOT? DISTINCT FROM right=valueExpression                         #distinctFrom
+    fn parse_predicated_expression(&mut self) -> ParseTree<'a> {
+        let value = self.parse_value_expression();
+        match self.peek() {
+            TokenKind::Equal
+            | TokenKind::LessGreater
+            | TokenKind::BangEqual
+            | TokenKind::OpenAngle
+            | TokenKind::CloseAngle
+            | TokenKind::LessEqual
+            | TokenKind::GreaterEqual => self.parse_comparison_operator_suffix(value),
+            TokenKind::IS => self.parse_is_suffix(value),
+            _ => {
+                let not_opt = self.eat_opt(TokenKind::NOT);
+                match self.peek() {
+                    TokenKind::BETWEEN => self.parse_between_suffix(value, not_opt),
+                    TokenKind::IN => self.parse_in_suffix(value, not_opt),
+                    TokenKind::LIKE => self.parse_like_suffix(value, not_opt),
+                    _ => {
+                        if not_opt.is_empty() {
+                            value
+                        } else {
+                            self.expected_error("BETWEEN, IN, LIKE")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn peek_comparison_quantifier(&mut self) -> bool {
+        match self.maybe_peek_predefined_name() {
+            Some(PredefinedName::ALL) | Some(PredefinedName::SOME) | Some(PredefinedName::ANY) => {
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn peek_quantified_comparison(&mut self) -> bool {
+        self.peek_comparison_quantifier()
+            && self.peek_kind_offset(TokenKind::OpenParen, 1)
+            && self.peek_query_primary_offset(2)
+    }
+
+    fn parse_value_expression(&mut self) -> ParseTree<'a> {
         panic!("TODO")
     }
 
@@ -888,5 +1105,9 @@ impl<'a> Parser<'a> {
         parse_tree::qualified_name(
             self.parse_separated_list(TokenKind::Period, |parser| parser.parse_identifier()),
         )
+    }
+
+    fn parse_statement(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
     }
 }
