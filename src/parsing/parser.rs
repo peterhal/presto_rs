@@ -494,6 +494,18 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn peek_query_primary_offset(&mut self, offset: usize) -> bool {
+        match self.peek_offset(offset) {
+            TokenKind::SELECT | TokenKind::TABLE | TokenKind::VALUES => true,
+            TokenKind::OpenParen => self.peek_query_primary_offset(offset + 1),
+            _ => false,
+        }
+    }
+
+    fn peek_query_offset(&mut self, offset: usize) -> bool {
+        self.peek_kind_offset(TokenKind::WITH, offset) || self.peek_query_primary_offset(offset)
+    }
+
     // queryPrimary
     // : querySpecification                   #queryPrimaryDefault
     // | TABLE qualifiedName                  #table
@@ -624,6 +636,74 @@ impl<'a> Parser<'a> {
 
     fn parse_relation(&mut self) -> ParseTree<'a> {
         panic!("TODO")
+    }
+
+    fn parse_sampled_relation(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_aliased_relation(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    // relationPrimary
+    // : qualifiedName                                                   #tableName
+    // | '(' query ')'                                                   #subqueryRelation
+    // | UNNEST '(' expression (',' expression)* ')' (WITH ORDINALITY)?  #unnest
+    // | LATERAL '(' query ')'                                           #lateral
+    // | '(' relation ')'                                                #parenthesizedRelation
+    fn parse_relation_primary(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TokenKind::OpenParen => {
+                if self.peek_query_offset(1) {
+                    let (open_paren, query, close_paren) =
+                        self.parse_parenthesized(|parser| parser.parse_query());
+                    parse_tree::subquery_relation(open_paren, query, close_paren)
+                } else {
+                    let (open_paren, relation, close_paren) =
+                        self.parse_parenthesized(|parser| parser.parse_relation());
+                    parse_tree::parenthesized_relation(open_paren, relation, close_paren)
+                }
+            }
+            TokenKind::UNNEST => self.parse_unnest(),
+            _ => {
+                if self.peek_predefined_name(PredefinedName::LATERAL)
+                    && self.peek_kind_offset(TokenKind::OpenParen, 1)
+                {
+                    self.parse_lateral()
+                } else {
+                    self.parse_table_name()
+                }
+            }
+        }
+    }
+
+    // : qualifiedName                                                   #tableName
+    fn parse_table_name(&mut self) -> ParseTree<'a> {
+        let name = self.parse_qualified_name();
+        parse_tree::table_name(name)
+    }
+
+    // | LATERAL '(' query ')'                                           #lateral
+    fn parse_lateral(&mut self) -> ParseTree<'a> {
+        let lateral = self.eat_predefined_name(PredefinedName::LATERAL);
+        let (open_paren, query, close_paren) =
+            self.parse_parenthesized(|parser| parser.parse_query());
+        parse_tree::lateral(lateral, open_paren, query, close_paren)
+    }
+
+    // | UNNEST '(' expression (',' expression)* ')' (WITH ORDINALITY)?  #unnest
+    fn parse_unnest(&mut self) -> ParseTree<'a> {
+        let unnest = self.eat(TokenKind::UNNEST);
+        let expressions =
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
+        let with = self.eat_opt(TokenKind::WITH);
+        let ordinality = if with.is_empty() {
+            self.eat_empty()
+        } else {
+            self.eat_predefined_name(PredefinedName::ORDINALITY)
+        };
+        parse_tree::unnest(unnest, expressions, with, ordinality)
     }
 
     fn parse_group_by(&mut self) -> ParseTree<'a> {

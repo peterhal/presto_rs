@@ -25,6 +25,11 @@ pub enum ParseTree<'a> {
     SelectAll(SelectAll<'a>),
     QualifiedSelectAll(QualifiedSelectAll<'a>),
     SelectItem(SelectItem<'a>),
+    SubqueryRelation(SubqueryRelation<'a>),
+    ParenthesizedRelation(ParenthesizedRelation<'a>),
+    TableName(TableName<'a>),
+    Lateral(Lateral<'a>),
+    Unnest(Unnest<'a>),
 }
 
 // The core trees
@@ -393,5 +398,98 @@ pub fn select_item<'a>(
         expression: Box::new(expression),
         as_: Box::new(as_),
         identifier: Box::new(identifier),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct SubqueryRelation<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn subquery_relation<'a>(
+    open_paren: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::SubqueryRelation(SubqueryRelation {
+        open_paren: Box::new(open_paren),
+        query: Box::new(query),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct ParenthesizedRelation<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub relation: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn parenthesized_relation<'a>(
+    open_paren: ParseTree<'a>,
+    relation: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::ParenthesizedRelation(ParenthesizedRelation {
+        open_paren: Box::new(open_paren),
+        relation: Box::new(relation),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct TableName<'a> {
+    pub name: Box<ParseTree<'a>>,
+}
+
+pub fn table_name<'a>(name: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::TableName(TableName {
+        name: Box::new(name),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Lateral<'a> {
+    pub lateral: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn lateral<'a>(
+    lateral: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Lateral(Lateral {
+        lateral: Box::new(lateral),
+        open_paren: Box::new(open_paren),
+        query: Box::new(query),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Unnest<'a> {
+    pub unnest: Box<ParseTree<'a>>,
+    pub expressions: Box<ParseTree<'a>>,
+    pub with: Box<ParseTree<'a>>,
+    pub ordinality: Box<ParseTree<'a>>,
+}
+
+pub fn unnest<'a>(
+    unnest: ParseTree<'a>,
+    expressions: ParseTree<'a>,
+    with: ParseTree<'a>,
+    ordinality: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Unnest(Unnest {
+        unnest: Box::new(unnest),
+        expressions: Box::new(expressions),
+        with: Box::new(with),
+        ordinality: Box::new(ordinality),
     })
 }
