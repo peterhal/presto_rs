@@ -115,6 +115,36 @@ fn configs() -> Vec<TreeConfig> {
                 "column_aliases_opt",
             ],
         ),
+        (
+            "CrossJoin",
+            "cross_join",
+            vec!["left", "cross", "join", "right"],
+        ),
+        (
+            "Join",
+            "join",
+            vec!["left", "join_type", "join", "right", "join_criteria"],
+        ),
+        (
+            "NaturalJoin",
+            "natural_join",
+            vec!["left", "natural", "join_type", "join", "right"],
+        ),
+        (
+            "OuterJoinKind",
+            "outer_join_kind",
+            vec!["kind", "outer_opt"],
+        ),
+        (
+            "OnJoinCriteria",
+            "on_join_criteria",
+            vec!["on", "predicate"],
+        ),
+        (
+            "UsingJoinCriteria",
+            "using_join_criteria",
+            vec!["using", "names"],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }

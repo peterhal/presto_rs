@@ -32,6 +32,12 @@ pub enum ParseTree<'a> {
     Unnest(Unnest<'a>),
     SampledRelation(SampledRelation<'a>),
     AliasedRelation(AliasedRelation<'a>),
+    CrossJoin(CrossJoin<'a>),
+    Join(Join<'a>),
+    NaturalJoin(NaturalJoin<'a>),
+    OuterJoinKind(OuterJoinKind<'a>),
+    OnJoinCriteria(OnJoinCriteria<'a>),
+    UsingJoinCriteria(UsingJoinCriteria<'a>),
 }
 
 // The core trees
@@ -543,5 +549,116 @@ pub fn aliased_relation<'a>(
         as_opt: Box::new(as_opt),
         identifier: Box::new(identifier),
         column_aliases_opt: Box::new(column_aliases_opt),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct CrossJoin<'a> {
+    pub left: Box<ParseTree<'a>>,
+    pub cross: Box<ParseTree<'a>>,
+    pub join: Box<ParseTree<'a>>,
+    pub right: Box<ParseTree<'a>>,
+}
+
+pub fn cross_join<'a>(
+    left: ParseTree<'a>,
+    cross: ParseTree<'a>,
+    join: ParseTree<'a>,
+    right: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::CrossJoin(CrossJoin {
+        left: Box::new(left),
+        cross: Box::new(cross),
+        join: Box::new(join),
+        right: Box::new(right),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Join<'a> {
+    pub left: Box<ParseTree<'a>>,
+    pub join_type: Box<ParseTree<'a>>,
+    pub join: Box<ParseTree<'a>>,
+    pub right: Box<ParseTree<'a>>,
+    pub join_criteria: Box<ParseTree<'a>>,
+}
+
+pub fn join<'a>(
+    left: ParseTree<'a>,
+    join_type: ParseTree<'a>,
+    join: ParseTree<'a>,
+    right: ParseTree<'a>,
+    join_criteria: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Join(Join {
+        left: Box::new(left),
+        join_type: Box::new(join_type),
+        join: Box::new(join),
+        right: Box::new(right),
+        join_criteria: Box::new(join_criteria),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct NaturalJoin<'a> {
+    pub left: Box<ParseTree<'a>>,
+    pub natural: Box<ParseTree<'a>>,
+    pub join_type: Box<ParseTree<'a>>,
+    pub join: Box<ParseTree<'a>>,
+    pub right: Box<ParseTree<'a>>,
+}
+
+pub fn natural_join<'a>(
+    left: ParseTree<'a>,
+    natural: ParseTree<'a>,
+    join_type: ParseTree<'a>,
+    join: ParseTree<'a>,
+    right: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::NaturalJoin(NaturalJoin {
+        left: Box::new(left),
+        natural: Box::new(natural),
+        join_type: Box::new(join_type),
+        join: Box::new(join),
+        right: Box::new(right),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct OuterJoinKind<'a> {
+    pub kind: Box<ParseTree<'a>>,
+    pub outer_opt: Box<ParseTree<'a>>,
+}
+
+pub fn outer_join_kind<'a>(kind: ParseTree<'a>, outer_opt: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::OuterJoinKind(OuterJoinKind {
+        kind: Box::new(kind),
+        outer_opt: Box::new(outer_opt),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct OnJoinCriteria<'a> {
+    pub on: Box<ParseTree<'a>>,
+    pub predicate: Box<ParseTree<'a>>,
+}
+
+pub fn on_join_criteria<'a>(on: ParseTree<'a>, predicate: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::OnJoinCriteria(OnJoinCriteria {
+        on: Box::new(on),
+        predicate: Box::new(predicate),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct UsingJoinCriteria<'a> {
+    pub using: Box<ParseTree<'a>>,
+    pub names: Box<ParseTree<'a>>,
+}
+
+pub fn using_join_criteria<'a>(using: ParseTree<'a>, names: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::UsingJoinCriteria(UsingJoinCriteria {
+        using: Box::new(using),
+        names: Box::new(names),
     })
 }

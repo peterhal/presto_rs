@@ -634,8 +634,77 @@ impl<'a> Parser<'a> {
         offset > 0 && self.peek_kind(TokenKind::Asterisk)
     }
 
+    // relation
+    // : left=relation
+    //   ( CROSS JOIN right=sampledRelation
+    //   | joinType JOIN rightRelation=relation joinCriteria
+    //   | NATURAL joinType JOIN right=sampledRelation
+    //   )                                           #joinRelation
+    // | sampledRelation                             #relationDefault
     fn parse_relation(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let mut left = self.parse_sampled_relation();
+        loop {
+            match self.peek() {
+                TokenKind::CROSS => {
+                    let cross = self.eat(TokenKind::CROSS);
+                    let join = self.eat(TokenKind::JOIN);
+                    let right = self.parse_sampled_relation();
+                    left = parse_tree::cross_join(left, cross, join, right)
+                }
+                TokenKind::INNER | TokenKind::LEFT | TokenKind::RIGHT | TokenKind::FULL => {
+                    let join_type = self.parse_join_type();
+                    let join = self.eat(TokenKind::JOIN);
+                    let right = self.parse_relation();
+                    let join_criteria = self.parse_join_criteria();
+                    left = parse_tree::join(left, join_type, join, right, join_criteria)
+                }
+                TokenKind::NATURAL => {
+                    let natural = self.eat(TokenKind::CROSS);
+                    let join_type = self.parse_join_type();
+                    let join = self.eat(TokenKind::JOIN);
+                    let right = self.parse_sampled_relation();
+                    left = parse_tree::natural_join(left, natural, join_type, join, right)
+                }
+                _ => return left,
+            }
+        }
+    }
+
+    // joinType
+    // : INNER?
+    // | LEFT OUTER?
+    // | RIGHT OUTER?
+    // | FULL OUTER?
+    fn parse_join_type(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TokenKind::INNER => self.eat(TokenKind::INNER),
+            TokenKind::LEFT | TokenKind::RIGHT | TokenKind::FULL => {
+                let kind = self.eat_token();
+                let outer_opt = self.eat_opt(TokenKind::OUTER);
+                parse_tree::outer_join_kind(kind, outer_opt)
+            }
+            _ => self.eat_empty(),
+        }
+    }
+
+    // joinCriteria
+    // : ON booleanExpression
+    // | USING '(' identifier (',' identifier)* ')'
+    fn parse_join_criteria(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TokenKind::ON => {
+                let on = self.eat(TokenKind::ON);
+                let predicate = self.parse_boolean_expression();
+                parse_tree::on_join_criteria(on, predicate)
+            }
+            TokenKind::USING => {
+                let using = self.eat(TokenKind::USING);
+                let names = self
+                    .parse_parenthesized_comma_separated_list(|parser| parser.parse_identifier());
+                parse_tree::using_join_criteria(using, names)
+            }
+            _ => self.expected_error("join criteria"),
+        }
     }
 
     // sampledRelation
