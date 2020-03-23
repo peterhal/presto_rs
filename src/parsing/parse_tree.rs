@@ -38,6 +38,10 @@ pub enum ParseTree<'a> {
     OuterJoinKind(OuterJoinKind<'a>),
     OnJoinCriteria(OnJoinCriteria<'a>),
     UsingJoinCriteria(UsingJoinCriteria<'a>),
+    GroupBy(GroupBy<'a>),
+    Rollup(Rollup<'a>),
+    Cube(Cube<'a>),
+    GroupingSets(GroupingSets<'a>),
 }
 
 // The core trees
@@ -660,5 +664,66 @@ pub fn using_join_criteria<'a>(using: ParseTree<'a>, names: ParseTree<'a>) -> Pa
     ParseTree::UsingJoinCriteria(UsingJoinCriteria {
         using: Box::new(using),
         names: Box::new(names),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct GroupBy<'a> {
+    pub set_quantifier_opt: Box<ParseTree<'a>>,
+    pub grouping_elements: Box<ParseTree<'a>>,
+}
+
+pub fn group_by<'a>(
+    set_quantifier_opt: ParseTree<'a>,
+    grouping_elements: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::GroupBy(GroupBy {
+        set_quantifier_opt: Box::new(set_quantifier_opt),
+        grouping_elements: Box::new(grouping_elements),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Rollup<'a> {
+    pub rollup: Box<ParseTree<'a>>,
+    pub expressions: Box<ParseTree<'a>>,
+}
+
+pub fn rollup<'a>(rollup: ParseTree<'a>, expressions: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Rollup(Rollup {
+        rollup: Box::new(rollup),
+        expressions: Box::new(expressions),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Cube<'a> {
+    pub cube: Box<ParseTree<'a>>,
+    pub expressions: Box<ParseTree<'a>>,
+}
+
+pub fn cube<'a>(cube: ParseTree<'a>, expressions: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Cube(Cube {
+        cube: Box::new(cube),
+        expressions: Box::new(expressions),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct GroupingSets<'a> {
+    pub grouping: Box<ParseTree<'a>>,
+    pub sets: Box<ParseTree<'a>>,
+    pub grouping_sets: Box<ParseTree<'a>>,
+}
+
+pub fn grouping_sets<'a>(
+    grouping: ParseTree<'a>,
+    sets: ParseTree<'a>,
+    grouping_sets: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::GroupingSets(GroupingSets {
+        grouping: Box::new(grouping),
+        sets: Box::new(sets),
+        grouping_sets: Box::new(grouping_sets),
     })
 }

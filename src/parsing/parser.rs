@@ -817,8 +817,61 @@ impl<'a> Parser<'a> {
         parse_tree::unnest(unnest, expressions, with, ordinality)
     }
 
+    // groupBy
+    // : setQuantifier? groupingElement (',' groupingElement)*
     fn parse_group_by(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let set_quantifier_opt = self.parse_set_quantifier_opt();
+        let grouping_elements =
+            self.parse_comma_separated_list(|parser| parser.parse_grouping_element());
+        parse_tree::group_by(set_quantifier_opt, grouping_elements)
+    }
+
+    // groupingElement
+    // : groupingSet                                            #singleGroupingSet
+    // | ROLLUP '(' (expression (',' expression)*)? ')'         #rollup
+    // | CUBE '(' (expression (',' expression)*)? ')'           #cube
+    // | GROUPING SETS '(' groupingSet (',' groupingSet)* ')'   #multipleGroupingSets
+    fn parse_grouping_element(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TokenKind::ROLLUP => self.parse_rollup(),
+            TokenKind::CUBE => self.parse_cube(),
+            TokenKind::GROUPING => self.parse_grouping_sets(),
+            _ => self.parse_grouping_set(),
+        }
+    }
+
+    // | ROLLUP '(' (expression (',' expression)*)? ')'         #rollup
+    fn parse_rollup(&mut self) -> ParseTree<'a> {
+        let rollup = self.eat(TokenKind::ROLLUP);
+        let expressions =
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
+        parse_tree::rollup(rollup, expressions)
+    }
+
+    // | CUBE '(' (expression (',' expression)*)? ')'           #cube
+    fn parse_cube(&mut self) -> ParseTree<'a> {
+        let cube = self.eat(TokenKind::CUBE);
+        let expressions =
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
+        parse_tree::cube(cube, expressions)
+    }
+
+    // | GROUPING SETS '(' groupingSet (',' groupingSet)* ')'   #multipleGroupingSets
+    fn parse_grouping_sets(&mut self) -> ParseTree<'a> {
+        let grouping = self.eat(TokenKind::GROUPING);
+        let sets = self.eat_predefined_name(PredefinedName::SETS);
+        let grouping_sets =
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_grouping_set());
+        parse_tree::grouping_sets(grouping, sets, grouping_sets)
+    }
+
+    // groupingSet
+    // : '(' (expression (',' expression)*)? ')'
+    // | expression
+    fn parse_grouping_set(&mut self) -> ParseTree<'a> {
+        // parenthesized expressions will show up as
+        // either a row constructor or a paren expression.
+        self.parse_expression()
     }
 
     fn parse_expression(&mut self) -> ParseTree<'a> {

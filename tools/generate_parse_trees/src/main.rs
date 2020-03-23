@@ -145,6 +145,18 @@ fn configs() -> Vec<TreeConfig> {
             "using_join_criteria",
             vec!["using", "names"],
         ),
+        (
+            "GroupBy",
+            "group_by",
+            vec!["set_quantifier_opt", "grouping_elements"],
+        ),
+        ("Rollup", "rollup", vec!["rollup", "expressions"]),
+        ("Cube", "cube", vec!["cube", "expressions"]),
+        (
+            "GroupingSets",
+            "grouping_sets",
+            vec!["grouping", "sets", "grouping_sets"],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }
