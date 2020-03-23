@@ -638,12 +638,54 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    // sampledRelation
+    // : aliasedRelation (
+    //     TABLESAMPLE sampleType '(' percentage=expression ')'
+    //   )?
     fn parse_sampled_relation(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let aliased_relation = self.parse_aliased_relation();
+        let tablesample = self.eat_predefined_name_opt(PredefinedName::TABLESAMPLE);
+        if tablesample.is_empty() {
+            aliased_relation
+        } else {
+            let sample_type = self.parse_sample_type();
+            let (open_paren, expression, close_paren) =
+                self.parse_parenthesized(|parser| parser.parse_expression());
+            parse_tree::sampled_relation(
+                aliased_relation,
+                tablesample,
+                sample_type,
+                open_paren,
+                expression,
+                close_paren,
+            )
+        }
     }
 
+    // sampleType
+    // : BERNOULLI
+    // | SYSTEM
+    fn parse_sample_type(&mut self) -> ParseTree<'a> {
+        let bernoulli = self.eat_predefined_name_opt(PredefinedName::BERNOULLI);
+        if bernoulli.is_empty() {
+            self.eat_predefined_name(PredefinedName::SYSTEM)
+        } else {
+            bernoulli
+        }
+    }
+
+    // aliasedRelation
+    // : relationPrimary (AS? identifier columnAliases?)?
     fn parse_aliased_relation(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let relation_primary = self.parse_relation_primary();
+        if self.peek_kind(TokenKind::AS) || self.peek_identifier() {
+            let as_opt = self.eat_opt(TokenKind::AS);
+            let identifier = self.parse_identifier();
+            let column_aliases_opt = self.parse_column_aliases_opt();
+            parse_tree::aliased_relation(relation_primary, as_opt, identifier, column_aliases_opt)
+        } else {
+            relation_primary
+        }
     }
 
     // relationPrimary

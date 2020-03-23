@@ -93,6 +93,28 @@ fn configs() -> Vec<TreeConfig> {
             "unnest",
             vec!["unnest", "expressions", "with", "ordinality"],
         ),
+        (
+            "SampledRelation",
+            "sampled_relation",
+            vec![
+                "aliased_relation",
+                "tablesample",
+                "sample_type",
+                "open_paren",
+                "expression",
+                "close_paren",
+            ],
+        ),
+        (
+            "AliasedRelation",
+            "aliased_relation",
+            vec![
+                "relation_primary",
+                "as_opt",
+                "identifier",
+                "column_aliases_opt",
+            ],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }

@@ -30,6 +30,8 @@ pub enum ParseTree<'a> {
     TableName(TableName<'a>),
     Lateral(Lateral<'a>),
     Unnest(Unnest<'a>),
+    SampledRelation(SampledRelation<'a>),
+    AliasedRelation(AliasedRelation<'a>),
 }
 
 // The core trees
@@ -491,5 +493,55 @@ pub fn unnest<'a>(
         expressions: Box::new(expressions),
         with: Box::new(with),
         ordinality: Box::new(ordinality),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct SampledRelation<'a> {
+    pub aliased_relation: Box<ParseTree<'a>>,
+    pub tablesample: Box<ParseTree<'a>>,
+    pub sample_type: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub expression: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn sampled_relation<'a>(
+    aliased_relation: ParseTree<'a>,
+    tablesample: ParseTree<'a>,
+    sample_type: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    expression: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::SampledRelation(SampledRelation {
+        aliased_relation: Box::new(aliased_relation),
+        tablesample: Box::new(tablesample),
+        sample_type: Box::new(sample_type),
+        open_paren: Box::new(open_paren),
+        expression: Box::new(expression),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct AliasedRelation<'a> {
+    pub relation_primary: Box<ParseTree<'a>>,
+    pub as_opt: Box<ParseTree<'a>>,
+    pub identifier: Box<ParseTree<'a>>,
+    pub column_aliases_opt: Box<ParseTree<'a>>,
+}
+
+pub fn aliased_relation<'a>(
+    relation_primary: ParseTree<'a>,
+    as_opt: ParseTree<'a>,
+    identifier: ParseTree<'a>,
+    column_aliases_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::AliasedRelation(AliasedRelation {
+        relation_primary: Box::new(relation_primary),
+        as_opt: Box::new(as_opt),
+        identifier: Box::new(identifier),
+        column_aliases_opt: Box::new(column_aliases_opt),
     })
 }
