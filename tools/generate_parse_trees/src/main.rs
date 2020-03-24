@@ -228,6 +228,16 @@ fn configs() -> Vec<TreeConfig> {
             "at_time_zone",
             vec!["value", "at", "time", "zone", "specifier"],
         ),
+        (
+            "Dereference",
+            "dereference",
+            vec!["object", "period", "field_name"],
+        ),
+        (
+            "Subscript",
+            "subscript",
+            vec!["operand", "open_square", "index", "close_square"],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }

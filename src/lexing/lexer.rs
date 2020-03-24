@@ -570,6 +570,7 @@ impl<'a> Lexer<'a> {
                 '\'' => self.lex_string_literal(&start),
                 '"' => self.lex_quoted_identifier(&start),
                 '`' => self.lex_back_quoted_identifier(&start),
+                '?' => self.create_token(&start, TokenKind::Question),
                 '0'..='9' => self.lex_number(&start, ch),
                 // Identifier start char
                 'a'..='z' | 'A'..='Z' | '_' => {

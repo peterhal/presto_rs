@@ -52,6 +52,8 @@ pub enum ParseTree<'a> {
     InSubquery(InSubquery<'a>),
     InList(InList<'a>),
     AtTimeZone(AtTimeZone<'a>),
+    Dereference(Dereference<'a>),
+    Subscript(Subscript<'a>),
 }
 
 // The core trees
@@ -970,5 +972,46 @@ pub fn at_time_zone<'a>(
         time: Box::new(time),
         zone: Box::new(zone),
         specifier: Box::new(specifier),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Dereference<'a> {
+    pub object: Box<ParseTree<'a>>,
+    pub period: Box<ParseTree<'a>>,
+    pub field_name: Box<ParseTree<'a>>,
+}
+
+pub fn dereference<'a>(
+    object: ParseTree<'a>,
+    period: ParseTree<'a>,
+    field_name: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Dereference(Dereference {
+        object: Box::new(object),
+        period: Box::new(period),
+        field_name: Box::new(field_name),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Subscript<'a> {
+    pub operand: Box<ParseTree<'a>>,
+    pub open_square: Box<ParseTree<'a>>,
+    pub index: Box<ParseTree<'a>>,
+    pub close_square: Box<ParseTree<'a>>,
+}
+
+pub fn subscript<'a>(
+    operand: ParseTree<'a>,
+    open_square: ParseTree<'a>,
+    index: ParseTree<'a>,
+    close_square: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Subscript(Subscript {
+        operand: Box::new(operand),
+        open_square: Box::new(open_square),
+        index: Box::new(index),
+        close_square: Box::new(close_square),
     })
 }

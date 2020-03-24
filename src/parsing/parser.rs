@@ -1180,15 +1180,313 @@ impl<'a> Parser<'a> {
         )
     }
 
+    fn parse_primary_prefix_expression(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            // : NULL                                                                                #nullLiteral
+            TokenKind::NULL => self.parse_literal(),
+            // | DOUBLE_PRECISION string                                                             #typeConstructor
+            TokenKind::DoublePrecision => self.parse_type_constructor(),
+            // | booleanValue                                                                        #booleanLiteral
+            TokenKind::TRUE | TokenKind::FALSE => self.parse_literal(),
+            // | number                                                                              #numericLiteral
+            TokenKind::Decimal | TokenKind::Double | TokenKind::Integer => self.parse_literal(),
+            // | string                                                                              #stringLiteral
+            TokenKind::String | TokenKind::UnicodeString => self.parse_literal(),
+            // | BINARY_LITERAL                                                                      #binaryLiteral
+            TokenKind::BinaryLiteral => self.parse_literal(),
+            // | '?'                                                                                 #parameter
+            TokenKind::Question => self.parse_parameter(),
+            // // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
+            // | EXISTS '(' query ')'                                                                #exists
+            TokenKind::EXISTS => self.parse_exists(),
+            // | CASE valueExpression whenClause+ (ELSE elseExpression=expression)? END              #simpleCase
+            // | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
+            TokenKind::CASE => self.parse_case(),
+            // | CAST '(' expression AS type_ ')'                                                     #cast
+            TokenKind::CAST => self.parse_cast(),
+            // | name=CURRENT_DATE                                                                   #specialDateTimeFunction
+            TokenKind::CURRENT_DATE => self.parse_current_date(),
+            // | name=CURRENT_TIME ('(' precision=INTEGER_VALUE ')')?                                #specialDateTimeFunction
+            TokenKind::CURRENT_TIME => self.parse_current_time(),
+            // | name=CURRENT_TIMESTAMP ('(' precision=INTEGER_VALUE ')')?                           #specialDateTimeFunction
+            TokenKind::CURRENT_TIMESTAMP => self.parse_current_timestamp(),
+            // | name=LOCALTIME ('(' precision=INTEGER_VALUE ')')?                                   #specialDateTimeFunction
+            TokenKind::LOCALTIME => self.parse_localtime(),
+            // | name=LOCALTIMESTAMP ('(' precision=INTEGER_VALUE ')')?                              #specialDateTimeFunction
+            TokenKind::LOCALTIMESTAMP => self.parse_localtimestamp(),
+            // | name=CURRENT_USER                                                                   #currentUser
+            TokenKind::CURRENT_USER => self.parse_current_user(),
+            // | name=CURRENT_PATH                                                                   #currentPath
+            TokenKind::CURRENT_PATH => self.parse_current_path(),
+            // | NORMALIZE '(' valueExpression (',' normalForm)? ')'                                 #normalize
+            TokenKind::NORMALIZE => self.parse_normalize(),
+            // | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
+            TokenKind::EXTRACT => self.parse_extract(),
+            // | GROUPING '(' (qualifiedName (',' qualifiedName)*)? ')'                              #groupingOperation
+            TokenKind::GROUPING => self.parse_grouping(),
+            // | configureExpression                                                                 #conf
+            TokenKind::CONFIGURE => self.parse_configure_expression(),
+
+            // | '(' expression (',' expression)+ ')'                                                #rowConstructor
+            // | '(' (identifier (',' identifier)*)? ')' '->' expression                             #lambda
+            // | '(' query ')'                                                                       #subqueryExpression
+            // | '(' expression ')'                                                                  #parenthesizedExpression
+            TokenKind::OpenParen => {
+                if self.peek_query_offset(1) {
+                    self.parse_subquery_expression()
+                } else if self.peek_lambda() {
+                    self.parse_lambda()
+                } else {
+                    self.parse_row_constructor_or_paren_expression()
+                }
+            }
+
+            // | interval                                                                            #intervalLiteral
+            // | identifier string                                                                   #typeConstructor
+            // | POSITION '(' valueExpression IN valueExpression ')'                                 #position
+            // | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
+            // | qualifiedName '(' ASTERISK ')' filter_? over?                                        #functionCall
+            // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
+            //     (ORDER BY sortItem (',' sortItem)*)? ')' filter_? over?                            #functionCall
+            // | identifier '->' expression                                                          #lambda
+            // | TRY_CAST '(' expression AS type_ ')'                                                 #cast
+            // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor
+            // | identifier                                                                          #columnReference
+            // | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+            TokenKind::Identifier => {
+                if let Some(name) = self.maybe_peek_predefined_name() {
+                    match name {
+                        PredefinedName::INTERVAL => {
+                            if self.peek_interval() {
+                                return self.parse_interval();
+                            }
+                        }
+                        PredefinedName::POSITION => {
+                            if self.peek_position() {
+                                return self.parse_position();
+                            }
+                        }
+                        PredefinedName::ROW => {
+                            if self.peek_row_constructor() {
+                                return self.parse_row_constructor();
+                            }
+                        }
+                        PredefinedName::TRY_CAST => {
+                            if self.peek_try_cast() {
+                                return self.parse_try_cast();
+                            }
+                        }
+                        PredefinedName::ARRAY => {
+                            if self.peek_array_constructor() {
+                                return self.parse_array_constructor();
+                            }
+                        }
+                        PredefinedName::SUBSTRING => {
+                            if self.peek_substring() {
+                                return self.parse_substring();
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+                // | identifier string                                                                   #typeConstructor
+                // | qualifiedName '(' ASTERISK ')' filter_? over?                                        #functionCall
+                // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
+                //     (ORDER BY sortItem (',' sortItem)*)? ')' filter_? over?                            #functionCall
+                // | identifier '->' expression                                                          #lambda
+                // | identifier                                                                          #columnReference
+                self.parse_identifier_start_expression()
+            }
+            // | identifier string                                                                   #typeConstructor
+            // | qualifiedName '(' ASTERISK ')' filter_? over?                                        #functionCall
+            // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
+            // | identifier '->' expression                                                          #lambda
+            // | identifier                                                                          #columnReference
+            TokenKind::QuotedIdentifier
+            | TokenKind::BackquotedIdentifier
+            | TokenKind::DigitIdentifier => self.parse_identifier_start_expression(),
+            _ => self.expected_error("Expected expression."),
+        }
+    }
+
     fn parse_primary_expression(&mut self) -> ParseTree<'a> {
+        let mut result = self.parse_primary_prefix_expression();
+        loop {
+            // suffixes
+            match self.peek() {
+                // | base=primaryExpression '.' fieldName=identifier                                     #dereference
+                TokenKind::Period => {
+                    let period = self.eat(TokenKind::Period);
+                    let field_name = self.parse_identifier();
+                    result = parse_tree::dereference(result, period, field_name)
+                }
+                // | value=primaryExpression '[' index=valueExpression ']'                               #subscript
+                TokenKind::OpenSquare => {
+                    let open_square = self.eat(TokenKind::OpenSquare);
+                    let index = self.parse_value_expression();
+                    let close_square = self.eat(TokenKind::CloseSquare);
+                    result = parse_tree::subscript(result, open_square, index, close_square)
+                }
+                _ => return result,
+            }
+        }
+    }
+
+    fn peek_lambda(&mut self) -> bool {
         panic!("TODO")
     }
 
-    fn parse_string(&mut self) -> ParseTree<'a> {
+    fn parse_lambda(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_row_constructor_or_paren_expression(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn peek_position(&mut self) -> bool {
+        panic!("TODO")
+    }
+
+    fn parse_position(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn peek_interval(&mut self) -> bool {
         panic!("TODO")
     }
 
     fn parse_interval(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn peek_row_constructor(&mut self) -> bool {
+        panic!("TODO")
+    }
+
+    fn parse_row_constructor(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn peek_try_cast(&mut self) -> bool {
+        panic!("TODO")
+    }
+
+    fn parse_try_cast(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn peek_array_constructor(&mut self) -> bool {
+        panic!("TODO")
+    }
+
+    fn parse_array_constructor(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn peek_configure_expression(&mut self) -> bool {
+        panic!("TODO")
+    }
+
+    fn parse_configure_expression(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn peek_substring(&mut self) -> bool {
+        panic!("TODO")
+    }
+
+    fn parse_substring(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_subquery_expression(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_grouping(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_extract(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_current_path(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_current_user(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_current_date(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_current_time(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_current_timestamp(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_normalize(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_localtimestamp(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_localtime(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_cast(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_case(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_exists(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_parameter(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_literal(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_type_constructor(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_subscript(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_dereference(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    // | identifier string                                                                   #typeConstructor
+    // | qualifiedName '(' ASTERISK ')' filter_? over?                                        #functionCall
+    // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
+    //     (ORDER BY sortItem (',' sortItem)*)? ')' filter_? over?                            #functionCall
+    // | identifier '->' expression                                                          #lambda
+    // | identifier                                                                          #columnReference
+    fn parse_identifier_start_expression(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_string(&mut self) -> ParseTree<'a> {
         panic!("TODO")
     }
 

@@ -29,6 +29,7 @@ pub enum TokenKind {
     Percent,
     BarBar,
     DoubleArrow,
+    Question,
 
     // literals
     String,
@@ -54,6 +55,7 @@ pub enum TokenKind {
     BY,
     CASE,
     CAST,
+    CONFIGURE,
     CONSTRAINT,
     CREATE,
     CROSS,
@@ -144,6 +146,7 @@ impl TokenKind {
             | TokenKind::BY
             | TokenKind::CASE
             | TokenKind::CAST
+            | TokenKind::CONFIGURE
             | TokenKind::CONSTRAINT
             | TokenKind::CREATE
             | TokenKind::CROSS
