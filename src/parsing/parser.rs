@@ -224,6 +224,7 @@ impl<'a> Parser<'a> {
         self.parse_delimited(TokenKind::OpenParen, parse_element, TokenKind::CloseParen)
     }
 
+    // parse non-empty separated list
     fn parse_separated_list_elements(
         &mut self,
         separator_kind: TokenKind,
@@ -241,6 +242,20 @@ impl<'a> Parser<'a> {
         elements.into_iter().zip(seperators.into_iter()).collect()
     }
 
+    // parse possibly empty separated list
+    fn parse_separated_list_elements_opt(
+        &mut self,
+        separator_kind: TokenKind,
+        peek_element: Peeker<'a>,
+        parse_element: ElementParser<'a>,
+    ) -> Vec<(ParseTree<'a>, ParseTree<'a>)> {
+        if peek_element(self) {
+            self.parse_separated_list_elements(separator_kind, parse_element)
+        } else {
+            Vec::new()
+        }
+    }
+
     // Parse non-empty separated list.
     // Terminating separator is not consumed.
     fn parse_separated_list(
@@ -255,10 +270,35 @@ impl<'a> Parser<'a> {
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
+    // Parse possibly-empty separated list.
+    // Terminating separator is not consumed.
+    fn parse_separated_list_opt(
+        &mut self,
+        separator_kind: TokenKind,
+        peek_element: Peeker<'a>,
+        parse_element: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        let start_delimiter = self.eat_empty();
+        let elements_and_separators =
+            self.parse_separated_list_elements_opt(separator_kind, peek_element, parse_element);
+        let end_delimiter = self.eat_empty();
+        parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
+    }
+
     // Parse non-empty comma separated list.
     // Terminating commas are not consumed.
     fn parse_comma_separated_list(&mut self, parse_element: ElementParser<'a>) -> ParseTree<'a> {
         self.parse_separated_list(TokenKind::Comma, parse_element)
+    }
+
+    // Parse possibly-empty comma separated list.
+    // Terminating commas are not consumed.
+    fn parse_comma_separated_list_opt(
+        &mut self,
+        peek_element: Peeker<'a>,
+        parse_element: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        self.parse_separated_list_opt(TokenKind::Comma, peek_element, parse_element)
     }
 
     // Parse delimited non-empty separated list.
@@ -273,6 +313,23 @@ impl<'a> Parser<'a> {
         let start_delimiter = self.eat(start_kind);
         let elements_and_separators =
             self.parse_separated_list_elements(separator_kind, parse_element);
+        let end_delimiter = self.eat(end_kind);
+        parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
+    }
+
+    // Parse delimited possibly-empty separated list.
+    // Terminating separator is not permitted.
+    fn parse_delimited_separated_list_opt(
+        &mut self,
+        start_kind: TokenKind,
+        separator_kind: TokenKind,
+        peek_element: Peeker<'a>,
+        parse_element: ElementParser<'a>,
+        end_kind: TokenKind,
+    ) -> ParseTree<'a> {
+        let start_delimiter = self.eat(start_kind);
+        let elements_and_separators =
+            self.parse_separated_list_elements_opt(separator_kind, peek_element, parse_element);
         let end_delimiter = self.eat(end_kind);
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
@@ -1332,12 +1389,39 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // | '(' (identifier (',' identifier)*)? ')' '->' expression                             #lambda
     fn peek_lambda(&mut self) -> bool {
-        panic!("TODO")
+        if self.peek_kind(TokenKind::OpenParen) {
+            let mut offset = 1;
+            if self.peek_identifier_offset(offset) {
+                offset += 1;
+                while self.peek_kind_offset(TokenKind::Comma, offset) {
+                    offset += 1;
+                    if self.peek_identifier_offset(offset) {
+                        offset += 1;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+            self.peek_kind_offset(TokenKind::CloseParen, offset)
+                && self.peek_kind_offset(TokenKind::Arrow, offset + 1)
+        } else {
+            false
+        }
     }
 
     fn parse_lambda(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let parameters = self.parse_delimited_separated_list_opt(
+            TokenKind::OpenParen,
+            TokenKind::Comma,
+            |parser| parser.peek_identifier(),
+            |parser| parser.parse_identifier(),
+            TokenKind::CloseParen,
+        );
+        let array = self.eat(TokenKind::Arrow);
+        let body = self.parse_expression();
+        parse_tree::lambda(parameters, array, body)
     }
 
     fn parse_row_constructor_or_paren_expression(&mut self) -> ParseTree<'a> {

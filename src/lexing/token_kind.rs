@@ -28,6 +28,7 @@ pub enum TokenKind {
     Slash,
     Percent,
     BarBar,
+    Arrow,
     DoubleArrow,
     Question,
 

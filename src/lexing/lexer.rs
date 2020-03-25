@@ -545,6 +545,8 @@ impl<'a> Lexer<'a> {
                         self.skip_to_end_of_line();
                         self.create_and_add_comment(&start, CommentKind::LineComment);
                         self.lex_token()
+                    } else if self.eat_opt('>') {
+                        self.create_token(&start, TokenKind::Arrow)
                     } else {
                         self.create_token(&start, TokenKind::Minus)
                     }

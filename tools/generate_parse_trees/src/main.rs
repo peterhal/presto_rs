@@ -238,6 +238,7 @@ fn configs() -> Vec<TreeConfig> {
             "subscript",
             vec!["operand", "open_square", "index", "close_square"],
         ),
+        ("Lambda", "lambda", vec!["parameters", "array", "body"]),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }

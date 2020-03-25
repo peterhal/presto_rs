@@ -54,6 +54,7 @@ pub enum ParseTree<'a> {
     AtTimeZone(AtTimeZone<'a>),
     Dereference(Dereference<'a>),
     Subscript(Subscript<'a>),
+    Lambda(Lambda<'a>),
 }
 
 // The core trees
@@ -1013,5 +1014,24 @@ pub fn subscript<'a>(
         open_square: Box::new(open_square),
         index: Box::new(index),
         close_square: Box::new(close_square),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Lambda<'a> {
+    pub parameters: Box<ParseTree<'a>>,
+    pub array: Box<ParseTree<'a>>,
+    pub body: Box<ParseTree<'a>>,
+}
+
+pub fn lambda<'a>(
+    parameters: ParseTree<'a>,
+    array: ParseTree<'a>,
+    body: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Lambda(Lambda {
+        parameters: Box::new(parameters),
+        array: Box::new(array),
+        body: Box::new(body),
     })
 }
