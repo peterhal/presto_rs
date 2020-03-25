@@ -2,7 +2,7 @@ use crate::lexing::{
     lexer::Lexer, position, position::Position, predefined_names, predefined_names::PredefinedName,
     text_range::TextRange, token::Token, token_kind::TokenKind,
 };
-use crate::parsing::{parse_tree, parse_tree::List, parse_tree::ParseTree};
+use crate::parsing::{parse_tree, parse_tree::ParseTree};
 
 // The location and lexing context for a Parser.
 //
@@ -1430,19 +1430,12 @@ impl<'a> Parser<'a> {
         let list =
             self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
         if list.as_list().len() == 1 {
-            match list {
-                ParseTree::List(List {
-                    start_delimiter,
-                    mut elements_and_separators,
-                    end_delimiter,
-                }) => parse_tree::ParenthesizedExpression {
-                    open_paren: start_delimiter,
-                    value: Box::new(elements_and_separators.remove(0).0),
-                    close_paren: end_delimiter,
-                }
-                .to_tree(),
-                _ => panic!("Unexpected type"),
-            }
+            let (start_delimiter, mut elements_and_separators, end_delimiter) = list.unbox_list();
+            parse_tree::parenthesized_expression(
+                start_delimiter,
+                elements_and_separators.remove(0).0,
+                end_delimiter,
+            )
         } else {
             parse_tree::row_constructor(list)
         }

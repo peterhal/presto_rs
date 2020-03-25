@@ -102,6 +102,20 @@ impl<'a> List<'a> {
     pub fn len(&self) -> usize {
         self.elements_and_separators.len()
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        Vec<(ParseTree<'a>, ParseTree<'a>)>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.start_delimiter,
+            self.elements_and_separators,
+            *self.end_delimiter,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -119,6 +133,19 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
 
 // core impl
 impl<'a> ParseTree<'a> {
+    pub fn unbox_list(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        Vec<(ParseTree<'a>, ParseTree<'a>)>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::List(value) => value.unbox(),
+            _ => panic!("Expected List"),
+        }
+    }
+
     pub fn is_list(&self) -> bool {
         if let ParseTree::List(_) = self {
             true
@@ -199,6 +226,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_query(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Query(tree) => tree.unbox(),
+            _ => panic!("Expected Query"),
+        }
+    }
+
     pub fn is_with(&self) -> bool {
         if let ParseTree::With(_) = self {
             true
@@ -212,6 +246,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected With")
+        }
+    }
+
+    pub fn unbox_with(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::With(tree) => tree.unbox(),
+            _ => panic!("Expected With"),
         }
     }
 
@@ -231,6 +272,22 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_named_query(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::NamedQuery(tree) => tree.unbox(),
+            _ => panic!("Expected NamedQuery"),
+        }
+    }
+
     pub fn is_query_no_with(&self) -> bool {
         if let ParseTree::QueryNoWith(_) = self {
             true
@@ -244,6 +301,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected QueryNoWith")
+        }
+    }
+
+    pub fn unbox_query_no_with(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::QueryNoWith(tree) => tree.unbox(),
+            _ => panic!("Expected QueryNoWith"),
         }
     }
 
@@ -263,6 +327,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_order_by(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::OrderBy(tree) => tree.unbox(),
+            _ => panic!("Expected OrderBy"),
+        }
+    }
+
     pub fn is_limit(&self) -> bool {
         if let ParseTree::Limit(_) = self {
             true
@@ -276,6 +347,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected Limit")
+        }
+    }
+
+    pub fn unbox_limit(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Limit(tree) => tree.unbox(),
+            _ => panic!("Expected Limit"),
         }
     }
 
@@ -295,6 +373,15 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_query_set_operation(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::QuerySetOperation(tree) => tree.unbox(),
+            _ => panic!("Expected QuerySetOperation"),
+        }
+    }
+
     pub fn is_sort_item(&self) -> bool {
         if let ParseTree::SortItem(_) = self {
             true
@@ -308,6 +395,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected SortItem")
+        }
+    }
+
+    pub fn unbox_sort_item(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::SortItem(tree) => tree.unbox(),
+            _ => panic!("Expected SortItem"),
         }
     }
 
@@ -327,6 +421,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_subquery(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Subquery(tree) => tree.unbox(),
+            _ => panic!("Expected Subquery"),
+        }
+    }
+
     pub fn is_inline_table(&self) -> bool {
         if let ParseTree::InlineTable(_) = self {
             true
@@ -340,6 +441,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected InlineTable")
+        }
+    }
+
+    pub fn unbox_inline_table(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::InlineTable(tree) => tree.unbox(),
+            _ => panic!("Expected InlineTable"),
         }
     }
 
@@ -359,6 +467,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_table(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Table(tree) => tree.unbox(),
+            _ => panic!("Expected Table"),
+        }
+    }
+
     pub fn is_query_specification(&self) -> bool {
         if let ParseTree::QuerySpecification(_) = self {
             true
@@ -372,6 +487,28 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected QuerySpecification")
+        }
+    }
+
+    pub fn unbox_query_specification(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::QuerySpecification(tree) => tree.unbox(),
+            _ => panic!("Expected QuerySpecification"),
         }
     }
 
@@ -391,6 +528,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_qualified_name(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::QualifiedName(tree) => tree.unbox(),
+            _ => panic!("Expected QualifiedName"),
+        }
+    }
+
     pub fn is_select_all(&self) -> bool {
         if let ParseTree::SelectAll(_) = self {
             true
@@ -404,6 +548,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected SelectAll")
+        }
+    }
+
+    pub fn unbox_select_all(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::SelectAll(tree) => tree.unbox(),
+            _ => panic!("Expected SelectAll"),
         }
     }
 
@@ -423,6 +574,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_qualified_select_all(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::QualifiedSelectAll(tree) => tree.unbox(),
+            _ => panic!("Expected QualifiedSelectAll"),
+        }
+    }
+
     pub fn is_select_item(&self) -> bool {
         if let ParseTree::SelectItem(_) = self {
             true
@@ -436,6 +594,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected SelectItem")
+        }
+    }
+
+    pub fn unbox_select_item(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::SelectItem(tree) => tree.unbox(),
+            _ => panic!("Expected SelectItem"),
         }
     }
 
@@ -455,6 +620,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_subquery_relation(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::SubqueryRelation(tree) => tree.unbox(),
+            _ => panic!("Expected SubqueryRelation"),
+        }
+    }
+
     pub fn is_parenthesized_relation(&self) -> bool {
         if let ParseTree::ParenthesizedRelation(_) = self {
             true
@@ -468,6 +640,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected ParenthesizedRelation")
+        }
+    }
+
+    pub fn unbox_parenthesized_relation(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::ParenthesizedRelation(tree) => tree.unbox(),
+            _ => panic!("Expected ParenthesizedRelation"),
         }
     }
 
@@ -487,6 +666,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_table_name(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::TableName(tree) => tree.unbox(),
+            _ => panic!("Expected TableName"),
+        }
+    }
+
     pub fn is_lateral(&self) -> bool {
         if let ParseTree::Lateral(_) = self {
             true
@@ -500,6 +686,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected Lateral")
+        }
+    }
+
+    pub fn unbox_lateral(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Lateral(tree) => tree.unbox(),
+            _ => panic!("Expected Lateral"),
         }
     }
 
@@ -519,6 +712,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_unnest(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Unnest(tree) => tree.unbox(),
+            _ => panic!("Expected Unnest"),
+        }
+    }
+
     pub fn is_sampled_relation(&self) -> bool {
         if let ParseTree::SampledRelation(_) = self {
             true
@@ -532,6 +732,22 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected SampledRelation")
+        }
+    }
+
+    pub fn unbox_sampled_relation(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::SampledRelation(tree) => tree.unbox(),
+            _ => panic!("Expected SampledRelation"),
         }
     }
 
@@ -551,6 +767,15 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_aliased_relation(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::AliasedRelation(tree) => tree.unbox(),
+            _ => panic!("Expected AliasedRelation"),
+        }
+    }
+
     pub fn is_cross_join(&self) -> bool {
         if let ParseTree::CrossJoin(_) = self {
             true
@@ -564,6 +789,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected CrossJoin")
+        }
+    }
+
+    pub fn unbox_cross_join(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::CrossJoin(tree) => tree.unbox(),
+            _ => panic!("Expected CrossJoin"),
         }
     }
 
@@ -583,6 +815,21 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_join(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Join(tree) => tree.unbox(),
+            _ => panic!("Expected Join"),
+        }
+    }
+
     pub fn is_natural_join(&self) -> bool {
         if let ParseTree::NaturalJoin(_) = self {
             true
@@ -596,6 +843,21 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected NaturalJoin")
+        }
+    }
+
+    pub fn unbox_natural_join(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::NaturalJoin(tree) => tree.unbox(),
+            _ => panic!("Expected NaturalJoin"),
         }
     }
 
@@ -615,6 +877,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_outer_join_kind(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::OuterJoinKind(tree) => tree.unbox(),
+            _ => panic!("Expected OuterJoinKind"),
+        }
+    }
+
     pub fn is_on_join_criteria(&self) -> bool {
         if let ParseTree::OnJoinCriteria(_) = self {
             true
@@ -628,6 +897,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected OnJoinCriteria")
+        }
+    }
+
+    pub fn unbox_on_join_criteria(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::OnJoinCriteria(tree) => tree.unbox(),
+            _ => panic!("Expected OnJoinCriteria"),
         }
     }
 
@@ -647,6 +923,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_using_join_criteria(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::UsingJoinCriteria(tree) => tree.unbox(),
+            _ => panic!("Expected UsingJoinCriteria"),
+        }
+    }
+
     pub fn is_group_by(&self) -> bool {
         if let ParseTree::GroupBy(_) = self {
             true
@@ -660,6 +943,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected GroupBy")
+        }
+    }
+
+    pub fn unbox_group_by(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::GroupBy(tree) => tree.unbox(),
+            _ => panic!("Expected GroupBy"),
         }
     }
 
@@ -679,6 +969,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_rollup(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Rollup(tree) => tree.unbox(),
+            _ => panic!("Expected Rollup"),
+        }
+    }
+
     pub fn is_cube(&self) -> bool {
         if let ParseTree::Cube(_) = self {
             true
@@ -692,6 +989,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected Cube")
+        }
+    }
+
+    pub fn unbox_cube(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Cube(tree) => tree.unbox(),
+            _ => panic!("Expected Cube"),
         }
     }
 
@@ -711,6 +1015,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_grouping_sets(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::GroupingSets(tree) => tree.unbox(),
+            _ => panic!("Expected GroupingSets"),
+        }
+    }
+
     pub fn is_binary_expression(&self) -> bool {
         if let ParseTree::BinaryExpression(_) = self {
             true
@@ -724,6 +1035,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected BinaryExpression")
+        }
+    }
+
+    pub fn unbox_binary_expression(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::BinaryExpression(tree) => tree.unbox(),
+            _ => panic!("Expected BinaryExpression"),
         }
     }
 
@@ -743,6 +1061,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_unary_expression(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::UnaryExpression(tree) => tree.unbox(),
+            _ => panic!("Expected UnaryExpression"),
+        }
+    }
+
     pub fn is_quantified_comparison(&self) -> bool {
         if let ParseTree::QuanitifiedComparison(_) = self {
             true
@@ -756,6 +1081,22 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected QuanitifiedComparison")
+        }
+    }
+
+    pub fn unbox_quantified_comparison(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::QuanitifiedComparison(tree) => tree.unbox(),
+            _ => panic!("Expected QuanitifiedComparison"),
         }
     }
 
@@ -775,6 +1116,15 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_null_predicate(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::NullPredicate(tree) => tree.unbox(),
+            _ => panic!("Expected NullPredicate"),
+        }
+    }
+
     pub fn is_distinct_from(&self) -> bool {
         if let ParseTree::DistinctFrom(_) = self {
             true
@@ -788,6 +1138,15 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected DistinctFrom")
+        }
+    }
+
+    pub fn unbox_distinct_from(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::DistinctFrom(tree) => tree.unbox(),
+            _ => panic!("Expected DistinctFrom"),
         }
     }
 
@@ -807,6 +1166,22 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_between(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Between(tree) => tree.unbox(),
+            _ => panic!("Expected Between"),
+        }
+    }
+
     pub fn is_like(&self) -> bool {
         if let ParseTree::Like(_) = self {
             true
@@ -820,6 +1195,22 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected Like")
+        }
+    }
+
+    pub fn unbox_like(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Like(tree) => tree.unbox(),
+            _ => panic!("Expected Like"),
         }
     }
 
@@ -839,6 +1230,22 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_in_subquery(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::InSubquery(tree) => tree.unbox(),
+            _ => panic!("Expected InSubquery"),
+        }
+    }
+
     pub fn is_in_list(&self) -> bool {
         if let ParseTree::InList(_) = self {
             true
@@ -852,6 +1259,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected InList")
+        }
+    }
+
+    pub fn unbox_in_list(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::InList(tree) => tree.unbox(),
+            _ => panic!("Expected InList"),
         }
     }
 
@@ -871,6 +1285,21 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_at_time_zone(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::AtTimeZone(tree) => tree.unbox(),
+            _ => panic!("Expected AtTimeZone"),
+        }
+    }
+
     pub fn is_dereference(&self) -> bool {
         if let ParseTree::Dereference(_) = self {
             true
@@ -884,6 +1313,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected Dereference")
+        }
+    }
+
+    pub fn unbox_dereference(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Dereference(tree) => tree.unbox(),
+            _ => panic!("Expected Dereference"),
         }
     }
 
@@ -903,6 +1339,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_subscript(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Subscript(tree) => tree.unbox(),
+            _ => panic!("Expected Subscript"),
+        }
+    }
+
     pub fn is_lambda(&self) -> bool {
         if let ParseTree::Lambda(_) = self {
             true
@@ -916,6 +1359,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected Lambda")
+        }
+    }
+
+    pub fn unbox_lambda(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Lambda(tree) => tree.unbox(),
+            _ => panic!("Expected Lambda"),
         }
     }
 
@@ -935,6 +1385,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_literal(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::Literal(tree) => tree.unbox(),
+            _ => panic!("Expected Literal"),
+        }
+    }
+
     pub fn is_row_constructor(&self) -> bool {
         if let ParseTree::RowConstructor(_) = self {
             true
@@ -951,6 +1408,13 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn unbox_row_constructor(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::RowConstructor(tree) => tree.unbox(),
+            _ => panic!("Expected RowConstructor"),
+        }
+    }
+
     pub fn is_parenthesized_expression(&self) -> bool {
         if let ParseTree::ParenthesizedExpression(_) = self {
             true
@@ -964,6 +1428,13 @@ impl<'a> ParseTree<'a> {
             value
         } else {
             panic!("Expected ParenthesizedExpression")
+        }
+    }
+
+    pub fn unbox_parenthesized_expression(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::ParenthesizedExpression(tree) => tree.unbox(),
+            _ => panic!("Expected ParenthesizedExpression"),
         }
     }
 }
@@ -985,6 +1456,10 @@ pub fn query<'a>(with: ParseTree<'a>, query_no_with: ParseTree<'a>) -> ParseTree
 impl<'a> Query<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Query(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.with, *self.query_no_with)
     }
 }
 
@@ -1010,6 +1485,10 @@ pub fn with<'a>(
 impl<'a> With<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::With(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.with, *self.recursive, *self.named_queries)
     }
 }
 
@@ -1045,6 +1524,26 @@ impl<'a> NamedQuery<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::NamedQuery(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.name,
+            *self.column_aliases_opt,
+            *self.as_,
+            *self.open_paren,
+            *self.query,
+            *self.close_paren,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1069,6 +1568,10 @@ pub fn query_no_with<'a>(
 impl<'a> QueryNoWith<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QueryNoWith(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.query_term, *self.order_by_opt, *self.limit_opt)
     }
 }
 
@@ -1095,6 +1598,10 @@ impl<'a> OrderBy<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::OrderBy(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.order, *self.by, *self.sort_items)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1113,6 +1620,10 @@ pub fn limit<'a>(limit: ParseTree<'a>, value: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> Limit<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Limit(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.limit, *self.value)
     }
 }
 
@@ -1142,6 +1653,15 @@ impl<'a> QuerySetOperation<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QuerySetOperation(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.left,
+            *self.operator,
+            *self.set_quantifier_opt,
+            *self.right,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1170,6 +1690,15 @@ impl<'a> SortItem<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SortItem(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.expression,
+            *self.ordering_opt,
+            *self.nulls,
+            *self.null_ordering_opt,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1195,6 +1724,10 @@ impl<'a> Subquery<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Subquery(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.open_paren, *self.query_no_with, *self.close_paren)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1214,6 +1747,10 @@ impl<'a> InlineTable<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::InlineTable(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.values, *self.expressions)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1232,6 +1769,10 @@ pub fn table<'a>(table: ParseTree<'a>, qualified_name: ParseTree<'a>) -> ParseTr
 impl<'a> Table<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Table(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.table, *self.qualified_name)
     }
 }
 
@@ -1285,6 +1826,38 @@ impl<'a> QuerySpecification<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QuerySpecification(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.select,
+            *self.set_quantifier_opt,
+            *self.select_items,
+            *self.from,
+            *self.relations,
+            *self.where_,
+            *self.where_predicate,
+            *self.group,
+            *self.by,
+            *self.group_by,
+            *self.having,
+            *self.having_predicate,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1302,6 +1875,10 @@ impl<'a> QualifiedName<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QualifiedName(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.names,)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1318,6 +1895,10 @@ pub fn select_all<'a>(asterisk: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> SelectAll<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SelectAll(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.asterisk,)
     }
 }
 
@@ -1344,6 +1925,10 @@ impl<'a> QualifiedSelectAll<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QualifiedSelectAll(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.qualifier, *self.period, *self.asterisk)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1368,6 +1953,10 @@ pub fn select_item<'a>(
 impl<'a> SelectItem<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SelectItem(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.expression, *self.as_, *self.identifier)
     }
 }
 
@@ -1394,6 +1983,10 @@ impl<'a> SubqueryRelation<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SubqueryRelation(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.open_paren, *self.query, *self.close_paren)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1419,6 +2012,10 @@ impl<'a> ParenthesizedRelation<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::ParenthesizedRelation(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.open_paren, *self.relation, *self.close_paren)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1435,6 +2032,10 @@ pub fn table_name<'a>(name: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> TableName<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::TableName(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.name,)
     }
 }
 
@@ -1464,6 +2065,15 @@ impl<'a> Lateral<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Lateral(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.lateral,
+            *self.open_paren,
+            *self.query,
+            *self.close_paren,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1491,6 +2101,15 @@ pub fn unnest<'a>(
 impl<'a> Unnest<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Unnest(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.unnest,
+            *self.expressions,
+            *self.with,
+            *self.ordinality,
+        )
     }
 }
 
@@ -1526,6 +2145,26 @@ impl<'a> SampledRelation<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SampledRelation(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.aliased_relation,
+            *self.tablesample,
+            *self.sample_type,
+            *self.open_paren,
+            *self.expression,
+            *self.close_paren,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1554,6 +2193,15 @@ impl<'a> AliasedRelation<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::AliasedRelation(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.relation_primary,
+            *self.as_opt,
+            *self.identifier,
+            *self.column_aliases_opt,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1581,6 +2229,10 @@ pub fn cross_join<'a>(
 impl<'a> CrossJoin<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::CrossJoin(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.left, *self.cross, *self.join, *self.right)
     }
 }
 
@@ -1613,6 +2265,24 @@ impl<'a> Join<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Join(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.left,
+            *self.join_type,
+            *self.join,
+            *self.right,
+            *self.join_criteria,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1644,6 +2314,24 @@ impl<'a> NaturalJoin<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::NaturalJoin(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.left,
+            *self.natural,
+            *self.join_type,
+            *self.join,
+            *self.right,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1662,6 +2350,10 @@ pub fn outer_join_kind<'a>(kind: ParseTree<'a>, outer_opt: ParseTree<'a>) -> Par
 impl<'a> OuterJoinKind<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::OuterJoinKind(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.kind, *self.outer_opt)
     }
 }
 
@@ -1682,6 +2374,10 @@ impl<'a> OnJoinCriteria<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::OnJoinCriteria(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.on, *self.predicate)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1700,6 +2396,10 @@ pub fn using_join_criteria<'a>(using: ParseTree<'a>, names: ParseTree<'a>) -> Pa
 impl<'a> UsingJoinCriteria<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::UsingJoinCriteria(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.using, *self.names)
     }
 }
 
@@ -1723,6 +2423,10 @@ impl<'a> GroupBy<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::GroupBy(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.set_quantifier_opt, *self.grouping_elements)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1742,6 +2446,10 @@ impl<'a> Rollup<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Rollup(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.rollup, *self.expressions)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1760,6 +2468,10 @@ pub fn cube<'a>(cube: ParseTree<'a>, expressions: ParseTree<'a>) -> ParseTree<'a
 impl<'a> Cube<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Cube(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.cube, *self.expressions)
     }
 }
 
@@ -1786,6 +2498,10 @@ impl<'a> GroupingSets<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::GroupingSets(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.grouping, *self.sets, *self.grouping_sets)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1811,6 +2527,10 @@ impl<'a> BinaryExpression<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::BinaryExpression(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.left, *self.operator, *self.right)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1829,6 +2549,10 @@ pub fn unary_expression<'a>(operator: ParseTree<'a>, operand: ParseTree<'a>) -> 
 impl<'a> UnaryExpression<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::UnaryExpression(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.operator, *self.operand)
     }
 }
 
@@ -1864,6 +2588,26 @@ impl<'a> QuanitifiedComparison<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QuanitifiedComparison(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.operand,
+            *self.operator,
+            *self.comparison_quantifier,
+            *self.open_paren,
+            *self.query,
+            *self.close_paren,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1892,6 +2636,10 @@ impl<'a> NullPredicate<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::NullPredicate(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.value, *self.is, *self.not_opt, *self.null)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1919,6 +2667,10 @@ pub fn distinct_from<'a>(
 impl<'a> DistinctFrom<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::DistinctFrom(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.left, *self.distinct, *self.from, *self.right)
     }
 }
 
@@ -1954,6 +2706,26 @@ impl<'a> Between<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Between(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.value,
+            *self.not_opt,
+            *self.between,
+            *self.lower,
+            *self.and,
+            *self.upper,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1987,6 +2759,26 @@ pub fn like<'a>(
 impl<'a> Like<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Like(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.value,
+            *self.not_opt,
+            *self.like,
+            *self.patrern,
+            *self.escape_opt,
+            *self.escape_value_opt,
+        )
     }
 }
 
@@ -2022,6 +2814,26 @@ impl<'a> InSubquery<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::InSubquery(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.value,
+            *self.not_opt,
+            *self.in_,
+            *self.open_paren,
+            *self.query,
+            *self.close_paren,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2049,6 +2861,10 @@ pub fn in_list<'a>(
 impl<'a> InList<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::InList(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.value, *self.not_opt, *self.in_, *self.expressions)
     }
 }
 
@@ -2081,6 +2897,24 @@ impl<'a> AtTimeZone<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::AtTimeZone(self)
     }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.value,
+            *self.at,
+            *self.time,
+            *self.zone,
+            *self.specifier,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2105,6 +2939,10 @@ pub fn dereference<'a>(
 impl<'a> Dereference<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Dereference(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.object, *self.period, *self.field_name)
     }
 }
 
@@ -2134,6 +2972,15 @@ impl<'a> Subscript<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Subscript(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.operand,
+            *self.open_square,
+            *self.index,
+            *self.close_square,
+        )
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2159,6 +3006,10 @@ impl<'a> Lambda<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Lambda(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.parameters, *self.array, *self.body)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2176,6 +3027,10 @@ impl<'a> Literal<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Literal(self)
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.value,)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -2192,6 +3047,10 @@ pub fn row_constructor<'a>(elements: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> RowConstructor<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::RowConstructor(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.elements,)
     }
 }
 
@@ -2217,5 +3076,9 @@ pub fn parenthesized_expression<'a>(
 impl<'a> ParenthesizedExpression<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::ParenthesizedExpression(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.open_paren, *self.value, *self.close_paren)
     }
 }

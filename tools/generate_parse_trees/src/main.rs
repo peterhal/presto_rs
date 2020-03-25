@@ -310,6 +310,14 @@ impl<'a> List<'a> {
     pub fn len(&self) -> usize {
         self.elements_and_separators.len()
     }
+
+    pub fn unbox(self) -> (ParseTree<'a>, Vec<(ParseTree<'a>, ParseTree<'a>)>, ParseTree<'a>) {
+        (
+            *self.start_delimiter,
+            self.elements_and_separators,
+            *self.end_delimiter,
+        )
+    }
 }
 
 "#;
@@ -330,6 +338,13 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
 
 const CORE_IMPL: &str = r#"// core impl
 impl<'a> ParseTree<'a> {
+    pub fn unbox_list(self) -> (ParseTree<'a>, Vec<(ParseTree<'a>, ParseTree<'a>)>, ParseTree<'a>) {
+        match self {
+            ParseTree::List(value) => value.unbox(),
+            _ => panic!("Expected List"),
+        }
+    }
+
 "#;
 
 fn print_is_as_impl(ctor_name: &str, class_name: &str) {
@@ -358,6 +373,25 @@ fn print_is_as_impl(ctor_name: &str, class_name: &str) {
     );
 }
 
+fn print_unbox(ctor_name: &str, class_name: &str, fields: &Vec<&str>) {
+    // unbox
+    print!("    pub fn unbox_{}(self) -> (\n", ctor_name);
+    for _ in 0..fields.len() {
+        print!("        ParseTree<'a>,\n");
+    }
+    print!(") {{\n");
+    print!(
+        r#"        match self {{
+            ParseTree::{0}(tree) => tree.unbox(),
+            _ => panic!("Expected {0}"),
+        }}
+    }}
+
+"#,
+        class_name
+    );
+}
+
 fn main() {
     let cs = configs();
 
@@ -382,8 +416,9 @@ fn main() {
     print_is_as_impl("token", "Token");
     print_is_as_impl("error", "Error");
     for config in &cs {
-        let (class_name, ctor_name, _) = &config;
+        let (class_name, ctor_name, fields) = &config;
         print_is_as_impl(ctor_name, class_name);
+        print_unbox(ctor_name, class_name, fields);
     }
     print!("{}", END);
 
@@ -412,15 +447,31 @@ fn main() {
         print!("{}", END);
 
         // tree impl
+        // to_tree
+        print!("impl<'a> {}<'a> {{\n", class_name);
         print!(
-            r#"impl<'a> {0}<'a> {{
-    pub fn to_tree(self) -> ParseTree<'a> {{
-        ParseTree::{0}(self)
+            r#"    pub fn to_tree(self) -> ParseTree<'a> {{
+        ParseTree::{}(self)
     }}
-}}
 
 "#,
             class_name
         );
+
+        // unbox
+        print!("    pub fn unbox(self) -> (\n");
+        for _ in 0..fields.len() {
+            print!("        ParseTree<'a>,\n");
+        }
+        print!(") {{\n");
+        print!("        (\n");
+        for field_name in fields {
+            print!("        *self.{0},\n", field_name);
+        }
+        print!("    )\n");
+        print!("{}", END);
+
+        // end impl
+        print!("{}", END);
     }
 }
