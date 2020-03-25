@@ -345,16 +345,16 @@ fn print_is_as_impl(ctor_name: &str, class_name: &str) {
 
     // as_*
     print!(
-        r#"    pub fn as_{}(&self) -> &{} {{
-        if let ParseTree::{}(value) = self {{
+        r#"    pub fn as_{0}(&self) -> &{1} {{
+        if let ParseTree::{1}(value) = self {{
             value
         }} else {{
-            panic!("Expected {}")
+            panic!("Expected {1}")
         }}
     }}
 
     "#,
-        ctor_name, class_name, class_name, class_name
+        ctor_name, class_name
     );
 }
 
@@ -365,7 +365,7 @@ fn main() {
     print!("{}", FILE_HEADER);
     for config in &cs {
         let class_name = config.0;
-        print!("    {}({}<'a>),\n", class_name, class_name);
+        print!("    {0}({0}<'a>),\n", class_name);
     }
     print!("{}", END);
 
@@ -404,23 +404,23 @@ fn main() {
             print!("    {}: ParseTree<'a>,\n", field_name);
         }
         print!(") -> ParseTree<'a> {{\n");
-        print!("    ParseTree::{}({} {{\n", class_name, class_name);
+        print!("    ParseTree::{0}({0} {{\n", class_name);
         for field_name in fields {
-            print!("        {}: Box::new({}),\n", field_name, field_name);
+            print!("        {0}: Box::new({0}),\n", field_name);
         }
         print!("    }})\n");
         print!("{}", END);
 
         // tree impl
         print!(
-            r#"impl<'a> {}<'a> {{
+            r#"impl<'a> {0}<'a> {{
     pub fn to_tree(self) -> ParseTree<'a> {{
-        ParseTree::{}(self)
+        ParseTree::{0}(self)
     }}
 }}
 
 "#,
-            class_name, class_name
+            class_name
         );
     }
 }
