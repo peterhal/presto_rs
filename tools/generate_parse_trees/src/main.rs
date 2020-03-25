@@ -246,6 +246,45 @@ fn configs() -> Vec<TreeConfig> {
             "parenthesized_expression",
             vec!["open_paren", "value", "close_paren"],
         ),
+        ("Identifier", "identifier", vec!["value"]),
+        (
+            "FunctionCall",
+            "function_call",
+            vec![
+                "name",
+                "open_paren",
+                "set_quantifier_opt",
+                "arguments",
+                "order_by_opt",
+                "close_paren",
+                "filter_opt",
+                "over_opt",
+            ],
+        ),
+        (
+            "Filter",
+            "filter",
+            vec!["filter", "open_paren", "where_", "predicate", "close_paren"],
+        ),
+        (
+            "Over",
+            "over",
+            vec![
+                "over",
+                "open_paren",
+                "partition_opt",
+                "by",
+                "partitions",
+                "order_by_opt",
+                "window_frame",
+                "close_paren",
+            ],
+        ),
+        (
+            "WindowFrame",
+            "window_frame",
+            vec!["frame_type", "between_opt", "start", "and", "end"],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }

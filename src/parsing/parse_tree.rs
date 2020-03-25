@@ -58,6 +58,11 @@ pub enum ParseTree<'a> {
     Literal(Literal<'a>),
     RowConstructor(RowConstructor<'a>),
     ParenthesizedExpression(ParenthesizedExpression<'a>),
+    Identifier(Identifier<'a>),
+    FunctionCall(FunctionCall<'a>),
+    Filter(Filter<'a>),
+    Over(Over<'a>),
+    WindowFrame(WindowFrame<'a>),
 }
 
 // The core trees
@@ -1435,6 +1440,159 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::ParenthesizedExpression(tree) => tree.unbox(),
             _ => panic!("Expected ParenthesizedExpression"),
+        }
+    }
+
+    pub fn is_identifier(&self) -> bool {
+        if let ParseTree::Identifier(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_identifier(&self) -> &Identifier {
+        if let ParseTree::Identifier(value) = self {
+            value
+        } else {
+            panic!("Expected Identifier")
+        }
+    }
+
+    pub fn unbox_identifier(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::Identifier(tree) => tree.unbox(),
+            _ => panic!("Expected Identifier"),
+        }
+    }
+
+    pub fn is_function_call(&self) -> bool {
+        if let ParseTree::FunctionCall(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_function_call(&self) -> &FunctionCall {
+        if let ParseTree::FunctionCall(value) = self {
+            value
+        } else {
+            panic!("Expected FunctionCall")
+        }
+    }
+
+    pub fn unbox_function_call(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::FunctionCall(tree) => tree.unbox(),
+            _ => panic!("Expected FunctionCall"),
+        }
+    }
+
+    pub fn is_filter(&self) -> bool {
+        if let ParseTree::Filter(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_filter(&self) -> &Filter {
+        if let ParseTree::Filter(value) = self {
+            value
+        } else {
+            panic!("Expected Filter")
+        }
+    }
+
+    pub fn unbox_filter(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Filter(tree) => tree.unbox(),
+            _ => panic!("Expected Filter"),
+        }
+    }
+
+    pub fn is_over(&self) -> bool {
+        if let ParseTree::Over(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_over(&self) -> &Over {
+        if let ParseTree::Over(value) = self {
+            value
+        } else {
+            panic!("Expected Over")
+        }
+    }
+
+    pub fn unbox_over(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Over(tree) => tree.unbox(),
+            _ => panic!("Expected Over"),
+        }
+    }
+
+    pub fn is_window_frame(&self) -> bool {
+        if let ParseTree::WindowFrame(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_window_frame(&self) -> &WindowFrame {
+        if let ParseTree::WindowFrame(value) = self {
+            value
+        } else {
+            panic!("Expected WindowFrame")
+        }
+    }
+
+    pub fn unbox_window_frame(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::WindowFrame(tree) => tree.unbox(),
+            _ => panic!("Expected WindowFrame"),
         }
     }
 }
@@ -3080,5 +3238,252 @@ impl<'a> ParenthesizedExpression<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.value, *self.close_paren)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Identifier<'a> {
+    pub value: Box<ParseTree<'a>>,
+}
+
+pub fn identifier<'a>(value: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Identifier(Identifier {
+        value: Box::new(value),
+    })
+}
+
+impl<'a> Identifier<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Identifier(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.value,)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionCall<'a> {
+    pub name: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub set_quantifier_opt: Box<ParseTree<'a>>,
+    pub arguments: Box<ParseTree<'a>>,
+    pub order_by_opt: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+    pub filter_opt: Box<ParseTree<'a>>,
+    pub over_opt: Box<ParseTree<'a>>,
+}
+
+pub fn function_call<'a>(
+    name: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    set_quantifier_opt: ParseTree<'a>,
+    arguments: ParseTree<'a>,
+    order_by_opt: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+    filter_opt: ParseTree<'a>,
+    over_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::FunctionCall(FunctionCall {
+        name: Box::new(name),
+        open_paren: Box::new(open_paren),
+        set_quantifier_opt: Box::new(set_quantifier_opt),
+        arguments: Box::new(arguments),
+        order_by_opt: Box::new(order_by_opt),
+        close_paren: Box::new(close_paren),
+        filter_opt: Box::new(filter_opt),
+        over_opt: Box::new(over_opt),
+    })
+}
+
+impl<'a> FunctionCall<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::FunctionCall(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.name,
+            *self.open_paren,
+            *self.set_quantifier_opt,
+            *self.arguments,
+            *self.order_by_opt,
+            *self.close_paren,
+            *self.filter_opt,
+            *self.over_opt,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Filter<'a> {
+    pub filter: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub where_: Box<ParseTree<'a>>,
+    pub predicate: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn filter<'a>(
+    filter: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    where_: ParseTree<'a>,
+    predicate: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Filter(Filter {
+        filter: Box::new(filter),
+        open_paren: Box::new(open_paren),
+        where_: Box::new(where_),
+        predicate: Box::new(predicate),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Filter<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Filter(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.filter,
+            *self.open_paren,
+            *self.where_,
+            *self.predicate,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Over<'a> {
+    pub over: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub partition_opt: Box<ParseTree<'a>>,
+    pub by: Box<ParseTree<'a>>,
+    pub partitions: Box<ParseTree<'a>>,
+    pub order_by_opt: Box<ParseTree<'a>>,
+    pub window_frame: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn over<'a>(
+    over: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    partition_opt: ParseTree<'a>,
+    by: ParseTree<'a>,
+    partitions: ParseTree<'a>,
+    order_by_opt: ParseTree<'a>,
+    window_frame: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Over(Over {
+        over: Box::new(over),
+        open_paren: Box::new(open_paren),
+        partition_opt: Box::new(partition_opt),
+        by: Box::new(by),
+        partitions: Box::new(partitions),
+        order_by_opt: Box::new(order_by_opt),
+        window_frame: Box::new(window_frame),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Over<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Over(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.over,
+            *self.open_paren,
+            *self.partition_opt,
+            *self.by,
+            *self.partitions,
+            *self.order_by_opt,
+            *self.window_frame,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WindowFrame<'a> {
+    pub frame_type: Box<ParseTree<'a>>,
+    pub between_opt: Box<ParseTree<'a>>,
+    pub start: Box<ParseTree<'a>>,
+    pub and: Box<ParseTree<'a>>,
+    pub end: Box<ParseTree<'a>>,
+}
+
+pub fn window_frame<'a>(
+    frame_type: ParseTree<'a>,
+    between_opt: ParseTree<'a>,
+    start: ParseTree<'a>,
+    and: ParseTree<'a>,
+    end: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::WindowFrame(WindowFrame {
+        frame_type: Box::new(frame_type),
+        between_opt: Box::new(between_opt),
+        start: Box::new(start),
+        and: Box::new(and),
+        end: Box::new(end),
+    })
+}
+
+impl<'a> WindowFrame<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::WindowFrame(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.frame_type,
+            *self.between_opt,
+            *self.start,
+            *self.and,
+            *self.end,
+        )
     }
 }

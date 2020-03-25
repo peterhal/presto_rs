@@ -950,6 +950,11 @@ impl<'a> Parser<'a> {
         self.parse_boolean_expression()
     }
 
+    fn peek_expression(&mut self) -> bool {
+        // TODO: tighten this up
+        !self.peek_kind(TokenKind::CloseParen)
+    }
+
     // booleanExpression
     // : valueExpression predicate[$valueExpression.ctx]?             #predicated
     // | NOT booleanExpression                                        #logicalNot
@@ -1580,6 +1585,155 @@ impl<'a> Parser<'a> {
     // | identifier '->' expression                                                          #lambda
     // | identifier                                                                          #columnReference
     fn parse_identifier_start_expression(&mut self) -> ParseTree<'a> {
+        match self.peek_offset(1) {
+            TokenKind::Arrow => self.parse_parenless_lambda(),
+            TokenKind::String | TokenKind::UnicodeString => self.parse_type_constructor(),
+            _ => {
+                if self.peek_function_call() {
+                    self.parse_function_call()
+                } else {
+                    parse_tree::identifier(self.eat_token())
+                }
+            }
+        }
+    }
+
+    fn parse_parenless_lambda(&mut self) -> ParseTree<'a> {
+        let parameter = self.eat_token();
+        let arrow = self.eat(TokenKind::Arrow);
+        let body = self.parse_expression();
+        parse_tree::lambda(parameter, arrow, body)
+    }
+
+    fn peek_function_call(&mut self) -> bool {
+        let mut offset = 1;
+        while self.peek_kind(TokenKind::Period) {
+            offset += 1;
+            if self.peek_identifier_offset(offset) {
+                offset += 1;
+            } else {
+                return false;
+            }
+        }
+        self.peek_kind_offset(TokenKind::OpenParen, offset)
+    }
+
+    fn parse_function_call(&mut self) -> ParseTree<'a> {
+        let name = self.parse_qualified_name();
+        let open_paren = self.eat(TokenKind::OpenParen);
+        let (set_quantifier_opt, arguments, order_by_opt) = if self.peek_kind(TokenKind::Asterisk) {
+            (
+                self.eat_empty(),
+                self.eat(TokenKind::Asterisk),
+                self.eat_empty(),
+            )
+        } else {
+            let set_quantifier_opt = self.parse_set_quantifier_opt();
+            let arguments = if set_quantifier_opt.is_empty() {
+                self.parse_comma_separated_list_opt(
+                    |parser| parser.peek_expression(),
+                    |parser| parser.parse_expression(),
+                )
+            } else {
+                self.parse_comma_separated_list(|parser| parser.parse_expression())
+            };
+            let order_by_opt = self.parse_order_by_opt();
+            (set_quantifier_opt, arguments, order_by_opt)
+        };
+        let close_paren = self.eat(TokenKind::CloseParen);
+        let filter_opt = self.parse_filter_opt();
+        let over_opt = self.parse_over_opt();
+        parse_tree::function_call(
+            name,
+            open_paren,
+            set_quantifier_opt,
+            arguments,
+            order_by_opt,
+            close_paren,
+            filter_opt,
+            over_opt,
+        )
+    }
+
+    fn parse_filter_opt(&mut self) -> ParseTree<'a> {
+        let filter = self.eat_predefined_name_opt(PredefinedName::FILTER);
+        if filter.is_empty() {
+            filter
+        } else {
+            let open_paren = self.eat(TokenKind::OpenParen);
+            let where_ = self.eat(TokenKind::WHERE);
+            let predicate = self.parse_boolean_expression();
+            let close_paren = self.eat(TokenKind::CloseParen);
+            parse_tree::filter(filter, open_paren, where_, predicate, close_paren)
+        }
+    }
+
+    // over
+    // : OVER '('
+    //     (PARTITION BY partition+=expression (',' partition+=expression)*)?
+    //     (ORDER BY sortItem (',' sortItem)*)?
+    //     windowFrame?
+    //   ')'
+    fn parse_over_opt(&mut self) -> ParseTree<'a> {
+        let over = self.eat_predefined_name_opt(PredefinedName::OVER);
+        if over.is_empty() {
+            over
+        } else {
+            let open_paren = self.eat(TokenKind::OpenParen);
+            let partition_opt = self.eat_predefined_name_opt(PredefinedName::PARTITION);
+            let (by, partitions) = if partition_opt.is_empty() {
+                (self.eat_empty(), self.eat_empty())
+            } else {
+                (
+                    self.eat(TokenKind::BY),
+                    self.parse_comma_separated_list(|parser| parser.parse_expression()),
+                )
+            };
+            let order_by_opt = self.parse_order_by_opt();
+            let window_frame = self.parse_window_frame();
+            let close_paren = self.eat(TokenKind::CloseParen);
+            parse_tree::over(
+                over,
+                open_paren,
+                partition_opt,
+                by,
+                partitions,
+                order_by_opt,
+                window_frame,
+                close_paren,
+            )
+        }
+    }
+
+    // windowFrame
+    // : frameType=RANGE startBound=frameBound
+    // | frameType=ROWS startBound=frameBound
+    // | frameType=RANGE BETWEEN startBound=frameBound AND end=frameBound
+    // | frameType=ROWS BETWEEN startBound=frameBound AND end=frameBound
+    fn parse_window_frame(&mut self) -> ParseTree<'a> {
+        let frame_type = if self.peek_predefined_name(PredefinedName::RANGE)
+            || self.peek_predefined_name(PredefinedName::ROWS)
+        {
+            self.eat_token()
+        } else {
+            self.expected_error("RANGE, ROWS")
+        };
+        let between_opt = self.eat_opt(TokenKind::BETWEEN);
+        let start = self.parse_frame_bound();
+        let (and, end) = if between_opt.is_empty() {
+            (self.eat_empty(), self.eat_empty())
+        } else {
+            (self.eat(TokenKind::AND), self.parse_frame_bound())
+        };
+        parse_tree::window_frame(frame_type, between_opt, start, and, end)
+    }
+
+    // frameBound
+    // : UNBOUNDED boundType=PRECEDING                 #unboundedFrame
+    // | UNBOUNDED boundType=FOLLOWING                 #unboundedFrame
+    // | CURRENT ROW                                   #currentRowBound
+    // | expression boundType=(PRECEDING | FOLLOWING)  #boundedFrame // expression should be unsignedLiteral
+    fn parse_frame_bound(&mut self) -> ParseTree<'a> {
         panic!("TODO")
     }
 
