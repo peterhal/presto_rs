@@ -239,6 +239,13 @@ fn configs() -> Vec<TreeConfig> {
             vec!["operand", "open_square", "index", "close_square"],
         ),
         ("Lambda", "lambda", vec!["parameters", "array", "body"]),
+        ("Literal", "literal", vec!["value"]),
+        ("RowConstructor", "row_constructor", vec!["elements"]),
+        (
+            "ParenthesizedExpression",
+            "parenthesized_expression",
+            vec!["open_paren", "value", "close_paren"],
+        ),
         // ("Class", "ctor", vec!["fields"]),
     ]
 }
@@ -299,6 +306,12 @@ pub fn list<'a>(
     })
 }
 
+impl<'a> List<'a> {
+    pub fn len(&self) -> usize {
+        self.elements_and_separators.len()
+    }
+}
+
 "#;
 
 const ERROR_DEFINITION: &str = r#"Error {
@@ -317,12 +330,33 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
 
 const CORE_IMPL: &str = r#"// core impl
 impl<'a> ParseTree<'a> {
-    pub fn is_empty(&self) -> bool {
-        if let ParseTree::Empty(_) = self { true } else { false }
-    }
-}
-
 "#;
+
+fn print_is_as_impl(ctor_name: &str, class_name: &str) {
+    // is_*
+    print!(
+        r#"    pub fn is_{}(&self) -> bool {{
+        if let ParseTree::{}(_) = self {{ true }} else {{ false }}
+    }}
+
+    "#,
+        ctor_name, class_name
+    );
+
+    // as_*
+    print!(
+        r#"    pub fn as_{}(&self) -> &{} {{
+        if let ParseTree::{}(value) = self {{
+            value
+        }} else {{
+            panic!("Expected {}")
+        }}
+    }}
+
+    "#,
+        ctor_name, class_name, class_name, class_name
+    );
+}
 
 fn main() {
     let cs = configs();
@@ -340,7 +374,18 @@ fn main() {
     print!("{}{}", STRUCT_HEADER, TOKEN_DEFINITION);
     print!("{}{}", STRUCT_HEADER, LIST_DEFINITION);
     print!("{}{}", STRUCT_HEADER, ERROR_DEFINITION);
+
+    // fn is_*()
     print!("{}", CORE_IMPL);
+    print_is_as_impl("list", "List");
+    print_is_as_impl("empty", "Empty");
+    print_is_as_impl("token", "Token");
+    print_is_as_impl("error", "Error");
+    for config in &cs {
+        let (class_name, ctor_name, _) = &config;
+        print_is_as_impl(ctor_name, class_name);
+    }
+    print!("{}", END);
 
     print!("{}", "// The language specific trees\n");
     for config in &cs {

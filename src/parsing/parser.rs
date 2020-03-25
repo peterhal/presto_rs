@@ -2,7 +2,7 @@ use crate::lexing::{
     lexer::Lexer, position, position::Position, predefined_names, predefined_names::PredefinedName,
     text_range::TextRange, token::Token, token_kind::TokenKind,
 };
-use crate::parsing::{parse_tree, parse_tree::ParseTree};
+use crate::parsing::{parse_tree, parse_tree::List, parse_tree::ParseTree};
 
 // The location and lexing context for a Parser.
 //
@@ -1424,8 +1424,27 @@ impl<'a> Parser<'a> {
         parse_tree::lambda(parameters, array, body)
     }
 
+    // | '(' expression (',' expression)+ ')'                                                #rowConstructor
+    // | '(' expression ')'                                                                  #parenthesizedExpression
     fn parse_row_constructor_or_paren_expression(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let list =
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
+        if list.as_list().len() == 1 {
+            match list {
+                ParseTree::List(List {
+                    start_delimiter,
+                    mut elements_and_separators,
+                    end_delimiter,
+                }) => ParseTree::ParenthesizedExpression(parse_tree::ParenthesizedExpression {
+                    open_paren: start_delimiter,
+                    value: Box::new(elements_and_separators.remove(0).0),
+                    close_paren: end_delimiter,
+                }),
+                _ => panic!("Unexpected type"),
+            }
+        } else {
+            parse_tree::row_constructor(list)
+        }
     }
 
     fn peek_position(&mut self) -> bool {
@@ -1545,7 +1564,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_literal(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        parse_tree::literal(self.eat_token())
     }
 
     fn parse_type_constructor(&mut self) -> ParseTree<'a> {

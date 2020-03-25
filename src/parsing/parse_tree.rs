@@ -55,6 +55,9 @@ pub enum ParseTree<'a> {
     Dereference(Dereference<'a>),
     Subscript(Subscript<'a>),
     Lambda(Lambda<'a>),
+    Literal(Literal<'a>),
+    RowConstructor(RowConstructor<'a>),
+    ParenthesizedExpression(ParenthesizedExpression<'a>),
 }
 
 // The core trees
@@ -95,6 +98,12 @@ pub fn list<'a>(
     })
 }
 
+impl<'a> List<'a> {
+    pub fn len(&self) -> usize {
+        self.elements_and_separators.len()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Error {
     pub range: TextRange,
@@ -110,11 +119,851 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
 
 // core impl
 impl<'a> ParseTree<'a> {
+    pub fn is_list(&self) -> bool {
+        if let ParseTree::List(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_list(&self) -> &List {
+        if let ParseTree::List(value) = self {
+            value
+        } else {
+            panic!("Expected List")
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         if let ParseTree::Empty(_) = self {
             true
         } else {
             false
+        }
+    }
+
+    pub fn as_empty(&self) -> &Empty {
+        if let ParseTree::Empty(value) = self {
+            value
+        } else {
+            panic!("Expected Empty")
+        }
+    }
+
+    pub fn is_token(&self) -> bool {
+        if let ParseTree::Token(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_token(&self) -> &Token {
+        if let ParseTree::Token(value) = self {
+            value
+        } else {
+            panic!("Expected Token")
+        }
+    }
+
+    pub fn is_error(&self) -> bool {
+        if let ParseTree::Error(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_error(&self) -> &Error {
+        if let ParseTree::Error(value) = self {
+            value
+        } else {
+            panic!("Expected Error")
+        }
+    }
+
+    pub fn is_query(&self) -> bool {
+        if let ParseTree::Query(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_query(&self) -> &Query {
+        if let ParseTree::Query(value) = self {
+            value
+        } else {
+            panic!("Expected Query")
+        }
+    }
+
+    pub fn is_with(&self) -> bool {
+        if let ParseTree::With(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_with(&self) -> &With {
+        if let ParseTree::With(value) = self {
+            value
+        } else {
+            panic!("Expected With")
+        }
+    }
+
+    pub fn is_named_query(&self) -> bool {
+        if let ParseTree::NamedQuery(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_named_query(&self) -> &NamedQuery {
+        if let ParseTree::NamedQuery(value) = self {
+            value
+        } else {
+            panic!("Expected NamedQuery")
+        }
+    }
+
+    pub fn is_query_no_with(&self) -> bool {
+        if let ParseTree::QueryNoWith(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_query_no_with(&self) -> &QueryNoWith {
+        if let ParseTree::QueryNoWith(value) = self {
+            value
+        } else {
+            panic!("Expected QueryNoWith")
+        }
+    }
+
+    pub fn is_order_by(&self) -> bool {
+        if let ParseTree::OrderBy(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_order_by(&self) -> &OrderBy {
+        if let ParseTree::OrderBy(value) = self {
+            value
+        } else {
+            panic!("Expected OrderBy")
+        }
+    }
+
+    pub fn is_limit(&self) -> bool {
+        if let ParseTree::Limit(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_limit(&self) -> &Limit {
+        if let ParseTree::Limit(value) = self {
+            value
+        } else {
+            panic!("Expected Limit")
+        }
+    }
+
+    pub fn is_query_set_operation(&self) -> bool {
+        if let ParseTree::QuerySetOperation(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_query_set_operation(&self) -> &QuerySetOperation {
+        if let ParseTree::QuerySetOperation(value) = self {
+            value
+        } else {
+            panic!("Expected QuerySetOperation")
+        }
+    }
+
+    pub fn is_sort_item(&self) -> bool {
+        if let ParseTree::SortItem(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_sort_item(&self) -> &SortItem {
+        if let ParseTree::SortItem(value) = self {
+            value
+        } else {
+            panic!("Expected SortItem")
+        }
+    }
+
+    pub fn is_subquery(&self) -> bool {
+        if let ParseTree::Subquery(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_subquery(&self) -> &Subquery {
+        if let ParseTree::Subquery(value) = self {
+            value
+        } else {
+            panic!("Expected Subquery")
+        }
+    }
+
+    pub fn is_inline_table(&self) -> bool {
+        if let ParseTree::InlineTable(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_inline_table(&self) -> &InlineTable {
+        if let ParseTree::InlineTable(value) = self {
+            value
+        } else {
+            panic!("Expected InlineTable")
+        }
+    }
+
+    pub fn is_table(&self) -> bool {
+        if let ParseTree::Table(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_table(&self) -> &Table {
+        if let ParseTree::Table(value) = self {
+            value
+        } else {
+            panic!("Expected Table")
+        }
+    }
+
+    pub fn is_query_specification(&self) -> bool {
+        if let ParseTree::QuerySpecification(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_query_specification(&self) -> &QuerySpecification {
+        if let ParseTree::QuerySpecification(value) = self {
+            value
+        } else {
+            panic!("Expected QuerySpecification")
+        }
+    }
+
+    pub fn is_qualified_name(&self) -> bool {
+        if let ParseTree::QualifiedName(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_qualified_name(&self) -> &QualifiedName {
+        if let ParseTree::QualifiedName(value) = self {
+            value
+        } else {
+            panic!("Expected QualifiedName")
+        }
+    }
+
+    pub fn is_select_all(&self) -> bool {
+        if let ParseTree::SelectAll(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_select_all(&self) -> &SelectAll {
+        if let ParseTree::SelectAll(value) = self {
+            value
+        } else {
+            panic!("Expected SelectAll")
+        }
+    }
+
+    pub fn is_qualified_select_all(&self) -> bool {
+        if let ParseTree::QualifiedSelectAll(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_qualified_select_all(&self) -> &QualifiedSelectAll {
+        if let ParseTree::QualifiedSelectAll(value) = self {
+            value
+        } else {
+            panic!("Expected QualifiedSelectAll")
+        }
+    }
+
+    pub fn is_select_item(&self) -> bool {
+        if let ParseTree::SelectItem(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_select_item(&self) -> &SelectItem {
+        if let ParseTree::SelectItem(value) = self {
+            value
+        } else {
+            panic!("Expected SelectItem")
+        }
+    }
+
+    pub fn is_subquery_relation(&self) -> bool {
+        if let ParseTree::SubqueryRelation(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_subquery_relation(&self) -> &SubqueryRelation {
+        if let ParseTree::SubqueryRelation(value) = self {
+            value
+        } else {
+            panic!("Expected SubqueryRelation")
+        }
+    }
+
+    pub fn is_parenthesized_relation(&self) -> bool {
+        if let ParseTree::ParenthesizedRelation(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_parenthesized_relation(&self) -> &ParenthesizedRelation {
+        if let ParseTree::ParenthesizedRelation(value) = self {
+            value
+        } else {
+            panic!("Expected ParenthesizedRelation")
+        }
+    }
+
+    pub fn is_table_name(&self) -> bool {
+        if let ParseTree::TableName(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_table_name(&self) -> &TableName {
+        if let ParseTree::TableName(value) = self {
+            value
+        } else {
+            panic!("Expected TableName")
+        }
+    }
+
+    pub fn is_lateral(&self) -> bool {
+        if let ParseTree::Lateral(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_lateral(&self) -> &Lateral {
+        if let ParseTree::Lateral(value) = self {
+            value
+        } else {
+            panic!("Expected Lateral")
+        }
+    }
+
+    pub fn is_unnest(&self) -> bool {
+        if let ParseTree::Unnest(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_unnest(&self) -> &Unnest {
+        if let ParseTree::Unnest(value) = self {
+            value
+        } else {
+            panic!("Expected Unnest")
+        }
+    }
+
+    pub fn is_sampled_relation(&self) -> bool {
+        if let ParseTree::SampledRelation(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_sampled_relation(&self) -> &SampledRelation {
+        if let ParseTree::SampledRelation(value) = self {
+            value
+        } else {
+            panic!("Expected SampledRelation")
+        }
+    }
+
+    pub fn is_aliased_relation(&self) -> bool {
+        if let ParseTree::AliasedRelation(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_aliased_relation(&self) -> &AliasedRelation {
+        if let ParseTree::AliasedRelation(value) = self {
+            value
+        } else {
+            panic!("Expected AliasedRelation")
+        }
+    }
+
+    pub fn is_cross_join(&self) -> bool {
+        if let ParseTree::CrossJoin(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_cross_join(&self) -> &CrossJoin {
+        if let ParseTree::CrossJoin(value) = self {
+            value
+        } else {
+            panic!("Expected CrossJoin")
+        }
+    }
+
+    pub fn is_join(&self) -> bool {
+        if let ParseTree::Join(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_join(&self) -> &Join {
+        if let ParseTree::Join(value) = self {
+            value
+        } else {
+            panic!("Expected Join")
+        }
+    }
+
+    pub fn is_natural_join(&self) -> bool {
+        if let ParseTree::NaturalJoin(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_natural_join(&self) -> &NaturalJoin {
+        if let ParseTree::NaturalJoin(value) = self {
+            value
+        } else {
+            panic!("Expected NaturalJoin")
+        }
+    }
+
+    pub fn is_outer_join_kind(&self) -> bool {
+        if let ParseTree::OuterJoinKind(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_outer_join_kind(&self) -> &OuterJoinKind {
+        if let ParseTree::OuterJoinKind(value) = self {
+            value
+        } else {
+            panic!("Expected OuterJoinKind")
+        }
+    }
+
+    pub fn is_on_join_criteria(&self) -> bool {
+        if let ParseTree::OnJoinCriteria(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_on_join_criteria(&self) -> &OnJoinCriteria {
+        if let ParseTree::OnJoinCriteria(value) = self {
+            value
+        } else {
+            panic!("Expected OnJoinCriteria")
+        }
+    }
+
+    pub fn is_using_join_criteria(&self) -> bool {
+        if let ParseTree::UsingJoinCriteria(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_using_join_criteria(&self) -> &UsingJoinCriteria {
+        if let ParseTree::UsingJoinCriteria(value) = self {
+            value
+        } else {
+            panic!("Expected UsingJoinCriteria")
+        }
+    }
+
+    pub fn is_group_by(&self) -> bool {
+        if let ParseTree::GroupBy(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_group_by(&self) -> &GroupBy {
+        if let ParseTree::GroupBy(value) = self {
+            value
+        } else {
+            panic!("Expected GroupBy")
+        }
+    }
+
+    pub fn is_rollup(&self) -> bool {
+        if let ParseTree::Rollup(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_rollup(&self) -> &Rollup {
+        if let ParseTree::Rollup(value) = self {
+            value
+        } else {
+            panic!("Expected Rollup")
+        }
+    }
+
+    pub fn is_cube(&self) -> bool {
+        if let ParseTree::Cube(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_cube(&self) -> &Cube {
+        if let ParseTree::Cube(value) = self {
+            value
+        } else {
+            panic!("Expected Cube")
+        }
+    }
+
+    pub fn is_grouping_sets(&self) -> bool {
+        if let ParseTree::GroupingSets(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_grouping_sets(&self) -> &GroupingSets {
+        if let ParseTree::GroupingSets(value) = self {
+            value
+        } else {
+            panic!("Expected GroupingSets")
+        }
+    }
+
+    pub fn is_binary_expression(&self) -> bool {
+        if let ParseTree::BinaryExpression(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_binary_expression(&self) -> &BinaryExpression {
+        if let ParseTree::BinaryExpression(value) = self {
+            value
+        } else {
+            panic!("Expected BinaryExpression")
+        }
+    }
+
+    pub fn is_unary_expression(&self) -> bool {
+        if let ParseTree::UnaryExpression(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_unary_expression(&self) -> &UnaryExpression {
+        if let ParseTree::UnaryExpression(value) = self {
+            value
+        } else {
+            panic!("Expected UnaryExpression")
+        }
+    }
+
+    pub fn is_quantified_comparison(&self) -> bool {
+        if let ParseTree::QuanitifiedComparison(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_quantified_comparison(&self) -> &QuanitifiedComparison {
+        if let ParseTree::QuanitifiedComparison(value) = self {
+            value
+        } else {
+            panic!("Expected QuanitifiedComparison")
+        }
+    }
+
+    pub fn is_null_predicate(&self) -> bool {
+        if let ParseTree::NullPredicate(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_null_predicate(&self) -> &NullPredicate {
+        if let ParseTree::NullPredicate(value) = self {
+            value
+        } else {
+            panic!("Expected NullPredicate")
+        }
+    }
+
+    pub fn is_distinct_from(&self) -> bool {
+        if let ParseTree::DistinctFrom(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_distinct_from(&self) -> &DistinctFrom {
+        if let ParseTree::DistinctFrom(value) = self {
+            value
+        } else {
+            panic!("Expected DistinctFrom")
+        }
+    }
+
+    pub fn is_between(&self) -> bool {
+        if let ParseTree::Between(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_between(&self) -> &Between {
+        if let ParseTree::Between(value) = self {
+            value
+        } else {
+            panic!("Expected Between")
+        }
+    }
+
+    pub fn is_like(&self) -> bool {
+        if let ParseTree::Like(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_like(&self) -> &Like {
+        if let ParseTree::Like(value) = self {
+            value
+        } else {
+            panic!("Expected Like")
+        }
+    }
+
+    pub fn is_in_subquery(&self) -> bool {
+        if let ParseTree::InSubquery(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_in_subquery(&self) -> &InSubquery {
+        if let ParseTree::InSubquery(value) = self {
+            value
+        } else {
+            panic!("Expected InSubquery")
+        }
+    }
+
+    pub fn is_in_list(&self) -> bool {
+        if let ParseTree::InList(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_in_list(&self) -> &InList {
+        if let ParseTree::InList(value) = self {
+            value
+        } else {
+            panic!("Expected InList")
+        }
+    }
+
+    pub fn is_at_time_zone(&self) -> bool {
+        if let ParseTree::AtTimeZone(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_at_time_zone(&self) -> &AtTimeZone {
+        if let ParseTree::AtTimeZone(value) = self {
+            value
+        } else {
+            panic!("Expected AtTimeZone")
+        }
+    }
+
+    pub fn is_dereference(&self) -> bool {
+        if let ParseTree::Dereference(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_dereference(&self) -> &Dereference {
+        if let ParseTree::Dereference(value) = self {
+            value
+        } else {
+            panic!("Expected Dereference")
+        }
+    }
+
+    pub fn is_subscript(&self) -> bool {
+        if let ParseTree::Subscript(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_subscript(&self) -> &Subscript {
+        if let ParseTree::Subscript(value) = self {
+            value
+        } else {
+            panic!("Expected Subscript")
+        }
+    }
+
+    pub fn is_lambda(&self) -> bool {
+        if let ParseTree::Lambda(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_lambda(&self) -> &Lambda {
+        if let ParseTree::Lambda(value) = self {
+            value
+        } else {
+            panic!("Expected Lambda")
+        }
+    }
+
+    pub fn is_literal(&self) -> bool {
+        if let ParseTree::Literal(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_literal(&self) -> &Literal {
+        if let ParseTree::Literal(value) = self {
+            value
+        } else {
+            panic!("Expected Literal")
+        }
+    }
+
+    pub fn is_row_constructor(&self) -> bool {
+        if let ParseTree::RowConstructor(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_row_constructor(&self) -> &RowConstructor {
+        if let ParseTree::RowConstructor(value) = self {
+            value
+        } else {
+            panic!("Expected RowConstructor")
+        }
+    }
+
+    pub fn is_parenthesized_expression(&self) -> bool {
+        if let ParseTree::ParenthesizedExpression(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_parenthesized_expression(&self) -> &ParenthesizedExpression {
+        if let ParseTree::ParenthesizedExpression(value) = self {
+            value
+        } else {
+            panic!("Expected ParenthesizedExpression")
         }
     }
 }
@@ -1033,5 +1882,46 @@ pub fn lambda<'a>(
         parameters: Box::new(parameters),
         array: Box::new(array),
         body: Box::new(body),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct Literal<'a> {
+    pub value: Box<ParseTree<'a>>,
+}
+
+pub fn literal<'a>(value: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Literal(Literal {
+        value: Box::new(value),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct RowConstructor<'a> {
+    pub elements: Box<ParseTree<'a>>,
+}
+
+pub fn row_constructor<'a>(elements: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::RowConstructor(RowConstructor {
+        elements: Box::new(elements),
+    })
+}
+
+#[derive(Clone, Debug)]
+pub struct ParenthesizedExpression<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn parenthesized_expression<'a>(
+    open_paren: ParseTree<'a>,
+    value: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::ParenthesizedExpression(ParenthesizedExpression {
+        open_paren: Box::new(open_paren),
+        value: Box::new(value),
+        close_paren: Box::new(close_paren),
     })
 }
