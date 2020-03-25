@@ -1435,11 +1435,12 @@ impl<'a> Parser<'a> {
                     start_delimiter,
                     mut elements_and_separators,
                     end_delimiter,
-                }) => ParseTree::ParenthesizedExpression(parse_tree::ParenthesizedExpression {
+                }) => parse_tree::ParenthesizedExpression {
                     open_paren: start_delimiter,
                     value: Box::new(elements_and_separators.remove(0).0),
                     close_paren: end_delimiter,
-                }),
+                }
+                .to_tree(),
                 _ => panic!("Unexpected type"),
             }
         } else {

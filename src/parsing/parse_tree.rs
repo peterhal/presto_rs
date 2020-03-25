@@ -982,6 +982,12 @@ pub fn query<'a>(with: ParseTree<'a>, query_no_with: ParseTree<'a>) -> ParseTree
     })
 }
 
+impl<'a> Query<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Query(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct With<'a> {
     pub with: Box<ParseTree<'a>>,
@@ -999,6 +1005,12 @@ pub fn with<'a>(
         recursive: Box::new(recursive),
         named_queries: Box::new(named_queries),
     })
+}
+
+impl<'a> With<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::With(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1029,6 +1041,12 @@ pub fn named_query<'a>(
     })
 }
 
+impl<'a> NamedQuery<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::NamedQuery(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct QueryNoWith<'a> {
     pub query_term: Box<ParseTree<'a>>,
@@ -1046,6 +1064,12 @@ pub fn query_no_with<'a>(
         order_by_opt: Box::new(order_by_opt),
         limit_opt: Box::new(limit_opt),
     })
+}
+
+impl<'a> QueryNoWith<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::QueryNoWith(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1067,6 +1091,12 @@ pub fn order_by<'a>(
     })
 }
 
+impl<'a> OrderBy<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::OrderBy(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Limit<'a> {
     pub limit: Box<ParseTree<'a>>,
@@ -1078,6 +1108,12 @@ pub fn limit<'a>(limit: ParseTree<'a>, value: ParseTree<'a>) -> ParseTree<'a> {
         limit: Box::new(limit),
         value: Box::new(value),
     })
+}
+
+impl<'a> Limit<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Limit(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1102,6 +1138,12 @@ pub fn query_set_operation<'a>(
     })
 }
 
+impl<'a> QuerySetOperation<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::QuerySetOperation(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SortItem<'a> {
     pub expression: Box<ParseTree<'a>>,
@@ -1124,6 +1166,12 @@ pub fn sort_item<'a>(
     })
 }
 
+impl<'a> SortItem<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::SortItem(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Subquery<'a> {
     pub open_paren: Box<ParseTree<'a>>,
@@ -1143,6 +1191,12 @@ pub fn subquery<'a>(
     })
 }
 
+impl<'a> Subquery<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Subquery(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct InlineTable<'a> {
     pub values: Box<ParseTree<'a>>,
@@ -1156,6 +1210,12 @@ pub fn inline_table<'a>(values: ParseTree<'a>, expressions: ParseTree<'a>) -> Pa
     })
 }
 
+impl<'a> InlineTable<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::InlineTable(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Table<'a> {
     pub table: Box<ParseTree<'a>>,
@@ -1167,6 +1227,12 @@ pub fn table<'a>(table: ParseTree<'a>, qualified_name: ParseTree<'a>) -> ParseTr
         table: Box::new(table),
         qualified_name: Box::new(qualified_name),
     })
+}
+
+impl<'a> Table<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Table(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1215,6 +1281,12 @@ pub fn query_specification<'a>(
     })
 }
 
+impl<'a> QuerySpecification<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::QuerySpecification(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct QualifiedName<'a> {
     pub names: Box<ParseTree<'a>>,
@@ -1226,6 +1298,12 @@ pub fn qualified_name<'a>(names: ParseTree<'a>) -> ParseTree<'a> {
     })
 }
 
+impl<'a> QualifiedName<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::QualifiedName(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SelectAll<'a> {
     pub asterisk: Box<ParseTree<'a>>,
@@ -1235,6 +1313,12 @@ pub fn select_all<'a>(asterisk: ParseTree<'a>) -> ParseTree<'a> {
     ParseTree::SelectAll(SelectAll {
         asterisk: Box::new(asterisk),
     })
+}
+
+impl<'a> SelectAll<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::SelectAll(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1256,6 +1340,12 @@ pub fn qualified_select_all<'a>(
     })
 }
 
+impl<'a> QualifiedSelectAll<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::QualifiedSelectAll(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SelectItem<'a> {
     pub expression: Box<ParseTree<'a>>,
@@ -1273,6 +1363,12 @@ pub fn select_item<'a>(
         as_: Box::new(as_),
         identifier: Box::new(identifier),
     })
+}
+
+impl<'a> SelectItem<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::SelectItem(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1294,6 +1390,12 @@ pub fn subquery_relation<'a>(
     })
 }
 
+impl<'a> SubqueryRelation<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::SubqueryRelation(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ParenthesizedRelation<'a> {
     pub open_paren: Box<ParseTree<'a>>,
@@ -1313,6 +1415,12 @@ pub fn parenthesized_relation<'a>(
     })
 }
 
+impl<'a> ParenthesizedRelation<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::ParenthesizedRelation(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TableName<'a> {
     pub name: Box<ParseTree<'a>>,
@@ -1322,6 +1430,12 @@ pub fn table_name<'a>(name: ParseTree<'a>) -> ParseTree<'a> {
     ParseTree::TableName(TableName {
         name: Box::new(name),
     })
+}
+
+impl<'a> TableName<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::TableName(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1346,6 +1460,12 @@ pub fn lateral<'a>(
     })
 }
 
+impl<'a> Lateral<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Lateral(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Unnest<'a> {
     pub unnest: Box<ParseTree<'a>>,
@@ -1366,6 +1486,12 @@ pub fn unnest<'a>(
         with: Box::new(with),
         ordinality: Box::new(ordinality),
     })
+}
+
+impl<'a> Unnest<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Unnest(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1396,6 +1522,12 @@ pub fn sampled_relation<'a>(
     })
 }
 
+impl<'a> SampledRelation<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::SampledRelation(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct AliasedRelation<'a> {
     pub relation_primary: Box<ParseTree<'a>>,
@@ -1418,6 +1550,12 @@ pub fn aliased_relation<'a>(
     })
 }
 
+impl<'a> AliasedRelation<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::AliasedRelation(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct CrossJoin<'a> {
     pub left: Box<ParseTree<'a>>,
@@ -1438,6 +1576,12 @@ pub fn cross_join<'a>(
         join: Box::new(join),
         right: Box::new(right),
     })
+}
+
+impl<'a> CrossJoin<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CrossJoin(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1465,6 +1609,12 @@ pub fn join<'a>(
     })
 }
 
+impl<'a> Join<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Join(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct NaturalJoin<'a> {
     pub left: Box<ParseTree<'a>>,
@@ -1490,6 +1640,12 @@ pub fn natural_join<'a>(
     })
 }
 
+impl<'a> NaturalJoin<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::NaturalJoin(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct OuterJoinKind<'a> {
     pub kind: Box<ParseTree<'a>>,
@@ -1501,6 +1657,12 @@ pub fn outer_join_kind<'a>(kind: ParseTree<'a>, outer_opt: ParseTree<'a>) -> Par
         kind: Box::new(kind),
         outer_opt: Box::new(outer_opt),
     })
+}
+
+impl<'a> OuterJoinKind<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::OuterJoinKind(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1516,6 +1678,12 @@ pub fn on_join_criteria<'a>(on: ParseTree<'a>, predicate: ParseTree<'a>) -> Pars
     })
 }
 
+impl<'a> OnJoinCriteria<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::OnJoinCriteria(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct UsingJoinCriteria<'a> {
     pub using: Box<ParseTree<'a>>,
@@ -1527,6 +1695,12 @@ pub fn using_join_criteria<'a>(using: ParseTree<'a>, names: ParseTree<'a>) -> Pa
         using: Box::new(using),
         names: Box::new(names),
     })
+}
+
+impl<'a> UsingJoinCriteria<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::UsingJoinCriteria(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1545,6 +1719,12 @@ pub fn group_by<'a>(
     })
 }
 
+impl<'a> GroupBy<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::GroupBy(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Rollup<'a> {
     pub rollup: Box<ParseTree<'a>>,
@@ -1558,6 +1738,12 @@ pub fn rollup<'a>(rollup: ParseTree<'a>, expressions: ParseTree<'a>) -> ParseTre
     })
 }
 
+impl<'a> Rollup<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Rollup(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Cube<'a> {
     pub cube: Box<ParseTree<'a>>,
@@ -1569,6 +1755,12 @@ pub fn cube<'a>(cube: ParseTree<'a>, expressions: ParseTree<'a>) -> ParseTree<'a
         cube: Box::new(cube),
         expressions: Box::new(expressions),
     })
+}
+
+impl<'a> Cube<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Cube(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1590,6 +1782,12 @@ pub fn grouping_sets<'a>(
     })
 }
 
+impl<'a> GroupingSets<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::GroupingSets(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BinaryExpression<'a> {
     pub left: Box<ParseTree<'a>>,
@@ -1609,6 +1807,12 @@ pub fn binary_expression<'a>(
     })
 }
 
+impl<'a> BinaryExpression<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::BinaryExpression(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct UnaryExpression<'a> {
     pub operator: Box<ParseTree<'a>>,
@@ -1620,6 +1824,12 @@ pub fn unary_expression<'a>(operator: ParseTree<'a>, operand: ParseTree<'a>) -> 
         operator: Box::new(operator),
         operand: Box::new(operand),
     })
+}
+
+impl<'a> UnaryExpression<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::UnaryExpression(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1650,6 +1860,12 @@ pub fn quantified_comparison<'a>(
     })
 }
 
+impl<'a> QuanitifiedComparison<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::QuanitifiedComparison(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct NullPredicate<'a> {
     pub value: Box<ParseTree<'a>>,
@@ -1672,6 +1888,12 @@ pub fn null_predicate<'a>(
     })
 }
 
+impl<'a> NullPredicate<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::NullPredicate(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct DistinctFrom<'a> {
     pub left: Box<ParseTree<'a>>,
@@ -1692,6 +1914,12 @@ pub fn distinct_from<'a>(
         from: Box::new(from),
         right: Box::new(right),
     })
+}
+
+impl<'a> DistinctFrom<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::DistinctFrom(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1722,6 +1950,12 @@ pub fn between<'a>(
     })
 }
 
+impl<'a> Between<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Between(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Like<'a> {
     pub value: Box<ParseTree<'a>>,
@@ -1748,6 +1982,12 @@ pub fn like<'a>(
         escape_opt: Box::new(escape_opt),
         escape_value_opt: Box::new(escape_value_opt),
     })
+}
+
+impl<'a> Like<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Like(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1778,6 +2018,12 @@ pub fn in_subquery<'a>(
     })
 }
 
+impl<'a> InSubquery<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::InSubquery(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct InList<'a> {
     pub value: Box<ParseTree<'a>>,
@@ -1798,6 +2044,12 @@ pub fn in_list<'a>(
         in_: Box::new(in_),
         expressions: Box::new(expressions),
     })
+}
+
+impl<'a> InList<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::InList(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1825,6 +2077,12 @@ pub fn at_time_zone<'a>(
     })
 }
 
+impl<'a> AtTimeZone<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::AtTimeZone(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Dereference<'a> {
     pub object: Box<ParseTree<'a>>,
@@ -1842,6 +2100,12 @@ pub fn dereference<'a>(
         period: Box::new(period),
         field_name: Box::new(field_name),
     })
+}
+
+impl<'a> Dereference<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Dereference(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1866,6 +2130,12 @@ pub fn subscript<'a>(
     })
 }
 
+impl<'a> Subscript<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Subscript(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Lambda<'a> {
     pub parameters: Box<ParseTree<'a>>,
@@ -1885,6 +2155,12 @@ pub fn lambda<'a>(
     })
 }
 
+impl<'a> Lambda<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Lambda(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Literal<'a> {
     pub value: Box<ParseTree<'a>>,
@@ -1896,6 +2172,12 @@ pub fn literal<'a>(value: ParseTree<'a>) -> ParseTree<'a> {
     })
 }
 
+impl<'a> Literal<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Literal(self)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RowConstructor<'a> {
     pub elements: Box<ParseTree<'a>>,
@@ -1905,6 +2187,12 @@ pub fn row_constructor<'a>(elements: ParseTree<'a>) -> ParseTree<'a> {
     ParseTree::RowConstructor(RowConstructor {
         elements: Box::new(elements),
     })
+}
+
+impl<'a> RowConstructor<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::RowConstructor(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1924,4 +2212,10 @@ pub fn parenthesized_expression<'a>(
         value: Box::new(value),
         close_paren: Box::new(close_paren),
     })
+}
+
+impl<'a> ParenthesizedExpression<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::ParenthesizedExpression(self)
+    }
 }

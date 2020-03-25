@@ -410,5 +410,17 @@ fn main() {
         }
         print!("    }})\n");
         print!("{}", END);
+
+        // tree impl
+        print!(
+            r#"impl<'a> {}<'a> {{
+    pub fn to_tree(self) -> ParseTree<'a> {{
+        ParseTree::{}(self)
+    }}
+}}
+
+"#,
+            class_name, class_name
+        );
     }
 }
