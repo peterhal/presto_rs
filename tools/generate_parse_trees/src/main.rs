@@ -1,14 +1,13 @@
 // class name, ctor name, field names
-type TreeConfig = (&'static str, &'static str, Vec<&'static str>);
+type TreeConfig = (&'static str, Vec<&'static str>);
 
 fn configs() -> Vec<TreeConfig> {
     vec![
-        // ("Class", "ctor", vec!["fields"]),
-        ("Query", "query", vec!["with", "query_no_with"]),
-        ("With", "with", vec!["with", "recursive", "named_queries"]),
+        // ("Class", vec!["fields"]),
+        ("Query", vec!["with", "query_no_with"]),
+        ("With", vec!["with", "recursive", "named_queries"]),
         (
             "NamedQuery",
-            "named_query",
             vec![
                 "name",
                 "column_aliases_opt",
@@ -20,31 +19,26 @@ fn configs() -> Vec<TreeConfig> {
         ),
         (
             "QueryNoWith",
-            "query_no_with",
             vec!["query_term", "order_by_opt", "limit_opt"],
         ),
-        ("OrderBy", "order_by", vec!["order", "by", "sort_items"]),
-        ("Limit", "limit", vec!["limit", "value"]),
+        ("OrderBy", vec!["order", "by", "sort_items"]),
+        ("Limit", vec!["limit", "value"]),
         (
             "QuerySetOperation",
-            "query_set_operation",
             vec!["left", "operator", "set_quantifier_opt", "right"],
         ),
         (
             "SortItem",
-            "sort_item",
             vec!["expression", "ordering_opt", "nulls", "null_ordering_opt"],
         ),
         (
             "Subquery",
-            "subquery",
             vec!["open_paren", "query_no_with", "close_paren"],
         ),
-        ("InlineTable", "inline_table", vec!["values", "expressions"]),
-        ("Table", "table", vec!["table", "qualified_name"]),
+        ("InlineTable", vec!["values", "expressions"]),
+        ("Table", vec!["table", "qualified_name"]),
         (
             "QuerySpecification",
-            "query_specification",
             vec![
                 "select",
                 "set_quantifier_opt",
@@ -60,42 +54,32 @@ fn configs() -> Vec<TreeConfig> {
                 "having_predicate",
             ],
         ),
-        ("QualifiedName", "qualified_name", vec!["names"]),
-        ("SelectAll", "select_all", vec!["asterisk"]),
+        ("QualifiedName", vec!["names"]),
+        ("SelectAll", vec!["asterisk"]),
         (
             "QualifiedSelectAll",
-            "qualified_select_all",
             vec!["qualifier", "period", "asterisk"],
         ),
-        (
-            "SelectItem",
-            "select_item",
-            vec!["expression", "as_", "identifier"],
-        ),
+        ("SelectItem", vec!["expression", "as_", "identifier"]),
         (
             "SubqueryRelation",
-            "subquery_relation",
             vec!["open_paren", "query", "close_paren"],
         ),
         (
             "ParenthesizedRelation",
-            "parenthesized_relation",
             vec!["open_paren", "relation", "close_paren"],
         ),
-        ("TableName", "table_name", vec!["name"]),
+        ("TableName", vec!["name"]),
         (
             "Lateral",
-            "lateral",
             vec!["lateral", "open_paren", "query", "close_paren"],
         ),
         (
             "Unnest",
-            "unnest",
             vec!["unnest", "expressions", "with", "ordinality"],
         ),
         (
             "SampledRelation",
-            "sampled_relation",
             vec![
                 "aliased_relation",
                 "tablesample",
@@ -107,7 +91,6 @@ fn configs() -> Vec<TreeConfig> {
         ),
         (
             "AliasedRelation",
-            "aliased_relation",
             vec![
                 "relation_primary",
                 "as_opt",
@@ -115,61 +98,26 @@ fn configs() -> Vec<TreeConfig> {
                 "column_aliases_opt",
             ],
         ),
-        (
-            "CrossJoin",
-            "cross_join",
-            vec!["left", "cross", "join", "right"],
-        ),
+        ("CrossJoin", vec!["left", "cross", "join", "right"]),
         (
             "Join",
-            "join",
             vec!["left", "join_type", "join", "right", "join_criteria"],
         ),
         (
             "NaturalJoin",
-            "natural_join",
             vec!["left", "natural", "join_type", "join", "right"],
         ),
+        ("OuterJoinKind", vec!["kind", "outer_opt"]),
+        ("OnJoinCriteria", vec!["on", "predicate"]),
+        ("UsingJoinCriteria", vec!["using", "names"]),
+        ("GroupBy", vec!["set_quantifier_opt", "grouping_elements"]),
+        ("Rollup", vec!["rollup", "expressions"]),
+        ("Cube", vec!["cube", "expressions"]),
+        ("GroupingSets", vec!["grouping", "sets", "grouping_sets"]),
+        ("BinaryExpression", vec!["left", "operator", "right"]),
+        ("UnaryExpression", vec!["operator", "operand"]),
         (
-            "OuterJoinKind",
-            "outer_join_kind",
-            vec!["kind", "outer_opt"],
-        ),
-        (
-            "OnJoinCriteria",
-            "on_join_criteria",
-            vec!["on", "predicate"],
-        ),
-        (
-            "UsingJoinCriteria",
-            "using_join_criteria",
-            vec!["using", "names"],
-        ),
-        (
-            "GroupBy",
-            "group_by",
-            vec!["set_quantifier_opt", "grouping_elements"],
-        ),
-        ("Rollup", "rollup", vec!["rollup", "expressions"]),
-        ("Cube", "cube", vec!["cube", "expressions"]),
-        (
-            "GroupingSets",
-            "grouping_sets",
-            vec!["grouping", "sets", "grouping_sets"],
-        ),
-        (
-            "BinaryExpression",
-            "binary_expression",
-            vec!["left", "operator", "right"],
-        ),
-        (
-            "UnaryExpression",
-            "unary_expression",
-            vec!["operator", "operand"],
-        ),
-        (
-            "QuanitifiedComparison",
-            "quantified_comparison",
+            "QuantifiedComparison",
             vec![
                 "operand",
                 "operator",
@@ -179,24 +127,14 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
-        (
-            "NullPredicate",
-            "null_predicate",
-            vec!["value", "is", "not_opt", "null"],
-        ),
-        (
-            "DistinctFrom",
-            "distinct_from",
-            vec!["left", "distinct", "from", "right"],
-        ),
+        ("NullPredicate", vec!["value", "is", "not_opt", "null"]),
+        ("DistinctFrom", vec!["left", "distinct", "from", "right"]),
         (
             "Between",
-            "between",
             vec!["value", "not_opt", "between", "lower", "and", "upper"],
         ),
         (
             "Like",
-            "like",
             vec![
                 "value",
                 "not_opt",
@@ -208,7 +146,6 @@ fn configs() -> Vec<TreeConfig> {
         ),
         (
             "InSubquery",
-            "in_subquery",
             vec![
                 "value",
                 "not_opt",
@@ -218,38 +155,26 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
-        (
-            "InList",
-            "in_list",
-            vec!["value", "not_opt", "in_", "expressions"],
-        ),
+        ("InList", vec!["value", "not_opt", "in_", "expressions"]),
         (
             "AtTimeZone",
-            "at_time_zone",
             vec!["value", "at", "time", "zone", "specifier"],
         ),
-        (
-            "Dereference",
-            "dereference",
-            vec!["object", "period", "field_name"],
-        ),
+        ("Dereference", vec!["object", "period", "field_name"]),
         (
             "Subscript",
-            "subscript",
             vec!["operand", "open_square", "index", "close_square"],
         ),
-        ("Lambda", "lambda", vec!["parameters", "array", "body"]),
-        ("Literal", "literal", vec!["value"]),
-        ("RowConstructor", "row_constructor", vec!["elements"]),
+        ("Lambda", vec!["parameters", "array", "body"]),
+        ("Literal", vec!["value"]),
+        ("RowConstructor", vec!["elements"]),
         (
             "ParenthesizedExpression",
-            "parenthesized_expression",
             vec!["open_paren", "value", "close_paren"],
         ),
-        ("Identifier", "identifier", vec!["value"]),
+        ("Identifier", vec!["value"]),
         (
             "FunctionCall",
-            "function_call",
             vec![
                 "name",
                 "open_paren",
@@ -263,12 +188,10 @@ fn configs() -> Vec<TreeConfig> {
         ),
         (
             "Filter",
-            "filter",
             vec!["filter", "open_paren", "where_", "predicate", "close_paren"],
         ),
         (
             "Over",
-            "over",
             vec![
                 "over",
                 "open_paren",
@@ -282,7 +205,6 @@ fn configs() -> Vec<TreeConfig> {
         ),
         (
             "WindowFrame",
-            "window_frame",
             vec!["frame_type", "between_opt", "start", "and", "end"],
         ),
         // ("Class", "ctor", vec!["fields"]),
@@ -431,13 +353,29 @@ fn print_unbox(ctor_name: &str, class_name: &str, fields: &Vec<&str>) {
     );
 }
 
+fn get_config<'a>(config: &'a TreeConfig) -> (&'static str, String, &'a Vec<&'static str>) {
+    let mut ctor_name = String::new();
+    for ch in config.0.chars() {
+        if ch.is_ascii_uppercase() {
+            if ctor_name.len() > 0 {
+                ctor_name.push('_');
+            }
+            ctor_name.push(ch.to_ascii_lowercase());
+        } else {
+            assert!(ch.is_ascii_lowercase());
+            ctor_name.push(ch);
+        }
+    }
+    (config.0, ctor_name, &config.1)
+}
+
 fn main() {
     let cs = configs();
 
     // enum ParseTree
     print!("{}", FILE_HEADER);
     for config in &cs {
-        let class_name = config.0;
+        let class_name = get_config(config).0;
         print!("    {0}({0}<'a>),\n", class_name);
     }
     print!("{}", END);
@@ -455,15 +393,15 @@ fn main() {
     print_is_as_impl("token", "Token");
     print_is_as_impl("error", "Error");
     for config in &cs {
-        let (class_name, ctor_name, fields) = &config;
-        print_is_as_impl(ctor_name, class_name);
-        print_unbox(ctor_name, class_name, fields);
+        let (class_name, ctor_name, fields) = get_config(config);
+        print_is_as_impl(ctor_name.as_str(), class_name);
+        print_unbox(ctor_name.as_str(), class_name, fields);
     }
     print!("{}", END);
 
     print!("{}", "// The language specific trees\n");
     for config in &cs {
-        let (class_name, ctor_name, fields) = &config;
+        let (class_name, ctor_name, fields) = get_config(config);
 
         // struct definition
         print!("{}{}<'a> {{\n", STRUCT_HEADER, class_name);

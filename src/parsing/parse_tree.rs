@@ -44,7 +44,7 @@ pub enum ParseTree<'a> {
     GroupingSets(GroupingSets<'a>),
     BinaryExpression(BinaryExpression<'a>),
     UnaryExpression(UnaryExpression<'a>),
-    QuanitifiedComparison(QuanitifiedComparison<'a>),
+    QuantifiedComparison(QuantifiedComparison<'a>),
     NullPredicate(NullPredicate<'a>),
     DistinctFrom(DistinctFrom<'a>),
     Between(Between<'a>),
@@ -1074,18 +1074,18 @@ impl<'a> ParseTree<'a> {
     }
 
     pub fn is_quantified_comparison(&self) -> bool {
-        if let ParseTree::QuanitifiedComparison(_) = self {
+        if let ParseTree::QuantifiedComparison(_) = self {
             true
         } else {
             false
         }
     }
 
-    pub fn as_quantified_comparison(&self) -> &QuanitifiedComparison {
-        if let ParseTree::QuanitifiedComparison(value) = self {
+    pub fn as_quantified_comparison(&self) -> &QuantifiedComparison {
+        if let ParseTree::QuantifiedComparison(value) = self {
             value
         } else {
-            panic!("Expected QuanitifiedComparison")
+            panic!("Expected QuantifiedComparison")
         }
     }
 
@@ -1100,8 +1100,8 @@ impl<'a> ParseTree<'a> {
         ParseTree<'a>,
     ) {
         match self {
-            ParseTree::QuanitifiedComparison(tree) => tree.unbox(),
-            _ => panic!("Expected QuanitifiedComparison"),
+            ParseTree::QuantifiedComparison(tree) => tree.unbox(),
+            _ => panic!("Expected QuantifiedComparison"),
         }
     }
 
@@ -2715,7 +2715,7 @@ impl<'a> UnaryExpression<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub struct QuanitifiedComparison<'a> {
+pub struct QuantifiedComparison<'a> {
     pub operand: Box<ParseTree<'a>>,
     pub operator: Box<ParseTree<'a>>,
     pub comparison_quantifier: Box<ParseTree<'a>>,
@@ -2732,7 +2732,7 @@ pub fn quantified_comparison<'a>(
     query: ParseTree<'a>,
     close_paren: ParseTree<'a>,
 ) -> ParseTree<'a> {
-    ParseTree::QuanitifiedComparison(QuanitifiedComparison {
+    ParseTree::QuantifiedComparison(QuantifiedComparison {
         operand: Box::new(operand),
         operator: Box::new(operator),
         comparison_quantifier: Box::new(comparison_quantifier),
@@ -2742,9 +2742,9 @@ pub fn quantified_comparison<'a>(
     })
 }
 
-impl<'a> QuanitifiedComparison<'a> {
+impl<'a> QuantifiedComparison<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
-        ParseTree::QuanitifiedComparison(self)
+        ParseTree::QuantifiedComparison(self)
     }
 
     pub fn unbox(
