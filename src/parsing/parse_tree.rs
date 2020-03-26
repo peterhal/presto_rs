@@ -85,6 +85,7 @@ pub enum ParseTree<'a> {
     Interval(Interval<'a>),
     Row(Row<'a>),
     TryCast(TryCast<'a>),
+    Substring(Substring<'a>),
 }
 
 // The core trees
@@ -2190,6 +2191,40 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::TryCast(tree) => tree.unbox(),
             _ => panic!("Expected TryCast"),
+        }
+    }
+
+    pub fn is_substring(&self) -> bool {
+        if let ParseTree::Substring(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_substring(&self) -> &Substring {
+        if let ParseTree::Substring(value) = self {
+            value
+        } else {
+            panic!("Expected Substring")
+        }
+    }
+
+    pub fn unbox_substring(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Substring(tree) => tree.unbox(),
+            _ => panic!("Expected Substring"),
         }
     }
 }
@@ -4894,6 +4929,70 @@ impl<'a> TryCast<'a> {
             *self.value,
             *self.as_,
             *self.type_,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Substring<'a> {
+    pub substring: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub from: Box<ParseTree<'a>>,
+    pub from_value: Box<ParseTree<'a>>,
+    pub for_opt: Box<ParseTree<'a>>,
+    pub for_value: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn substring<'a>(
+    substring: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    value: ParseTree<'a>,
+    from: ParseTree<'a>,
+    from_value: ParseTree<'a>,
+    for_opt: ParseTree<'a>,
+    for_value: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Substring(Substring {
+        substring: Box::new(substring),
+        open_paren: Box::new(open_paren),
+        value: Box::new(value),
+        from: Box::new(from),
+        from_value: Box::new(from_value),
+        for_opt: Box::new(for_opt),
+        for_value: Box::new(for_value),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Substring<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Substring(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.substring,
+            *self.open_paren,
+            *self.value,
+            *self.from,
+            *self.from_value,
+            *self.for_opt,
+            *self.for_value,
             *self.close_paren,
         )
     }

@@ -308,6 +308,19 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
+        (
+            "Substring",
+            vec![
+                "substring",
+                "open_paren",
+                "value",
+                "from",
+                "from_value",
+                "for_opt",
+                "for_value",
+                "close_paren",
+            ],
+        ),
         // ("Class", vec![]),
     ]
 }

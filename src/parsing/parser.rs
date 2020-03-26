@@ -1611,12 +1611,34 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
     fn peek_substring(&mut self) -> bool {
-        panic!("TODO")
+        self.peek_predefined_name(PN::SUBSTRING) && self.peek_kind_offset(TK::OpenParen, 1)
     }
 
     fn parse_substring(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let substring = self.eat_predefined_name(PN::SUBSTRING);
+        let open_paren = self.eat(TK::OpenParen);
+        let value = self.parse_value_expression();
+        let from = self.eat(TK::FROM);
+        let from_value = self.parse_value_expression();
+        let for_opt = self.eat_opt(TK::FOR);
+        let for_value = if for_opt.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_value_expression()
+        };
+        let close_paren = self.eat(TK::CloseParen);
+        parse_tree::substring(
+            substring,
+            open_paren,
+            value,
+            from,
+            from_value,
+            for_opt,
+            for_value,
+            close_paren,
+        )
     }
 
     // | '(' query ')'                                                                       #subqueryExpression
