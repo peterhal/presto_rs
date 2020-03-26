@@ -210,6 +210,7 @@ fn configs() -> Vec<TreeConfig> {
         ("UnboundedFrame", vec!["unbounded", "bound_type"]),
         ("CurrentRowBound", vec!["current", "row"]),
         ("BoundedFrame", vec!["bound", "bound_type"]),
+        ("UnicodeString", vec!["string", "uescape_opt", "escape"]),
         // ("Class", vec!["fields"]),
     ]
 }

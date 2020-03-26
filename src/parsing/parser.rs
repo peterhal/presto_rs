@@ -1757,8 +1757,24 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // string
+    // : STRING                                #basicStringLiteral
+    // | UNICODE_STRING (UESCAPE STRING)?      #unicodeStringLiteral
     fn parse_string(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        match self.peek() {
+            TokenKind::String => self.parse_literal(),
+            TokenKind::UnicodeString => {
+                let string = self.eat_token();
+                let uescape_opt = self.eat_opt(TokenKind::UESCAPE);
+                let escape = if uescape_opt.is_empty() {
+                    self.eat_empty()
+                } else {
+                    self.eat(TokenKind::String)
+                };
+                parse_tree::unicode_string(string, uescape_opt, escape)
+            }
+            _ => self.expected_error("string"),
+        }
     }
 
     fn parse_statement(&mut self) -> ParseTree<'a> {

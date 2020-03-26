@@ -66,6 +66,7 @@ pub enum ParseTree<'a> {
     UnboundedFrame(UnboundedFrame<'a>),
     CurrentRowBound(CurrentRowBound<'a>),
     BoundedFrame(BoundedFrame<'a>),
+    UnicodeString(UnicodeString<'a>),
 }
 
 // The core trees
@@ -1665,6 +1666,29 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::BoundedFrame(tree) => tree.unbox(),
             _ => panic!("Expected BoundedFrame"),
+        }
+    }
+
+    pub fn is_unicode_string(&self) -> bool {
+        if let ParseTree::UnicodeString(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_unicode_string(&self) -> &UnicodeString {
+        if let ParseTree::UnicodeString(value) = self {
+            value
+        } else {
+            panic!("Expected UnicodeString")
+        }
+    }
+
+    pub fn unbox_unicode_string(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::UnicodeString(tree) => tree.unbox(),
+            _ => panic!("Expected UnicodeString"),
         }
     }
 }
@@ -3626,5 +3650,34 @@ impl<'a> BoundedFrame<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.bound, *self.bound_type)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct UnicodeString<'a> {
+    pub string: Box<ParseTree<'a>>,
+    pub uescape_opt: Box<ParseTree<'a>>,
+    pub escape: Box<ParseTree<'a>>,
+}
+
+pub fn unicode_string<'a>(
+    string: ParseTree<'a>,
+    uescape_opt: ParseTree<'a>,
+    escape: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::UnicodeString(UnicodeString {
+        string: Box::new(string),
+        uescape_opt: Box::new(uescape_opt),
+        escape: Box::new(escape),
+    })
+}
+
+impl<'a> UnicodeString<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::UnicodeString(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.string, *self.uescape_opt, *self.escape)
     }
 }
