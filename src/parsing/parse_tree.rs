@@ -69,6 +69,7 @@ pub enum ParseTree<'a> {
     UnicodeString(UnicodeString<'a>),
     ConfigureExpression(ConfigureExpression<'a>),
     SubqueryExpression(SubqueryExpression<'a>),
+    Grouping(Grouping<'a>),
 }
 
 // The core trees
@@ -1746,6 +1747,29 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::SubqueryExpression(tree) => tree.unbox(),
             _ => panic!("Expected SubqueryExpression"),
+        }
+    }
+
+    pub fn is_grouping(&self) -> bool {
+        if let ParseTree::Grouping(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_grouping(&self) -> &Grouping {
+        if let ParseTree::Grouping(value) = self {
+            value
+        } else {
+            panic!("Expected Grouping")
+        }
+    }
+
+    pub fn unbox_grouping(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Grouping(tree) => tree.unbox(),
+            _ => panic!("Expected Grouping"),
         }
     }
 }
@@ -3819,5 +3843,28 @@ impl<'a> SubqueryExpression<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query, *self.close_paren)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Grouping<'a> {
+    pub grouping: Box<ParseTree<'a>>,
+    pub groups: Box<ParseTree<'a>>,
+}
+
+pub fn grouping<'a>(grouping: ParseTree<'a>, groups: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Grouping(Grouping {
+        grouping: Box::new(grouping),
+        groups: Box::new(groups),
+    })
+}
+
+impl<'a> Grouping<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Grouping(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.grouping, *self.groups)
     }
 }

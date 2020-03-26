@@ -226,6 +226,7 @@ fn configs() -> Vec<TreeConfig> {
             "SubqueryExpression",
             vec!["open_paren", "query", "close_paren"],
         ),
+        ("Grouping", vec!["grouping", "groups"]),
         // ("Class", vec!["fields"]),
     ]
 }

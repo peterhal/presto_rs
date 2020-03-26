@@ -1242,6 +1242,10 @@ impl<'a> Parser<'a> {
         )
     }
 
+    fn peek_qualified_name(&mut self) -> bool {
+        self.peek_identifier()
+    }
+
     fn parse_primary_prefix_expression(&mut self) -> ParseTree<'a> {
         match self.peek() {
             // : NULL                                                                                #nullLiteral
@@ -1539,8 +1543,17 @@ impl<'a> Parser<'a> {
         parse_tree::subquery_expression(open_paren, query, close_paren)
     }
 
+    // | GROUPING '(' (qualifiedName (',' qualifiedName)*)? ')'                              #groupingOperation
     fn parse_grouping(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let grouping = self.eat(TokenKind::GROUPING);
+        let groups = self.parse_delimited_separated_list_opt(
+            TokenKind::OpenParen,
+            TokenKind::Comma,
+            |parser| parser.peek_qualified_name(),
+            |parser| parser.parse_qualified_name(),
+            TokenKind::CloseParen,
+        );
+        parse_tree::grouping(grouping, groups)
     }
 
     fn parse_extract(&mut self) -> ParseTree<'a> {
