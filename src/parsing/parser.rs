@@ -1738,8 +1738,9 @@ impl<'a> Parser<'a> {
         parse_tree::exists(exists, open_paren, query, close_paren)
     }
 
+    // | '?'                                                                                 #parameter
     fn parse_parameter(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        self.eat(TokenKind::Question)
     }
 
     fn parse_literal(&mut self) -> ParseTree<'a> {
