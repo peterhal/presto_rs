@@ -1604,8 +1604,38 @@ impl<'a> Parser<'a> {
         parse_tree::current_timestamp(current_timestamp, open_paren, precision, close_paren)
     }
 
+    // | NORMALIZE '(' valueExpression (',' normalForm)? ')'                                 #normalize
     fn parse_normalize(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let normalize = self.eat(TokenKind::NORMALIZE);
+        let open_paren = self.eat(TokenKind::OpenParen);
+        let value = self.parse_value_expression();
+        let comma_opt = self.eat_opt(TokenKind::Comma);
+        let normal_form = if comma_opt.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_normal_form()
+        };
+        let close_paren = self.eat(TokenKind::CloseParen);
+        parse_tree::normalize(
+            normalize,
+            open_paren,
+            value,
+            comma_opt,
+            normal_form,
+            close_paren,
+        )
+    }
+
+    // normalForm
+    // : NFD | NFC | NFKD | NFKC
+    fn parse_normal_form(&mut self) -> ParseTree<'a> {
+        match self.maybe_peek_predefined_name() {
+            Some(PredefinedName::NFD)
+            | Some(PredefinedName::NFC)
+            | Some(PredefinedName::NFKD)
+            | Some(PredefinedName::NFKC) => self.eat_token(),
+            _ => self.expected_error("normal form"),
+        }
     }
 
     fn parse_localtimestamp(&mut self) -> ParseTree<'a> {

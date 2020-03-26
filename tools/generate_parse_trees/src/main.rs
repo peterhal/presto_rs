@@ -251,7 +251,18 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
-        // ("Class", vec!["fields"]),
+        (
+            "Normalize",
+            vec![
+                "normalize",
+                "open_paren",
+                "value",
+                "comma_opt",
+                "normal_form",
+                "close_paren",
+            ],
+        ),
+        // ("Class", vec![]),
     ]
 }
 

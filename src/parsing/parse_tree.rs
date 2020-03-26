@@ -73,6 +73,7 @@ pub enum ParseTree<'a> {
     Extract(Extract<'a>),
     CurrentTime(CurrentTime<'a>),
     CurrentTimestamp(CurrentTimestamp<'a>),
+    Normalize(Normalize<'a>),
 }
 
 // The core trees
@@ -1855,6 +1856,38 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::CurrentTimestamp(tree) => tree.unbox(),
             _ => panic!("Expected CurrentTimestamp"),
+        }
+    }
+
+    pub fn is_normalize(&self) -> bool {
+        if let ParseTree::Normalize(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_normalize(&self) -> &Normalize {
+        if let ParseTree::Normalize(value) = self {
+            value
+        } else {
+            panic!("Expected Normalize")
+        }
+    }
+
+    pub fn unbox_normalize(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Normalize(tree) => tree.unbox(),
+            _ => panic!("Expected Normalize"),
         }
     }
 }
@@ -4077,6 +4110,60 @@ impl<'a> CurrentTimestamp<'a> {
             *self.current_timestamp,
             *self.open_paren,
             *self.precision,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Normalize<'a> {
+    pub normalize: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub comma_opt: Box<ParseTree<'a>>,
+    pub normal_form: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn normalize<'a>(
+    normalize: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    value: ParseTree<'a>,
+    comma_opt: ParseTree<'a>,
+    normal_form: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Normalize(Normalize {
+        normalize: Box::new(normalize),
+        open_paren: Box::new(open_paren),
+        value: Box::new(value),
+        comma_opt: Box::new(comma_opt),
+        normal_form: Box::new(normal_form),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Normalize<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Normalize(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.normalize,
+            *self.open_paren,
+            *self.value,
+            *self.comma_opt,
+            *self.normal_form,
             *self.close_paren,
         )
     }
