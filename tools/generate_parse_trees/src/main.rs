@@ -291,6 +291,7 @@ fn configs() -> Vec<TreeConfig> {
             vec!["exists", "open_paren", "query", "close_paren"],
         ),
         ("TypeConstructor", vec!["type_", "value"]),
+        ("Array", vec!["array", "elements"]),
         // ("Class", vec![]),
     ]
 }

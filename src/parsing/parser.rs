@@ -1500,11 +1500,20 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_array_constructor(&mut self) -> bool {
-        panic!("TODO")
+        self.peek_predefined_name(PN::ARRAY) && self.peek_kind_offset(TK::OpenSquare, 1)
     }
 
+    // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor
     fn parse_array_constructor(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let array = self.eat_predefined_name(PN::ARRAY);
+        let elements = self.parse_delimited_separated_list_opt(
+            TK::OpenSquare,
+            TK::Comma,
+            |parser| parser.peek_expression(),
+            |parser| parser.parse_expression(),
+            TK::CloseSquare,
+        );
+        parse_tree::array(array, elements)
     }
 
     // configureExpression

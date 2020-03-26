@@ -81,6 +81,7 @@ pub enum ParseTree<'a> {
     Case(Case<'a>),
     Exists(Exists<'a>),
     TypeConstructor(TypeConstructor<'a>),
+    Array(Array<'a>),
 }
 
 // The core trees
@@ -2076,6 +2077,29 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::TypeConstructor(tree) => tree.unbox(),
             _ => panic!("Expected TypeConstructor"),
+        }
+    }
+
+    pub fn is_array(&self) -> bool {
+        if let ParseTree::Array(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_array(&self) -> &Array {
+        if let ParseTree::Array(value) = self {
+            value
+        } else {
+            panic!("Expected Array")
+        }
+    }
+
+    pub fn unbox_array(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Array(tree) => tree.unbox(),
+            _ => panic!("Expected Array"),
         }
     }
 }
@@ -4628,5 +4652,28 @@ impl<'a> TypeConstructor<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.type_, *self.value)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Array<'a> {
+    pub array: Box<ParseTree<'a>>,
+    pub elements: Box<ParseTree<'a>>,
+}
+
+pub fn array<'a>(array: ParseTree<'a>, elements: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Array(Array {
+        array: Box::new(array),
+        elements: Box::new(elements),
+    })
+}
+
+impl<'a> Array<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Array(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.array, *self.elements)
     }
 }
