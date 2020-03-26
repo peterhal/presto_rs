@@ -79,6 +79,7 @@ pub enum ParseTree<'a> {
     Cast(Cast<'a>),
     WhenClause(WhenClause<'a>),
     Case(Case<'a>),
+    Exists(Exists<'a>),
 }
 
 // The core trees
@@ -2028,6 +2029,29 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Case(tree) => tree.unbox(),
             _ => panic!("Expected Case"),
+        }
+    }
+
+    pub fn is_exists(&self) -> bool {
+        if let ParseTree::Exists(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_exists(&self) -> &Exists {
+        if let ParseTree::Exists(value) = self {
+            value
+        } else {
+            panic!("Expected Exists")
+        }
+    }
+
+    pub fn unbox_exists(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Exists(tree) => tree.unbox(),
+            _ => panic!("Expected Exists"),
         }
     }
 }
@@ -4519,6 +4543,43 @@ impl<'a> Case<'a> {
             *self.else_opt,
             *self.default,
             *self.end,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Exists<'a> {
+    pub exists: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn exists<'a>(
+    exists: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Exists(Exists {
+        exists: Box::new(exists),
+        open_paren: Box::new(open_paren),
+        query: Box::new(query),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Exists<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Exists(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.exists,
+            *self.open_paren,
+            *self.query,
+            *self.close_paren,
         )
     }
 }

@@ -416,14 +416,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_parenthesized_query(&mut self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        self.parse_parenthesized(|parser| parser.parse_query())
+    }
+
     // namedQuery
     // : name=identifier (columnAliases)? AS '(' query ')'
     fn parse_named_query(&mut self) -> ParseTree<'a> {
         let name = self.parse_identifier();
         let column_aliases = self.parse_column_aliases_opt();
         let as_ = self.eat(TokenKind::AS);
-        let (open_paren, query, close_paren) =
-            self.parse_parenthesized(|parser| parser.parse_query());
+        let (open_paren, query, close_paren) = self.parse_parenthesized_query();
         parse_tree::named_query(name, column_aliases, as_, open_paren, query, close_paren)
     }
 
@@ -862,8 +865,7 @@ impl<'a> Parser<'a> {
         match self.peek() {
             TokenKind::OpenParen => {
                 if self.peek_query_offset(1) {
-                    let (open_paren, query, close_paren) =
-                        self.parse_parenthesized(|parser| parser.parse_query());
+                    let (open_paren, query, close_paren) = self.parse_parenthesized_query();
                     parse_tree::subquery_relation(open_paren, query, close_paren)
                 } else {
                     let (open_paren, relation, close_paren) =
@@ -893,8 +895,7 @@ impl<'a> Parser<'a> {
     // | LATERAL '(' query ')'                                           #lateral
     fn parse_lateral(&mut self) -> ParseTree<'a> {
         let lateral = self.eat_predefined_name(PredefinedName::LATERAL);
-        let (open_paren, query, close_paren) =
-            self.parse_parenthesized(|parser| parser.parse_query());
+        let (open_paren, query, close_paren) = self.parse_parenthesized_query();
         parse_tree::lateral(lateral, open_paren, query, close_paren)
     }
 
@@ -1037,8 +1038,7 @@ impl<'a> Parser<'a> {
         let operator = self.eat_token();
         if self.peek_quantified_comparison() {
             let comparison_quantifier = self.eat_token();
-            let (open_paren, query, close_paren) =
-                self.parse_parenthesized(|parser| parser.parse_query());
+            let (open_paren, query, close_paren) = self.parse_parenthesized_query();
             parse_tree::quantified_comparison(
                 value,
                 operator,
@@ -1118,8 +1118,7 @@ impl<'a> Parser<'a> {
     fn parse_in_suffix(&mut self, value: ParseTree<'a>, not_opt: ParseTree<'a>) -> ParseTree<'a> {
         let in_ = self.eat(TokenKind::IN);
         if self.peek_kind(TokenKind::OpenParen) && self.peek_query_primary_offset(1) {
-            let (open_paren, query, close_paren) =
-                self.parse_parenthesized(|parser| parser.parse_query());
+            let (open_paren, query, close_paren) = self.parse_parenthesized_query();
             parse_tree::in_subquery(value, not_opt, in_, open_paren, query, close_paren)
         } else {
             let expressions =
@@ -1563,8 +1562,7 @@ impl<'a> Parser<'a> {
 
     // | '(' query ')'                                                                       #subqueryExpression
     fn parse_subquery_expression(&mut self) -> ParseTree<'a> {
-        let (open_paren, query, close_paren) =
-            self.parse_parenthesized(|parser| parser.parse_query());
+        let (open_paren, query, close_paren) = self.parse_parenthesized_query();
         parse_tree::subquery_expression(open_paren, query, close_paren)
     }
 
@@ -1733,8 +1731,11 @@ impl<'a> Parser<'a> {
         self.peek_kind(TokenKind::WHEN)
     }
 
+    // | EXISTS '(' query ')'                                                                #exists
     fn parse_exists(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let exists = self.eat(TokenKind::EXISTS);
+        let (open_paren, query, close_paren) = self.parse_parenthesized_query();
+        parse_tree::exists(exists, open_paren, query, close_paren)
     }
 
     fn parse_parameter(&mut self) -> ParseTree<'a> {

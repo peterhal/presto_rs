@@ -286,6 +286,10 @@ fn configs() -> Vec<TreeConfig> {
                 "end",
             ],
         ),
+        (
+            "Exists",
+            vec!["exists", "open_paren", "query", "close_paren"],
+        ),
         // ("Class", vec![]),
     ]
 }
