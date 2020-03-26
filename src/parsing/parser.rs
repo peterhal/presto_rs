@@ -1,6 +1,7 @@
 use crate::lexing::{
-    lexer::Lexer, position, position::Position, predefined_names, predefined_names::PredefinedName,
-    text_range::TextRange, token::Token, token_kind::TokenKind as TK,
+    lexer::Lexer, position, position::Position, predefined_names,
+    predefined_names::PredefinedName as PN, text_range::TextRange, token::Token,
+    token_kind::TokenKind as TK,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
 
@@ -119,7 +120,7 @@ impl<'a> Parser<'a> {
         self.position.peek()
     }
 
-    fn maybe_peek_predefined_name_offset(&mut self, offset: usize) -> Option<PredefinedName> {
+    fn maybe_peek_predefined_name_offset(&mut self, offset: usize) -> Option<PN> {
         let token = self.peek_token_offset(offset);
         if token.kind == TK::Identifier {
             None
@@ -128,15 +129,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn maybe_peek_predefined_name(&mut self) -> Option<PredefinedName> {
+    fn maybe_peek_predefined_name(&mut self) -> Option<PN> {
         self.maybe_peek_predefined_name_offset(0)
     }
 
-    fn peek_predefined_name_offset(&mut self, name: PredefinedName, offset: usize) -> bool {
+    fn peek_predefined_name_offset(&mut self, name: PN, offset: usize) -> bool {
         self.maybe_peek_predefined_name_offset(offset) == Some(name)
     }
 
-    fn peek_predefined_name(&mut self, name: PredefinedName) -> bool {
+    fn peek_predefined_name(&mut self, name: PN) -> bool {
         self.peek_predefined_name_offset(name, 0)
     }
 
@@ -169,7 +170,7 @@ impl<'a> Parser<'a> {
         self.expected_error(expected.to_string().as_str())
     }
 
-    fn expected_error_name(&mut self, expected: PredefinedName) -> ParseTree<'a> {
+    fn expected_error_name(&mut self, expected: PN) -> ParseTree<'a> {
         self.expected_error(expected.to_string().as_str())
     }
 
@@ -181,7 +182,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn eat_predefined_name(&mut self, name: PredefinedName) -> ParseTree<'a> {
+    fn eat_predefined_name(&mut self, name: PN) -> ParseTree<'a> {
         if self.peek_predefined_name(name) {
             self.eat_token()
         } else {
@@ -189,7 +190,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn eat_predefined_name_opt(&mut self, name: PredefinedName) -> ParseTree<'a> {
+    fn eat_predefined_name_opt(&mut self, name: PN) -> ParseTree<'a> {
         if self.peek_predefined_name(name) {
             self.eat_token()
         } else {
@@ -484,7 +485,7 @@ impl<'a> Parser<'a> {
     fn parse_sort_item(&mut self) -> ParseTree<'a> {
         let expression = self.parse_expression();
         let ordering_opt = self.parse_ordering_opt();
-        let nulls = self.eat_predefined_name_opt(PredefinedName::NULLS);
+        let nulls = self.eat_predefined_name_opt(PN::NULLS);
         let null_ordering = if nulls.is_empty() {
             self.eat_empty()
         } else {
@@ -494,18 +495,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ordering_opt(&mut self) -> ParseTree<'a> {
-        let asc = self.eat_predefined_name_opt(PredefinedName::ASC);
+        let asc = self.eat_predefined_name_opt(PN::ASC);
         if asc.is_empty() {
-            self.eat_predefined_name_opt(PredefinedName::DESC)
+            self.eat_predefined_name_opt(PN::DESC)
         } else {
             asc
         }
     }
 
     fn parse_null_ordering(&mut self) -> ParseTree<'a> {
-        let last = self.eat_predefined_name_opt(PredefinedName::LAST);
+        let last = self.eat_predefined_name_opt(PN::LAST);
         if last.is_empty() {
-            self.eat_predefined_name(PredefinedName::FIRST)
+            self.eat_predefined_name(PN::FIRST)
         } else {
             last
         }
@@ -525,11 +526,11 @@ impl<'a> Parser<'a> {
 
     //   (LIMIT limit=(INTEGER_VALUE | ALL))?
     fn parse_limit_opt(&mut self) -> ParseTree<'a> {
-        let limit = self.eat_predefined_name_opt(PredefinedName::LIMIT);
+        let limit = self.eat_predefined_name_opt(PN::LIMIT);
         if limit.is_empty() {
             limit
         } else {
-            let value = self.eat_predefined_name_opt(PredefinedName::ALL);
+            let value = self.eat_predefined_name_opt(PN::ALL);
             let value = if value.is_empty() {
                 self.eat(TK::Integer)
             } else {
@@ -581,7 +582,7 @@ impl<'a> Parser<'a> {
     fn parse_set_quantifier_opt(&mut self) -> ParseTree<'a> {
         let distinct = self.eat_opt(TK::DISTINCT);
         if distinct.is_empty() {
-            self.eat_predefined_name_opt(PredefinedName::ALL)
+            self.eat_predefined_name_opt(PN::ALL)
         } else {
             distinct
         }
@@ -806,7 +807,7 @@ impl<'a> Parser<'a> {
     //   )?
     fn parse_sampled_relation(&mut self) -> ParseTree<'a> {
         let aliased_relation = self.parse_aliased_relation();
-        let tablesample = self.eat_predefined_name_opt(PredefinedName::TABLESAMPLE);
+        let tablesample = self.eat_predefined_name_opt(PN::TABLESAMPLE);
         if tablesample.is_empty() {
             aliased_relation
         } else {
@@ -828,9 +829,9 @@ impl<'a> Parser<'a> {
     // : BERNOULLI
     // | SYSTEM
     fn parse_sample_type(&mut self) -> ParseTree<'a> {
-        let bernoulli = self.eat_predefined_name_opt(PredefinedName::BERNOULLI);
+        let bernoulli = self.eat_predefined_name_opt(PN::BERNOULLI);
         if bernoulli.is_empty() {
-            self.eat_predefined_name(PredefinedName::SYSTEM)
+            self.eat_predefined_name(PN::SYSTEM)
         } else {
             bernoulli
         }
@@ -870,8 +871,7 @@ impl<'a> Parser<'a> {
             }
             TK::UNNEST => self.parse_unnest(),
             _ => {
-                if self.peek_predefined_name(PredefinedName::LATERAL)
-                    && self.peek_kind_offset(TK::OpenParen, 1)
+                if self.peek_predefined_name(PN::LATERAL) && self.peek_kind_offset(TK::OpenParen, 1)
                 {
                     self.parse_lateral()
                 } else {
@@ -889,7 +889,7 @@ impl<'a> Parser<'a> {
 
     // | LATERAL '(' query ')'                                           #lateral
     fn parse_lateral(&mut self) -> ParseTree<'a> {
-        let lateral = self.eat_predefined_name(PredefinedName::LATERAL);
+        let lateral = self.eat_predefined_name(PN::LATERAL);
         let (open_paren, query, close_paren) = self.parse_parenthesized_query();
         parse_tree::lateral(lateral, open_paren, query, close_paren)
     }
@@ -903,7 +903,7 @@ impl<'a> Parser<'a> {
         let ordinality = if with.is_empty() {
             self.eat_empty()
         } else {
-            self.eat_predefined_name(PredefinedName::ORDINALITY)
+            self.eat_predefined_name(PN::ORDINALITY)
         };
         parse_tree::unnest(unnest, expressions, with, ordinality)
     }
@@ -950,7 +950,7 @@ impl<'a> Parser<'a> {
     // | GROUPING SETS '(' groupingSet (',' groupingSet)* ')'   #multipleGroupingSets
     fn parse_grouping_sets(&mut self) -> ParseTree<'a> {
         let grouping = self.eat(TK::GROUPING);
-        let sets = self.eat_predefined_name(PredefinedName::SETS);
+        let sets = self.eat_predefined_name(PN::SETS);
         let grouping_sets =
             self.parse_parenthesized_comma_separated_list(|parser| parser.parse_grouping_set());
         parse_tree::grouping_sets(grouping, sets, grouping_sets)
@@ -1163,9 +1163,7 @@ impl<'a> Parser<'a> {
 
     fn peek_comparison_quantifier(&mut self) -> bool {
         match self.maybe_peek_predefined_name() {
-            Some(PredefinedName::ALL) | Some(PredefinedName::SOME) | Some(PredefinedName::ANY) => {
-                true
-            }
+            Some(PN::ALL) | Some(PN::SOME) | Some(PN::ANY) => true,
             _ => false,
         }
     }
@@ -1238,13 +1236,13 @@ impl<'a> Parser<'a> {
     // | TIME ZONE string    #timeZoneString
     fn parse_at_time_zone(&mut self) -> ParseTree<'a> {
         let value = self.parse_primary_expression();
-        let at = self.eat_predefined_name_opt(PredefinedName::AT);
+        let at = self.eat_predefined_name_opt(PN::AT);
         if at.is_empty() {
             value
         } else {
-            let time = self.eat_predefined_name(PredefinedName::TIME);
-            let zone = self.eat_predefined_name(PredefinedName::ZONE);
-            let specifier = if self.peek_predefined_name(PredefinedName::INTERVAL) {
+            let time = self.eat_predefined_name(PN::TIME);
+            let zone = self.eat_predefined_name(PN::ZONE);
+            let specifier = if self.peek_predefined_name(PN::INTERVAL) {
                 self.parse_interval()
             } else {
                 self.parse_string()
@@ -1341,32 +1339,32 @@ impl<'a> Parser<'a> {
             TK::Identifier => {
                 if let Some(name) = self.maybe_peek_predefined_name() {
                     match name {
-                        PredefinedName::INTERVAL => {
+                        PN::INTERVAL => {
                             if self.peek_interval() {
                                 return self.parse_interval();
                             }
                         }
-                        PredefinedName::POSITION => {
+                        PN::POSITION => {
                             if self.peek_position() {
                                 return self.parse_position();
                             }
                         }
-                        PredefinedName::ROW => {
+                        PN::ROW => {
                             if self.peek_row_constructor() {
                                 return self.parse_row_constructor();
                             }
                         }
-                        PredefinedName::TRY_CAST => {
+                        PN::TRY_CAST => {
                             if self.peek_try_cast() {
                                 return self.parse_try_cast();
                             }
                         }
-                        PredefinedName::ARRAY => {
+                        PN::ARRAY => {
                             if self.peek_array_constructor() {
                                 return self.parse_array_constructor();
                             }
                         }
-                        PredefinedName::SUBSTRING => {
+                        PN::SUBSTRING => {
                             if self.peek_substring() {
                                 return self.parse_substring();
                             }
@@ -1648,10 +1646,7 @@ impl<'a> Parser<'a> {
     // : NFD | NFC | NFKD | NFKC
     fn parse_normal_form(&mut self) -> ParseTree<'a> {
         match self.maybe_peek_predefined_name() {
-            Some(PredefinedName::NFD)
-            | Some(PredefinedName::NFC)
-            | Some(PredefinedName::NFKD)
-            | Some(PredefinedName::NFKC) => self.eat_token(),
+            Some(PN::NFD) | Some(PN::NFC) | Some(PN::NFKD) | Some(PN::NFKC) => self.eat_token(),
             _ => self.expected_error("normal form"),
         }
     }
@@ -1828,7 +1823,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_filter_opt(&mut self) -> ParseTree<'a> {
-        let filter = self.eat_predefined_name_opt(PredefinedName::FILTER);
+        let filter = self.eat_predefined_name_opt(PN::FILTER);
         if filter.is_empty() {
             filter
         } else {
@@ -1847,12 +1842,12 @@ impl<'a> Parser<'a> {
     //     windowFrame?
     //   ')'
     fn parse_over_opt(&mut self) -> ParseTree<'a> {
-        let over = self.eat_predefined_name_opt(PredefinedName::OVER);
+        let over = self.eat_predefined_name_opt(PN::OVER);
         if over.is_empty() {
             over
         } else {
             let open_paren = self.eat(TK::OpenParen);
-            let partition_opt = self.eat_predefined_name_opt(PredefinedName::PARTITION);
+            let partition_opt = self.eat_predefined_name_opt(PN::PARTITION);
             let (by, partitions) = if partition_opt.is_empty() {
                 (self.eat_empty(), self.eat_empty())
             } else {
@@ -1883,13 +1878,12 @@ impl<'a> Parser<'a> {
     // | frameType=RANGE BETWEEN startBound=frameBound AND end=frameBound
     // | frameType=ROWS BETWEEN startBound=frameBound AND end=frameBound
     fn parse_window_frame(&mut self) -> ParseTree<'a> {
-        let frame_type = if self.peek_predefined_name(PredefinedName::RANGE)
-            || self.peek_predefined_name(PredefinedName::ROWS)
-        {
-            self.eat_token()
-        } else {
-            self.expected_error("RANGE, ROWS")
-        };
+        let frame_type =
+            if self.peek_predefined_name(PN::RANGE) || self.peek_predefined_name(PN::ROWS) {
+                self.eat_token()
+            } else {
+                self.expected_error("RANGE, ROWS")
+            };
         let between_opt = self.eat_opt(TK::BETWEEN);
         let start = self.parse_frame_bound();
         let (and, end) = if between_opt.is_empty() {
@@ -1906,13 +1900,13 @@ impl<'a> Parser<'a> {
     // | CURRENT ROW                                   #currentRowBound
     // | expression boundType=(PRECEDING | FOLLOWING)  #boundedFrame // expression should be unsignedLiteral
     fn parse_frame_bound(&mut self) -> ParseTree<'a> {
-        if self.peek_predefined_name(PredefinedName::UNBOUNDED)
-            && (self.peek_predefined_name_offset(PredefinedName::PRECEDING, 1)
-                || self.peek_predefined_name_offset(PredefinedName::FOLLOWING, 1))
+        if self.peek_predefined_name(PN::UNBOUNDED)
+            && (self.peek_predefined_name_offset(PN::PRECEDING, 1)
+                || self.peek_predefined_name_offset(PN::FOLLOWING, 1))
         {
             parse_tree::unbounded_frame(self.eat_token(), self.eat_token())
-        } else if self.peek_predefined_name_offset(PredefinedName::CURRENT, 0)
-            && self.peek_predefined_name_offset(PredefinedName::ROW, 1)
+        } else if self.peek_predefined_name_offset(PN::CURRENT, 0)
+            && self.peek_predefined_name_offset(PN::ROW, 1)
         {
             parse_tree::current_row_bound(self.eat_token(), self.eat_token())
         } else {
@@ -1924,7 +1918,7 @@ impl<'a> Parser<'a> {
 
     fn parse_bound_type(&mut self) -> ParseTree<'a> {
         match self.maybe_peek_predefined_name() {
-            Some(PredefinedName::PRECEDING) | Some(PredefinedName::FOLLOWING) => self.eat_token(),
+            Some(PN::PRECEDING) | Some(PN::FOLLOWING) => self.eat_token(),
             _ => self.expected_error("PRECEDING, FOLLOWING"),
         }
     }
