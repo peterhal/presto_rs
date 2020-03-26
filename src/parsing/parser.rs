@@ -1336,6 +1336,15 @@ impl<'a> Parser<'a> {
             // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor
             // | identifier                                                                          #columnReference
             // | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+            //
+            // TODO: The disambiguation of several of these is incorrect
+            // Currently we're prefering the special syntgax form
+            // when we could have a function call. This applies to:
+            //    POSITION
+            //    TRY_CAST
+            //    SUBSTRING
+            // Currently cannot parse functions calls with those names.
+            // Need to verify if that's an issue.
             TK::Identifier => {
                 if let Some(name) = self.maybe_peek_predefined_name() {
                     match name {
@@ -1475,12 +1484,49 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    // interval
+    // : INTERVAL sign=(PLUS | MINUS)? (string | configureExpression) from_=intervalField (TO to=intervalField)?
     fn peek_interval(&mut self) -> bool {
-        panic!("TODO")
+        self.peek_predefined_name(PN::INTERVAL)
+            && match self.peek_offset(1) {
+                TK::Plus | TK::Minus | TK::String | TK::UnicodeString | TK::Identifier => true,
+                _ => false,
+            }
     }
 
     fn parse_interval(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let interval = self.eat_predefined_name(PN::INTERVAL);
+        let sign_opt = self.parse_sign_opt();
+        let value = if self.peek_string() {
+            self.parse_string()
+        } else {
+            self.parse_configure_expression()
+        };
+        let from = self.parse_interval_field();
+        let to_kw_opt = self.eat_predefined_name_opt(PN::TO);
+        let to = if to_kw_opt.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_interval_field()
+        };
+        parse_tree::interval(interval, sign_opt, value, from, to_kw_opt, to)
+    }
+
+    fn parse_sign_opt(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TK::Plus | TK::Minus => self.eat_token(),
+            _ => self.eat_empty(),
+        }
+    }
+
+    // intervalField
+    // : YEAR | MONTH | DAY | HOUR | MINUTE | SECOND
+    fn parse_interval_field(&mut self) -> ParseTree<'a> {
+        match self.maybe_peek_predefined_name() {
+            Some(PN::YEAR) | Some(PN::MONTH) | Some(PN::DAY) | Some(PN::HOUR)
+            | Some(PN::MINUTE) | Some(PN::SECOND) => self.eat_token(),
+            _ => self.expected_error("interval field"),
+        }
     }
 
     fn peek_row_constructor(&mut self) -> bool {
@@ -1499,11 +1545,11 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor
     fn peek_array_constructor(&mut self) -> bool {
         self.peek_predefined_name(PN::ARRAY) && self.peek_kind_offset(TK::OpenSquare, 1)
     }
 
-    // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor
     fn parse_array_constructor(&mut self) -> ParseTree<'a> {
         let array = self.eat_predefined_name(PN::ARRAY);
         let elements = self.parse_delimited_separated_list_opt(
@@ -1949,6 +1995,13 @@ impl<'a> Parser<'a> {
                 parse_tree::unicode_string(string, uescape_opt, escape)
             }
             _ => self.expected_error("string"),
+        }
+    }
+
+    fn peek_string(&mut self) -> bool {
+        match self.peek() {
+            TK::String | TK::UnicodeString => true,
+            _ => false,
         }
     }
 

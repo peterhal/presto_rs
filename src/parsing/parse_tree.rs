@@ -82,6 +82,7 @@ pub enum ParseTree<'a> {
     Exists(Exists<'a>),
     TypeConstructor(TypeConstructor<'a>),
     Array(Array<'a>),
+    Interval(Interval<'a>),
 }
 
 // The core trees
@@ -2100,6 +2101,38 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Array(tree) => tree.unbox(),
             _ => panic!("Expected Array"),
+        }
+    }
+
+    pub fn is_interval(&self) -> bool {
+        if let ParseTree::Interval(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_interval(&self) -> &Interval {
+        if let ParseTree::Interval(value) = self {
+            value
+        } else {
+            panic!("Expected Interval")
+        }
+    }
+
+    pub fn unbox_interval(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Interval(tree) => tree.unbox(),
+            _ => panic!("Expected Interval"),
         }
     }
 }
@@ -4675,5 +4708,59 @@ impl<'a> Array<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.array, *self.elements)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Interval<'a> {
+    pub interval: Box<ParseTree<'a>>,
+    pub sign_opt: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub from: Box<ParseTree<'a>>,
+    pub to_kw_opt: Box<ParseTree<'a>>,
+    pub to: Box<ParseTree<'a>>,
+}
+
+pub fn interval<'a>(
+    interval: ParseTree<'a>,
+    sign_opt: ParseTree<'a>,
+    value: ParseTree<'a>,
+    from: ParseTree<'a>,
+    to_kw_opt: ParseTree<'a>,
+    to: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Interval(Interval {
+        interval: Box::new(interval),
+        sign_opt: Box::new(sign_opt),
+        value: Box::new(value),
+        from: Box::new(from),
+        to_kw_opt: Box::new(to_kw_opt),
+        to: Box::new(to),
+    })
+}
+
+impl<'a> Interval<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Interval(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.interval,
+            *self.sign_opt,
+            *self.value,
+            *self.from,
+            *self.to_kw_opt,
+            *self.to,
+        )
     }
 }

@@ -292,6 +292,10 @@ fn configs() -> Vec<TreeConfig> {
         ),
         ("TypeConstructor", vec!["type_", "value"]),
         ("Array", vec!["array", "elements"]),
+        (
+            "Interval",
+            vec!["interval", "sign_opt", "value", "from", "to_kw_opt", "to"],
+        ),
         // ("Class", vec![]),
     ]
 }
