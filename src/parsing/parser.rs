@@ -1,6 +1,6 @@
 use crate::lexing::{
     lexer::Lexer, position, position::Position, predefined_names, predefined_names::PredefinedName,
-    text_range::TextRange, token::Token, token_kind::TokenKind,
+    text_range::TextRange, token::Token, token_kind::TokenKind as TK,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
 
@@ -51,19 +51,19 @@ impl<'a> ParsePosition<'a> {
         self.peek_token_offset(0)
     }
 
-    pub fn peek_offset(&mut self, offset: usize) -> TokenKind {
+    pub fn peek_offset(&mut self, offset: usize) -> TK {
         self.peek_token_offset(offset).kind
     }
 
-    pub fn peek_kind_offset(&mut self, kind: TokenKind, offset: usize) -> bool {
+    pub fn peek_kind_offset(&mut self, kind: TK, offset: usize) -> bool {
         self.peek_offset(offset) == kind
     }
 
-    pub fn peek_kind(&mut self, kind: TokenKind) -> bool {
+    pub fn peek_kind(&mut self, kind: TK) -> bool {
         self.peek_kind_offset(kind, 0)
     }
 
-    pub fn peek(&mut self) -> TokenKind {
+    pub fn peek(&mut self) -> TK {
         self.peek_offset(0)
     }
 
@@ -103,25 +103,25 @@ impl<'a> Parser<'a> {
         self.position.peek_token()
     }
 
-    fn peek_offset(&mut self, offset: usize) -> TokenKind {
+    fn peek_offset(&mut self, offset: usize) -> TK {
         self.position.peek_offset(offset)
     }
 
-    fn peek_kind_offset(&mut self, kind: TokenKind, offset: usize) -> bool {
+    fn peek_kind_offset(&mut self, kind: TK, offset: usize) -> bool {
         self.position.peek_kind_offset(kind, offset)
     }
 
-    fn peek_kind(&mut self, kind: TokenKind) -> bool {
+    fn peek_kind(&mut self, kind: TK) -> bool {
         self.position.peek_kind(kind)
     }
 
-    fn peek(&mut self) -> TokenKind {
+    fn peek(&mut self) -> TK {
         self.position.peek()
     }
 
     fn maybe_peek_predefined_name_offset(&mut self, offset: usize) -> Option<PredefinedName> {
         let token = self.peek_token_offset(offset);
-        if token.kind == TokenKind::Identifier {
+        if token.kind == TK::Identifier {
             None
         } else {
             predefined_names::maybe_get_predefined_name(token.value)
@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
         self.error(message)
     }
 
-    fn expected_error_kind(&mut self, expected: TokenKind) -> ParseTree<'a> {
+    fn expected_error_kind(&mut self, expected: TK) -> ParseTree<'a> {
         self.expected_error(expected.to_string().as_str())
     }
 
@@ -173,7 +173,7 @@ impl<'a> Parser<'a> {
         self.expected_error(expected.to_string().as_str())
     }
 
-    fn eat(&mut self, kind: TokenKind) -> ParseTree<'a> {
+    fn eat(&mut self, kind: TK) -> ParseTree<'a> {
         if self.peek_kind(kind) {
             self.eat_token()
         } else {
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn eat_opt(&mut self, kind: TokenKind) -> ParseTree<'a> {
+    fn eat_opt(&mut self, kind: TK) -> ParseTree<'a> {
         if self.peek_kind(kind) {
             self.eat_token()
         } else {
@@ -207,9 +207,9 @@ impl<'a> Parser<'a> {
 
     fn parse_delimited(
         &mut self,
-        start_kind: TokenKind,
+        start_kind: TK,
         parse_element: ElementParser<'a>,
-        end_kind: TokenKind,
+        end_kind: TK,
     ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         let start = self.eat(start_kind);
         let element = parse_element(self);
@@ -221,13 +221,13 @@ impl<'a> Parser<'a> {
         &mut self,
         parse_element: ElementParser<'a>,
     ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
-        self.parse_delimited(TokenKind::OpenParen, parse_element, TokenKind::CloseParen)
+        self.parse_delimited(TK::OpenParen, parse_element, TK::CloseParen)
     }
 
     // parse non-empty separated list
     fn parse_separated_list_elements(
         &mut self,
-        separator_kind: TokenKind,
+        separator_kind: TK,
         parse_element: ElementParser<'a>,
     ) -> Vec<(ParseTree<'a>, ParseTree<'a>)> {
         let mut elements = Vec::new();
@@ -258,7 +258,7 @@ impl<'a> Parser<'a> {
     // parse possibly empty separated list
     fn parse_separated_list_elements_opt(
         &mut self,
-        separator_kind: TokenKind,
+        separator_kind: TK,
         peek_element: Peeker<'a>,
         parse_element: ElementParser<'a>,
     ) -> Vec<(ParseTree<'a>, ParseTree<'a>)> {
@@ -285,7 +285,7 @@ impl<'a> Parser<'a> {
     // Terminating separator is not consumed.
     fn parse_separated_list(
         &mut self,
-        separator_kind: TokenKind,
+        separator_kind: TK,
         parse_element: ElementParser<'a>,
     ) -> ParseTree<'a> {
         let start_delimiter = self.eat_empty();
@@ -299,7 +299,7 @@ impl<'a> Parser<'a> {
     // Terminating separator is not consumed.
     fn parse_separated_list_opt(
         &mut self,
-        separator_kind: TokenKind,
+        separator_kind: TK,
         peek_element: Peeker<'a>,
         parse_element: ElementParser<'a>,
     ) -> ParseTree<'a> {
@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
     // Parse non-empty comma separated list.
     // Terminating commas are not consumed.
     fn parse_comma_separated_list(&mut self, parse_element: ElementParser<'a>) -> ParseTree<'a> {
-        self.parse_separated_list(TokenKind::Comma, parse_element)
+        self.parse_separated_list(TK::Comma, parse_element)
     }
 
     // Parse possibly-empty comma separated list.
@@ -323,17 +323,17 @@ impl<'a> Parser<'a> {
         peek_element: Peeker<'a>,
         parse_element: ElementParser<'a>,
     ) -> ParseTree<'a> {
-        self.parse_separated_list_opt(TokenKind::Comma, peek_element, parse_element)
+        self.parse_separated_list_opt(TK::Comma, peek_element, parse_element)
     }
 
     // Parse delimited non-empty separated list.
     // Terminating separator is not permitted.
     fn parse_delimited_separated_list(
         &mut self,
-        start_kind: TokenKind,
-        separator_kind: TokenKind,
+        start_kind: TK,
+        separator_kind: TK,
         parse_element: ElementParser<'a>,
-        end_kind: TokenKind,
+        end_kind: TK,
     ) -> ParseTree<'a> {
         let start_delimiter = self.eat(start_kind);
         let elements_and_separators =
@@ -346,11 +346,11 @@ impl<'a> Parser<'a> {
     // Terminating separator is not permitted.
     fn parse_delimited_separated_list_opt(
         &mut self,
-        start_kind: TokenKind,
-        separator_kind: TokenKind,
+        start_kind: TK,
+        separator_kind: TK,
         peek_element: Peeker<'a>,
         parse_element: ElementParser<'a>,
-        end_kind: TokenKind,
+        end_kind: TK,
     ) -> ParseTree<'a> {
         let start_delimiter = self.eat(start_kind);
         let elements_and_separators =
@@ -365,12 +365,7 @@ impl<'a> Parser<'a> {
         &mut self,
         parse_element: ElementParser<'a>,
     ) -> ParseTree<'a> {
-        self.parse_delimited_separated_list(
-            TokenKind::OpenParen,
-            TokenKind::Comma,
-            parse_element,
-            TokenKind::CloseParen,
-        )
+        self.parse_delimited_separated_list(TK::OpenParen, TK::Comma, parse_element, TK::CloseParen)
     }
 
     // Parse optional parenthesized, non-empty comma separated list.
@@ -379,12 +374,12 @@ impl<'a> Parser<'a> {
         &mut self,
         parse_element: ElementParser<'a>,
     ) -> ParseTree<'a> {
-        if self.peek_kind(TokenKind::OpenParen) {
+        if self.peek_kind(TK::OpenParen) {
             self.parse_delimited_separated_list(
-                TokenKind::OpenParen,
-                TokenKind::Comma,
+                TK::OpenParen,
+                TK::Comma,
                 parse_element,
-                TokenKind::CloseParen,
+                TK::CloseParen,
             )
         } else {
             self.eat_empty()
@@ -405,9 +400,9 @@ impl<'a> Parser<'a> {
     // with_
     // : WITH RECURSIVE? namedQuery (',' namedQuery)*
     fn parse_with_opt(&mut self) -> ParseTree<'a> {
-        if self.peek_kind(TokenKind::WITH) {
+        if self.peek_kind(TK::WITH) {
             let with = self.eat_token();
-            let recursive = self.eat_opt(TokenKind::RECURSIVE);
+            let recursive = self.eat_opt(TK::RECURSIVE);
             let named_queries =
                 self.parse_comma_separated_list(|parser| parser.parse_named_query());
             parse_tree::with(with, recursive, named_queries)
@@ -425,7 +420,7 @@ impl<'a> Parser<'a> {
     fn parse_named_query(&mut self) -> ParseTree<'a> {
         let name = self.parse_identifier();
         let column_aliases = self.parse_column_aliases_opt();
-        let as_ = self.eat(TokenKind::AS);
+        let as_ = self.eat(TK::AS);
         let (open_paren, query, close_paren) = self.parse_parenthesized_query();
         parse_tree::named_query(name, column_aliases, as_, open_paren, query, close_paren)
     }
@@ -441,16 +436,16 @@ impl<'a> Parser<'a> {
         if self.peek_identifier() {
             self.eat_token()
         } else {
-            self.expected_error_kind(TokenKind::Identifier)
+            self.expected_error_kind(TK::Identifier)
         }
     }
 
     fn peek_identifier_offset(&mut self, offset: usize) -> bool {
         match self.peek_offset(offset) {
-            TokenKind::Identifier
-            | TokenKind::QuotedIdentifier
-            | TokenKind::BackquotedIdentifier
-            | TokenKind::DigitIdentifier => true,
+            TK::Identifier
+            | TK::QuotedIdentifier
+            | TK::BackquotedIdentifier
+            | TK::DigitIdentifier => true,
             _ => false,
         }
     }
@@ -518,11 +513,11 @@ impl<'a> Parser<'a> {
 
     //   (ORDER BY sortItem (',' sortItem)*)?
     fn parse_order_by_opt(&mut self) -> ParseTree<'a> {
-        let order = self.eat_opt(TokenKind::ORDER);
+        let order = self.eat_opt(TK::ORDER);
         if order.is_empty() {
             order
         } else {
-            let by = self.eat(TokenKind::BY);
+            let by = self.eat(TK::BY);
             let sort_items = self.parse_comma_separated_list(|parser| parser.parse_sort_item());
             parse_tree::order_by(order, by, sort_items)
         }
@@ -536,7 +531,7 @@ impl<'a> Parser<'a> {
         } else {
             let value = self.eat_predefined_name_opt(PredefinedName::ALL);
             let value = if value.is_empty() {
-                self.eat(TokenKind::Integer)
+                self.eat(TK::Integer)
             } else {
                 value
             };
@@ -558,7 +553,7 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_intersect_query_term();
         while {
             let op_kind = self.peek();
-            op_kind == TokenKind::UNION || op_kind == TokenKind::EXCEPT
+            op_kind == TK::UNION || op_kind == TK::EXCEPT
         } {
             let operator = self.eat_token();
             let set_quantifier_opt = self.parse_set_quantifier_opt();
@@ -571,7 +566,7 @@ impl<'a> Parser<'a> {
     // | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm         #setOperation
     fn parse_intersect_query_term(&mut self) -> ParseTree<'a> {
         let mut left = self.parse_query_primary();
-        while self.peek_kind(TokenKind::INTERSECT) {
+        while self.peek_kind(TK::INTERSECT) {
             let operator = self.eat_token();
             let set_quantifier_opt = self.parse_set_quantifier_opt();
             let right = self.parse_query_primary();
@@ -584,7 +579,7 @@ impl<'a> Parser<'a> {
     // : DISTINCT
     // | ALL
     fn parse_set_quantifier_opt(&mut self) -> ParseTree<'a> {
-        let distinct = self.eat_opt(TokenKind::DISTINCT);
+        let distinct = self.eat_opt(TK::DISTINCT);
         if distinct.is_empty() {
             self.eat_predefined_name_opt(PredefinedName::ALL)
         } else {
@@ -594,14 +589,14 @@ impl<'a> Parser<'a> {
 
     fn peek_query_primary_offset(&mut self, offset: usize) -> bool {
         match self.peek_offset(offset) {
-            TokenKind::SELECT | TokenKind::TABLE | TokenKind::VALUES => true,
-            TokenKind::OpenParen => self.peek_query_primary_offset(offset + 1),
+            TK::SELECT | TK::TABLE | TK::VALUES => true,
+            TK::OpenParen => self.peek_query_primary_offset(offset + 1),
             _ => false,
         }
     }
 
     fn peek_query_offset(&mut self, offset: usize) -> bool {
-        self.peek_kind_offset(TokenKind::WITH, offset) || self.peek_query_primary_offset(offset)
+        self.peek_kind_offset(TK::WITH, offset) || self.peek_query_primary_offset(offset)
     }
 
     // queryPrimary
@@ -611,11 +606,11 @@ impl<'a> Parser<'a> {
     // | '(' queryNoWith  ')'                 #subquery
     fn parse_query_primary(&mut self) -> ParseTree<'a> {
         match self.peek() {
-            TokenKind::SELECT => self.parse_query_specification(),
-            TokenKind::TABLE => self.parse_table(),
-            TokenKind::VALUES => self.parse_inline_table(),
-            TokenKind::OpenParen => self.parse_subquery(),
-            _ => self.eat(TokenKind::SELECT),
+            TK::SELECT => self.parse_query_specification(),
+            TK::TABLE => self.parse_table(),
+            TK::VALUES => self.parse_inline_table(),
+            TK::OpenParen => self.parse_subquery(),
+            _ => self.eat(TK::SELECT),
         }
     }
 
@@ -628,14 +623,14 @@ impl<'a> Parser<'a> {
 
     // | VALUES expression (',' expression)*  #inlineTable
     fn parse_inline_table(&mut self) -> ParseTree<'a> {
-        let values = self.eat(TokenKind::VALUES);
+        let values = self.eat(TK::VALUES);
         let expressions = self.parse_comma_separated_list(|parser| parser.parse_expression());
         parse_tree::inline_table(values, expressions)
     }
 
     // | TABLE qualifiedName                  #table
     fn parse_table(&mut self) -> ParseTree<'a> {
-        let table = self.eat(TokenKind::TABLE);
+        let table = self.eat(TK::TABLE);
         let qualified_name = self.parse_qualified_name();
         parse_tree::table(table, qualified_name)
     }
@@ -647,30 +642,30 @@ impl<'a> Parser<'a> {
     //   (GROUP BY groupBy)?
     //   (HAVING having=booleanExpression)?
     fn parse_query_specification(&mut self) -> ParseTree<'a> {
-        let select = self.eat(TokenKind::SELECT);
+        let select = self.eat(TK::SELECT);
         let set_quantifier_opt = self.parse_set_quantifier_opt();
         let select_items = self.parse_comma_separated_list(|parser| parser.parse_select_item());
-        let from = self.eat_opt(TokenKind::FROM);
+        let from = self.eat_opt(TK::FROM);
         let relations = if from.is_empty() {
             self.eat_empty()
         } else {
             self.parse_comma_separated_list(|parser| parser.parse_relation())
         };
-        let where_ = self.eat_opt(TokenKind::WHERE);
+        let where_ = self.eat_opt(TK::WHERE);
         let where_predicate = if where_.is_empty() {
             self.eat_empty()
         } else {
             self.parse_boolean_expression()
         };
-        let group = self.eat_opt(TokenKind::GROUP);
+        let group = self.eat_opt(TK::GROUP);
         let (by, group_by) = if group.is_empty() {
             (self.eat_empty(), self.eat_empty())
         } else {
-            let by = self.eat(TokenKind::BY);
+            let by = self.eat(TK::BY);
             let group_by = self.parse_group_by();
             (by, group_by)
         };
-        let having = self.eat_opt(TokenKind::HAVING);
+        let having = self.eat_opt(TK::HAVING);
         let having_predicate = if having.is_empty() {
             self.eat_empty()
         } else {
@@ -697,16 +692,16 @@ impl<'a> Parser<'a> {
     // | qualifiedName '.' ASTERISK    #selectAll
     // | ASTERISK                      #selectAll
     fn parse_select_item(&mut self) -> ParseTree<'a> {
-        let asterisk = self.eat_opt(TokenKind::Asterisk);
+        let asterisk = self.eat_opt(TK::Asterisk);
         if asterisk.is_empty() {
             if self.peek_qualified_select_all() {
                 let qualifier = self.parse_qualified_name();
-                let period = self.eat(TokenKind::Period);
-                let asterisk = self.eat(TokenKind::Asterisk);
+                let period = self.eat(TK::Period);
+                let asterisk = self.eat(TK::Asterisk);
                 parse_tree::qualified_select_all(qualifier, period, asterisk)
             } else {
                 let expression = self.parse_expression();
-                let as_ = self.eat_opt(TokenKind::AS);
+                let as_ = self.eat_opt(TK::AS);
                 let identifier = if as_.is_empty() {
                     self.parse_identifier_opt()
                 } else {
@@ -723,13 +718,13 @@ impl<'a> Parser<'a> {
         let mut offset = 0;
         while self.peek_identifier_offset(offset) {
             offset += 1;
-            if self.peek_kind_offset(TokenKind::Period, offset) {
+            if self.peek_kind_offset(TK::Period, offset) {
                 offset += 1;
             } else {
                 return false;
             }
         }
-        offset > 0 && self.peek_kind(TokenKind::Asterisk)
+        offset > 0 && self.peek_kind(TK::Asterisk)
     }
 
     // relation
@@ -743,23 +738,23 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_sampled_relation();
         loop {
             match self.peek() {
-                TokenKind::CROSS => {
-                    let cross = self.eat(TokenKind::CROSS);
-                    let join = self.eat(TokenKind::JOIN);
+                TK::CROSS => {
+                    let cross = self.eat(TK::CROSS);
+                    let join = self.eat(TK::JOIN);
                     let right = self.parse_sampled_relation();
                     left = parse_tree::cross_join(left, cross, join, right)
                 }
-                TokenKind::INNER | TokenKind::LEFT | TokenKind::RIGHT | TokenKind::FULL => {
+                TK::INNER | TK::LEFT | TK::RIGHT | TK::FULL => {
                     let join_type = self.parse_join_type();
-                    let join = self.eat(TokenKind::JOIN);
+                    let join = self.eat(TK::JOIN);
                     let right = self.parse_relation();
                     let join_criteria = self.parse_join_criteria();
                     left = parse_tree::join(left, join_type, join, right, join_criteria)
                 }
-                TokenKind::NATURAL => {
-                    let natural = self.eat(TokenKind::CROSS);
+                TK::NATURAL => {
+                    let natural = self.eat(TK::CROSS);
                     let join_type = self.parse_join_type();
-                    let join = self.eat(TokenKind::JOIN);
+                    let join = self.eat(TK::JOIN);
                     let right = self.parse_sampled_relation();
                     left = parse_tree::natural_join(left, natural, join_type, join, right)
                 }
@@ -775,10 +770,10 @@ impl<'a> Parser<'a> {
     // | FULL OUTER?
     fn parse_join_type(&mut self) -> ParseTree<'a> {
         match self.peek() {
-            TokenKind::INNER => self.eat(TokenKind::INNER),
-            TokenKind::LEFT | TokenKind::RIGHT | TokenKind::FULL => {
+            TK::INNER => self.eat(TK::INNER),
+            TK::LEFT | TK::RIGHT | TK::FULL => {
                 let kind = self.eat_token();
-                let outer_opt = self.eat_opt(TokenKind::OUTER);
+                let outer_opt = self.eat_opt(TK::OUTER);
                 parse_tree::outer_join_kind(kind, outer_opt)
             }
             _ => self.eat_empty(),
@@ -790,13 +785,13 @@ impl<'a> Parser<'a> {
     // | USING '(' identifier (',' identifier)* ')'
     fn parse_join_criteria(&mut self) -> ParseTree<'a> {
         match self.peek() {
-            TokenKind::ON => {
-                let on = self.eat(TokenKind::ON);
+            TK::ON => {
+                let on = self.eat(TK::ON);
                 let predicate = self.parse_boolean_expression();
                 parse_tree::on_join_criteria(on, predicate)
             }
-            TokenKind::USING => {
-                let using = self.eat(TokenKind::USING);
+            TK::USING => {
+                let using = self.eat(TK::USING);
                 let names = self
                     .parse_parenthesized_comma_separated_list(|parser| parser.parse_identifier());
                 parse_tree::using_join_criteria(using, names)
@@ -845,8 +840,8 @@ impl<'a> Parser<'a> {
     // : relationPrimary (AS? identifier columnAliases?)?
     fn parse_aliased_relation(&mut self) -> ParseTree<'a> {
         let relation_primary = self.parse_relation_primary();
-        if self.peek_kind(TokenKind::AS) || self.peek_identifier() {
-            let as_opt = self.eat_opt(TokenKind::AS);
+        if self.peek_kind(TK::AS) || self.peek_identifier() {
+            let as_opt = self.eat_opt(TK::AS);
             let identifier = self.parse_identifier();
             let column_aliases_opt = self.parse_column_aliases_opt();
             parse_tree::aliased_relation(relation_primary, as_opt, identifier, column_aliases_opt)
@@ -863,7 +858,7 @@ impl<'a> Parser<'a> {
     // | '(' relation ')'                                                #parenthesizedRelation
     fn parse_relation_primary(&mut self) -> ParseTree<'a> {
         match self.peek() {
-            TokenKind::OpenParen => {
+            TK::OpenParen => {
                 if self.peek_query_offset(1) {
                     let (open_paren, query, close_paren) = self.parse_parenthesized_query();
                     parse_tree::subquery_relation(open_paren, query, close_paren)
@@ -873,10 +868,10 @@ impl<'a> Parser<'a> {
                     parse_tree::parenthesized_relation(open_paren, relation, close_paren)
                 }
             }
-            TokenKind::UNNEST => self.parse_unnest(),
+            TK::UNNEST => self.parse_unnest(),
             _ => {
                 if self.peek_predefined_name(PredefinedName::LATERAL)
-                    && self.peek_kind_offset(TokenKind::OpenParen, 1)
+                    && self.peek_kind_offset(TK::OpenParen, 1)
                 {
                     self.parse_lateral()
                 } else {
@@ -901,10 +896,10 @@ impl<'a> Parser<'a> {
 
     // | UNNEST '(' expression (',' expression)* ')' (WITH ORDINALITY)?  #unnest
     fn parse_unnest(&mut self) -> ParseTree<'a> {
-        let unnest = self.eat(TokenKind::UNNEST);
+        let unnest = self.eat(TK::UNNEST);
         let expressions =
             self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
-        let with = self.eat_opt(TokenKind::WITH);
+        let with = self.eat_opt(TK::WITH);
         let ordinality = if with.is_empty() {
             self.eat_empty()
         } else {
@@ -929,16 +924,16 @@ impl<'a> Parser<'a> {
     // | GROUPING SETS '(' groupingSet (',' groupingSet)* ')'   #multipleGroupingSets
     fn parse_grouping_element(&mut self) -> ParseTree<'a> {
         match self.peek() {
-            TokenKind::ROLLUP => self.parse_rollup(),
-            TokenKind::CUBE => self.parse_cube(),
-            TokenKind::GROUPING => self.parse_grouping_sets(),
+            TK::ROLLUP => self.parse_rollup(),
+            TK::CUBE => self.parse_cube(),
+            TK::GROUPING => self.parse_grouping_sets(),
             _ => self.parse_grouping_set(),
         }
     }
 
     // | ROLLUP '(' (expression (',' expression)*)? ')'         #rollup
     fn parse_rollup(&mut self) -> ParseTree<'a> {
-        let rollup = self.eat(TokenKind::ROLLUP);
+        let rollup = self.eat(TK::ROLLUP);
         let expressions =
             self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
         parse_tree::rollup(rollup, expressions)
@@ -946,7 +941,7 @@ impl<'a> Parser<'a> {
 
     // | CUBE '(' (expression (',' expression)*)? ')'           #cube
     fn parse_cube(&mut self) -> ParseTree<'a> {
-        let cube = self.eat(TokenKind::CUBE);
+        let cube = self.eat(TK::CUBE);
         let expressions =
             self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
         parse_tree::cube(cube, expressions)
@@ -954,7 +949,7 @@ impl<'a> Parser<'a> {
 
     // | GROUPING SETS '(' groupingSet (',' groupingSet)* ')'   #multipleGroupingSets
     fn parse_grouping_sets(&mut self) -> ParseTree<'a> {
-        let grouping = self.eat(TokenKind::GROUPING);
+        let grouping = self.eat(TK::GROUPING);
         let sets = self.eat_predefined_name(PredefinedName::SETS);
         let grouping_sets =
             self.parse_parenthesized_comma_separated_list(|parser| parser.parse_grouping_set());
@@ -978,7 +973,7 @@ impl<'a> Parser<'a> {
 
     fn peek_expression(&mut self) -> bool {
         // TODO: tighten this up
-        !self.peek_kind(TokenKind::CloseParen)
+        !self.peek_kind(TK::CloseParen)
     }
 
     // booleanExpression
@@ -1007,7 +1002,7 @@ impl<'a> Parser<'a> {
     // | left=booleanExpression operator=OR right=booleanExpression   #logicalBinary
     fn parse_or_expression(&mut self) -> ParseTree<'a> {
         self.parse_binary_expression(
-            |parser| parser.peek_kind(TokenKind::OR),
+            |parser| parser.peek_kind(TK::OR),
             |parser| parser.parse_and_expression(),
         )
     }
@@ -1015,14 +1010,14 @@ impl<'a> Parser<'a> {
     // | left=booleanExpression operator=AND right=booleanExpression  #logicalBinary
     fn parse_and_expression(&mut self) -> ParseTree<'a> {
         self.parse_binary_expression(
-            |parser| parser.peek_kind(TokenKind::AND),
+            |parser| parser.peek_kind(TK::AND),
             |parser| parser.parse_not_expression(),
         )
     }
 
     // | NOT booleanExpression                                        #logicalNot
     fn parse_not_expression(&mut self) -> ParseTree<'a> {
-        let not = self.eat_opt(TokenKind::NOT);
+        let not = self.eat_opt(TK::NOT);
         if !not.is_empty() {
             let operand = self.parse_not_expression();
             parse_tree::unary_expression(not, operand)
@@ -1055,13 +1050,13 @@ impl<'a> Parser<'a> {
 
     fn peek_comparison_operator(&mut self) -> bool {
         match self.peek() {
-            TokenKind::Equal
-            | TokenKind::LessGreater
-            | TokenKind::BangEqual
-            | TokenKind::OpenAngle
-            | TokenKind::CloseAngle
-            | TokenKind::LessEqual
-            | TokenKind::GreaterEqual => true,
+            TK::Equal
+            | TK::LessGreater
+            | TK::BangEqual
+            | TK::OpenAngle
+            | TK::CloseAngle
+            | TK::LessEqual
+            | TK::GreaterEqual => true,
             _ => false,
         }
     }
@@ -1069,17 +1064,17 @@ impl<'a> Parser<'a> {
     // | IS NOT? NULL                                                        #nullPredicate
     // | IS NOT? DISTINCT FROM right=valueExpression                         #distinctFrom
     fn parse_is_suffix(&mut self, value: ParseTree<'a>) -> ParseTree<'a> {
-        assert!(self.peek_kind(TokenKind::IS));
+        assert!(self.peek_kind(TK::IS));
         let is = self.eat_token();
-        let not_opt = self.eat_opt(TokenKind::NOT);
+        let not_opt = self.eat_opt(TK::NOT);
         match self.peek() {
-            TokenKind::NULL => {
+            TK::NULL => {
                 let null = self.eat_token();
                 parse_tree::null_predicate(value, is, not_opt, null)
             }
-            TokenKind::DISTINCT => {
+            TK::DISTINCT => {
                 let distinct = self.eat_token();
-                let from = self.eat(TokenKind::FROM);
+                let from = self.eat(TK::FROM);
                 let right = self.parse_value_expression();
                 parse_tree::distinct_from(value, distinct, from, right)
             }
@@ -1093,18 +1088,18 @@ impl<'a> Parser<'a> {
         value: ParseTree<'a>,
         not_opt: ParseTree<'a>,
     ) -> ParseTree<'a> {
-        let between = self.eat(TokenKind::BETWEEN);
+        let between = self.eat(TK::BETWEEN);
         let lower = self.parse_value_expression();
-        let and = self.eat(TokenKind::AND);
+        let and = self.eat(TK::AND);
         let upper = self.parse_value_expression();
         parse_tree::between(value, not_opt, between, lower, and, upper)
     }
 
     // | NOT? LIKE pattern=valueExpression (ESCAPE escape=valueExpression)?  #like
     fn parse_like_suffix(&mut self, value: ParseTree<'a>, not_opt: ParseTree<'a>) -> ParseTree<'a> {
-        let like = self.eat(TokenKind::LIKE);
+        let like = self.eat(TK::LIKE);
         let pattern = self.parse_value_expression();
-        let escape_opt = self.eat_opt(TokenKind::ESCAPE);
+        let escape_opt = self.eat_opt(TK::ESCAPE);
         let escape_value_opt = if escape_opt.is_empty() {
             self.eat_empty()
         } else {
@@ -1116,8 +1111,8 @@ impl<'a> Parser<'a> {
     // | NOT? IN '(' expression (',' expression)* ')'                        #inList
     // | NOT? IN '(' query ')'                                               #inSubquery
     fn parse_in_suffix(&mut self, value: ParseTree<'a>, not_opt: ParseTree<'a>) -> ParseTree<'a> {
-        let in_ = self.eat(TokenKind::IN);
-        if self.peek_kind(TokenKind::OpenParen) && self.peek_query_primary_offset(1) {
+        let in_ = self.eat(TK::IN);
+        if self.peek_kind(TK::OpenParen) && self.peek_query_primary_offset(1) {
             let (open_paren, query, close_paren) = self.parse_parenthesized_query();
             parse_tree::in_subquery(value, not_opt, in_, open_paren, query, close_paren)
         } else {
@@ -1140,20 +1135,20 @@ impl<'a> Parser<'a> {
     fn parse_predicated_expression(&mut self) -> ParseTree<'a> {
         let value = self.parse_value_expression();
         match self.peek() {
-            TokenKind::Equal
-            | TokenKind::LessGreater
-            | TokenKind::BangEqual
-            | TokenKind::OpenAngle
-            | TokenKind::CloseAngle
-            | TokenKind::LessEqual
-            | TokenKind::GreaterEqual => self.parse_comparison_operator_suffix(value),
-            TokenKind::IS => self.parse_is_suffix(value),
+            TK::Equal
+            | TK::LessGreater
+            | TK::BangEqual
+            | TK::OpenAngle
+            | TK::CloseAngle
+            | TK::LessEqual
+            | TK::GreaterEqual => self.parse_comparison_operator_suffix(value),
+            TK::IS => self.parse_is_suffix(value),
             _ => {
-                let not_opt = self.eat_opt(TokenKind::NOT);
+                let not_opt = self.eat_opt(TK::NOT);
                 match self.peek() {
-                    TokenKind::BETWEEN => self.parse_between_suffix(value, not_opt),
-                    TokenKind::IN => self.parse_in_suffix(value, not_opt),
-                    TokenKind::LIKE => self.parse_like_suffix(value, not_opt),
+                    TK::BETWEEN => self.parse_between_suffix(value, not_opt),
+                    TK::IN => self.parse_in_suffix(value, not_opt),
+                    TK::LIKE => self.parse_like_suffix(value, not_opt),
                     _ => {
                         if not_opt.is_empty() {
                             value
@@ -1177,7 +1172,7 @@ impl<'a> Parser<'a> {
 
     fn peek_quantified_comparison(&mut self) -> bool {
         self.peek_comparison_quantifier()
-            && self.peek_kind_offset(TokenKind::OpenParen, 1)
+            && self.peek_kind_offset(TK::OpenParen, 1)
             && self.peek_query_primary_offset(2)
     }
 
@@ -1195,7 +1190,7 @@ impl<'a> Parser<'a> {
     // | left=valueExpression CONCAT right=valueExpression                                 #concatenation
     fn parse_concat_expression(&mut self) -> ParseTree<'a> {
         self.parse_binary_expression(
-            |parser| parser.peek_kind(TokenKind::BarBar),
+            |parser| parser.peek_kind(TK::BarBar),
             |parser| parser.parse_additive_expression(),
         )
     }
@@ -1210,7 +1205,7 @@ impl<'a> Parser<'a> {
 
     fn peek_additive_operator(&mut self) -> bool {
         match self.peek() {
-            TokenKind::Plus | TokenKind::Minus => true,
+            TK::Plus | TK::Minus => true,
             _ => false,
         }
     }
@@ -1219,7 +1214,7 @@ impl<'a> Parser<'a> {
     fn parse_multiplicative_expression(&mut self) -> ParseTree<'a> {
         self.parse_binary_expression(
             |parser| match parser.peek() {
-                TokenKind::Asterisk | TokenKind::Slash | TokenKind::Percent => true,
+                TK::Asterisk | TK::Slash | TK::Percent => true,
                 _ => false,
             },
             |parser| parser.parse_arithmetic_unary_expression(),
@@ -1262,7 +1257,7 @@ impl<'a> Parser<'a> {
     // : identifier ('.' identifier)*
     fn parse_qualified_name(&mut self) -> ParseTree<'a> {
         parse_tree::qualified_name(
-            self.parse_separated_list(TokenKind::Period, |parser| parser.parse_identifier()),
+            self.parse_separated_list(TK::Period, |parser| parser.parse_identifier()),
         )
     }
 
@@ -1273,55 +1268,55 @@ impl<'a> Parser<'a> {
     fn parse_primary_prefix_expression(&mut self) -> ParseTree<'a> {
         match self.peek() {
             // : NULL                                                                                #nullLiteral
-            TokenKind::NULL => self.parse_literal(),
+            TK::NULL => self.parse_literal(),
             // | DOUBLE_PRECISION string                                                             #typeConstructor
-            TokenKind::DoublePrecision => self.parse_type_constructor(),
+            TK::DoublePrecision => self.parse_type_constructor(),
             // | booleanValue                                                                        #booleanLiteral
-            TokenKind::TRUE | TokenKind::FALSE => self.parse_literal(),
+            TK::TRUE | TK::FALSE => self.parse_literal(),
             // | number                                                                              #numericLiteral
-            TokenKind::Decimal | TokenKind::Double | TokenKind::Integer => self.parse_literal(),
+            TK::Decimal | TK::Double | TK::Integer => self.parse_literal(),
             // | string                                                                              #stringLiteral
-            TokenKind::String | TokenKind::UnicodeString => self.parse_literal(),
+            TK::String | TK::UnicodeString => self.parse_literal(),
             // | BINARY_LITERAL                                                                      #binaryLiteral
-            TokenKind::BinaryLiteral => self.parse_literal(),
+            TK::BinaryLiteral => self.parse_literal(),
             // | '?'                                                                                 #parameter
-            TokenKind::Question => self.parse_parameter(),
+            TK::Question => self.parse_parameter(),
             // // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
             // | EXISTS '(' query ')'                                                                #exists
-            TokenKind::EXISTS => self.parse_exists(),
+            TK::EXISTS => self.parse_exists(),
             // | CASE valueExpression whenClause+ (ELSE elseExpression=expression)? END              #simpleCase
             // | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
-            TokenKind::CASE => self.parse_case(),
+            TK::CASE => self.parse_case(),
             // | CAST '(' expression AS type_ ')'                                                     #cast
-            TokenKind::CAST => self.parse_cast(),
+            TK::CAST => self.parse_cast(),
             // | name=CURRENT_DATE                                                                   #specialDateTimeFunction
-            TokenKind::CURRENT_DATE => self.parse_current_date(),
+            TK::CURRENT_DATE => self.parse_current_date(),
             // | name=CURRENT_TIME ('(' precision=INTEGER_VALUE ')')?                                #specialDateTimeFunction
-            TokenKind::CURRENT_TIME => self.parse_current_time(),
+            TK::CURRENT_TIME => self.parse_current_time(),
             // | name=CURRENT_TIMESTAMP ('(' precision=INTEGER_VALUE ')')?                           #specialDateTimeFunction
-            TokenKind::CURRENT_TIMESTAMP => self.parse_current_timestamp(),
+            TK::CURRENT_TIMESTAMP => self.parse_current_timestamp(),
             // | name=LOCALTIME ('(' precision=INTEGER_VALUE ')')?                                   #specialDateTimeFunction
-            TokenKind::LOCALTIME => self.parse_localtime(),
+            TK::LOCALTIME => self.parse_localtime(),
             // | name=LOCALTIMESTAMP ('(' precision=INTEGER_VALUE ')')?                              #specialDateTimeFunction
-            TokenKind::LOCALTIMESTAMP => self.parse_localtimestamp(),
+            TK::LOCALTIMESTAMP => self.parse_localtimestamp(),
             // | name=CURRENT_USER                                                                   #currentUser
-            TokenKind::CURRENT_USER => self.parse_current_user(),
+            TK::CURRENT_USER => self.parse_current_user(),
             // | name=CURRENT_PATH                                                                   #currentPath
-            TokenKind::CURRENT_PATH => self.parse_current_path(),
+            TK::CURRENT_PATH => self.parse_current_path(),
             // | NORMALIZE '(' valueExpression (',' normalForm)? ')'                                 #normalize
-            TokenKind::NORMALIZE => self.parse_normalize(),
+            TK::NORMALIZE => self.parse_normalize(),
             // | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
-            TokenKind::EXTRACT => self.parse_extract(),
+            TK::EXTRACT => self.parse_extract(),
             // | GROUPING '(' (qualifiedName (',' qualifiedName)*)? ')'                              #groupingOperation
-            TokenKind::GROUPING => self.parse_grouping(),
+            TK::GROUPING => self.parse_grouping(),
             // | configureExpression                                                                 #conf
-            TokenKind::CONFIGURE => self.parse_configure_expression(),
+            TK::CONFIGURE => self.parse_configure_expression(),
 
             // | '(' expression (',' expression)+ ')'                                                #rowConstructor
             // | '(' (identifier (',' identifier)*)? ')' '->' expression                             #lambda
             // | '(' query ')'                                                                       #subqueryExpression
             // | '(' expression ')'                                                                  #parenthesizedExpression
-            TokenKind::OpenParen => {
+            TK::OpenParen => {
                 if self.peek_query_offset(1) {
                     self.parse_subquery_expression()
                 } else if self.peek_lambda() {
@@ -1343,7 +1338,7 @@ impl<'a> Parser<'a> {
             // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor
             // | identifier                                                                          #columnReference
             // | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
-            TokenKind::Identifier => {
+            TK::Identifier => {
                 if let Some(name) = self.maybe_peek_predefined_name() {
                     match name {
                         PredefinedName::INTERVAL => {
@@ -1392,9 +1387,9 @@ impl<'a> Parser<'a> {
             // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
             // | identifier '->' expression                                                          #lambda
             // | identifier                                                                          #columnReference
-            TokenKind::QuotedIdentifier
-            | TokenKind::BackquotedIdentifier
-            | TokenKind::DigitIdentifier => self.parse_identifier_start_expression(),
+            TK::QuotedIdentifier | TK::BackquotedIdentifier | TK::DigitIdentifier => {
+                self.parse_identifier_start_expression()
+            }
             _ => self.expected_error("Expected expression."),
         }
     }
@@ -1405,16 +1400,16 @@ impl<'a> Parser<'a> {
             // suffixes
             match self.peek() {
                 // | base=primaryExpression '.' fieldName=identifier                                     #dereference
-                TokenKind::Period => {
-                    let period = self.eat(TokenKind::Period);
+                TK::Period => {
+                    let period = self.eat(TK::Period);
                     let field_name = self.parse_identifier();
                     result = parse_tree::dereference(result, period, field_name)
                 }
                 // | value=primaryExpression '[' index=valueExpression ']'                               #subscript
-                TokenKind::OpenSquare => {
-                    let open_square = self.eat(TokenKind::OpenSquare);
+                TK::OpenSquare => {
+                    let open_square = self.eat(TK::OpenSquare);
                     let index = self.parse_value_expression();
-                    let close_square = self.eat(TokenKind::CloseSquare);
+                    let close_square = self.eat(TK::CloseSquare);
                     result = parse_tree::subscript(result, open_square, index, close_square)
                 }
                 _ => return result,
@@ -1424,11 +1419,11 @@ impl<'a> Parser<'a> {
 
     // | '(' (identifier (',' identifier)*)? ')' '->' expression                             #lambda
     fn peek_lambda(&mut self) -> bool {
-        if self.peek_kind(TokenKind::OpenParen) {
+        if self.peek_kind(TK::OpenParen) {
             let mut offset = 1;
             if self.peek_identifier_offset(offset) {
                 offset += 1;
-                while self.peek_kind_offset(TokenKind::Comma, offset) {
+                while self.peek_kind_offset(TK::Comma, offset) {
                     offset += 1;
                     if self.peek_identifier_offset(offset) {
                         offset += 1;
@@ -1437,8 +1432,8 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            self.peek_kind_offset(TokenKind::CloseParen, offset)
-                && self.peek_kind_offset(TokenKind::Arrow, offset + 1)
+            self.peek_kind_offset(TK::CloseParen, offset)
+                && self.peek_kind_offset(TK::Arrow, offset + 1)
         } else {
             false
         }
@@ -1446,13 +1441,13 @@ impl<'a> Parser<'a> {
 
     fn parse_lambda(&mut self) -> ParseTree<'a> {
         let parameters = self.parse_delimited_separated_list_opt(
-            TokenKind::OpenParen,
-            TokenKind::Comma,
+            TK::OpenParen,
+            TK::Comma,
             |parser| parser.peek_identifier(),
             |parser| parser.parse_identifier(),
-            TokenKind::CloseParen,
+            TK::CloseParen,
         );
-        let array = self.eat(TokenKind::Arrow);
+        let array = self.eat(TK::Arrow);
         let body = self.parse_expression();
         parse_tree::lambda(parameters, array, body)
     }
@@ -1517,16 +1512,16 @@ impl<'a> Parser<'a> {
     // configureExpression
     //     : CONFIGURE '(' identifier ',' configure_value_ ')'
     fn peek_configure_expression(&mut self) -> bool {
-        self.peek_kind(TokenKind::CONFIGURE)
+        self.peek_kind(TK::CONFIGURE)
     }
 
     fn parse_configure_expression(&mut self) -> ParseTree<'a> {
-        let configure = self.eat(TokenKind::CONFIGURE);
-        let open_paren = self.eat(TokenKind::OpenParen);
+        let configure = self.eat(TK::CONFIGURE);
+        let open_paren = self.eat(TK::OpenParen);
         let identifier = self.parse_identifier();
-        let comma = self.eat(TokenKind::Comma);
+        let comma = self.eat(TK::Comma);
         let value = self.parse_configure_value();
-        let close_paren = self.eat(TokenKind::CloseParen);
+        let close_paren = self.eat(TK::CloseParen);
         parse_tree::configure_expression(
             configure,
             open_paren,
@@ -1541,13 +1536,13 @@ impl<'a> Parser<'a> {
     // : string | number | booleanValue
     fn parse_configure_value(&mut self) -> ParseTree<'a> {
         match self.peek() {
-            TokenKind::String
-            | TokenKind::UnicodeString
-            | TokenKind::Decimal
-            | TokenKind::Double
-            | TokenKind::Integer
-            | TokenKind::TRUE
-            | TokenKind::FALSE => self.parse_literal(),
+            TK::String
+            | TK::UnicodeString
+            | TK::Decimal
+            | TK::Double
+            | TK::Integer
+            | TK::TRUE
+            | TK::FALSE => self.parse_literal(),
             _ => self.expected_error("configure value"),
         }
     }
@@ -1568,25 +1563,25 @@ impl<'a> Parser<'a> {
 
     // | GROUPING '(' (qualifiedName (',' qualifiedName)*)? ')'                              #groupingOperation
     fn parse_grouping(&mut self) -> ParseTree<'a> {
-        let grouping = self.eat(TokenKind::GROUPING);
+        let grouping = self.eat(TK::GROUPING);
         let groups = self.parse_delimited_separated_list_opt(
-            TokenKind::OpenParen,
-            TokenKind::Comma,
+            TK::OpenParen,
+            TK::Comma,
             |parser| parser.peek_qualified_name(),
             |parser| parser.parse_qualified_name(),
-            TokenKind::CloseParen,
+            TK::CloseParen,
         );
         parse_tree::grouping(grouping, groups)
     }
 
     // | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     fn parse_extract(&mut self) -> ParseTree<'a> {
-        let extract = self.eat(TokenKind::EXTRACT);
-        let open_paren = self.eat(TokenKind::OpenParen);
+        let extract = self.eat(TK::EXTRACT);
+        let open_paren = self.eat(TK::OpenParen);
         let identifier = self.parse_identifier();
-        let from = self.eat(TokenKind::FROM);
+        let from = self.eat(TK::FROM);
         let value = self.parse_value_expression();
-        let close_paren = self.eat(TokenKind::CloseParen);
+        let close_paren = self.eat(TK::CloseParen);
         parse_tree::extract(extract, open_paren, identifier, from, value, close_paren)
     }
 
@@ -1607,9 +1602,9 @@ impl<'a> Parser<'a> {
 
     // | name=CURRENT_TIME ('(' precision=INTEGER_VALUE ')')?                                #specialDateTimeFunction
     fn parse_current_time(&mut self) -> ParseTree<'a> {
-        let current_time = self.eat(TokenKind::CURRENT_TIME);
-        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
-            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        let current_time = self.eat(TK::CURRENT_TIME);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TK::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TK::Integer))
         } else {
             (self.eat_empty(), self.eat_empty(), self.eat_empty())
         };
@@ -1618,9 +1613,9 @@ impl<'a> Parser<'a> {
 
     // | name=CURRENT_TIMESTAMP ('(' precision=INTEGER_VALUE ')')?                           #specialDateTimeFunction
     fn parse_current_timestamp(&mut self) -> ParseTree<'a> {
-        let current_timestamp = self.eat(TokenKind::CURRENT_TIMESTAMP);
-        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
-            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        let current_timestamp = self.eat(TK::CURRENT_TIMESTAMP);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TK::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TK::Integer))
         } else {
             (self.eat_empty(), self.eat_empty(), self.eat_empty())
         };
@@ -1629,16 +1624,16 @@ impl<'a> Parser<'a> {
 
     // | NORMALIZE '(' valueExpression (',' normalForm)? ')'                                 #normalize
     fn parse_normalize(&mut self) -> ParseTree<'a> {
-        let normalize = self.eat(TokenKind::NORMALIZE);
-        let open_paren = self.eat(TokenKind::OpenParen);
+        let normalize = self.eat(TK::NORMALIZE);
+        let open_paren = self.eat(TK::OpenParen);
         let value = self.parse_value_expression();
-        let comma_opt = self.eat_opt(TokenKind::Comma);
+        let comma_opt = self.eat_opt(TK::Comma);
         let normal_form = if comma_opt.is_empty() {
             self.eat_empty()
         } else {
             self.parse_normal_form()
         };
-        let close_paren = self.eat(TokenKind::CloseParen);
+        let close_paren = self.eat(TK::CloseParen);
         parse_tree::normalize(
             normalize,
             open_paren,
@@ -1663,9 +1658,9 @@ impl<'a> Parser<'a> {
 
     // | name=LOCALTIMESTAMP ('(' precision=INTEGER_VALUE ')')?                              #specialDateTimeFunction
     fn parse_localtimestamp(&mut self) -> ParseTree<'a> {
-        let localtimestamp = self.eat(TokenKind::CURRENT_TIME);
-        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
-            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        let localtimestamp = self.eat(TK::CURRENT_TIME);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TK::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TK::Integer))
         } else {
             (self.eat_empty(), self.eat_empty(), self.eat_empty())
         };
@@ -1674,9 +1669,9 @@ impl<'a> Parser<'a> {
 
     // | name=LOCALTIME ('(' precision=INTEGER_VALUE ')')?                                   #specialDateTimeFunction
     fn parse_localtime(&mut self) -> ParseTree<'a> {
-        let localtime = self.eat(TokenKind::CURRENT_TIME);
-        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
-            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        let localtime = self.eat(TK::CURRENT_TIME);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TK::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TK::Integer))
         } else {
             (self.eat_empty(), self.eat_empty(), self.eat_empty())
         };
@@ -1685,19 +1680,19 @@ impl<'a> Parser<'a> {
 
     // | CAST '(' expression AS type_ ')'                                                     #cast
     fn parse_cast(&mut self) -> ParseTree<'a> {
-        let cast = self.eat(TokenKind::CAST);
-        let open_paren = self.eat(TokenKind::OpenParen);
+        let cast = self.eat(TK::CAST);
+        let open_paren = self.eat(TK::OpenParen);
         let value = self.parse_expression();
-        let as_ = self.eat(TokenKind::AS);
+        let as_ = self.eat(TK::AS);
         let type_ = self.parse_type();
-        let close_paren = self.eat(TokenKind::CloseParen);
+        let close_paren = self.eat(TK::CloseParen);
         parse_tree::cast(cast, open_paren, value, as_, type_, close_paren)
     }
 
     // | CASE valueExpression whenClause+ (ELSE elseExpression=expression)? END              #simpleCase
     // | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
     fn parse_case(&mut self) -> ParseTree<'a> {
-        let case = self.eat(TokenKind::CASE);
+        let case = self.eat(TK::CASE);
         let value_opt = if self.peek_when_clause() {
             self.eat_empty()
         } else {
@@ -1707,40 +1702,40 @@ impl<'a> Parser<'a> {
             |parser| parser.peek_when_clause(),
             |parser| parser.parse_when_clause(),
         );
-        let else_opt = self.eat_opt(TokenKind::ELSE);
+        let else_opt = self.eat_opt(TK::ELSE);
         let default = if else_opt.is_empty() {
             self.eat_empty()
         } else {
             self.parse_expression()
         };
-        let end = self.eat(TokenKind::END);
+        let end = self.eat(TK::END);
         parse_tree::case(case, value_opt, when_clauses, else_opt, default, end)
     }
 
     // whenClause
     // : WHEN condition=expression THEN result=expression
     fn parse_when_clause(&mut self) -> ParseTree<'a> {
-        let when = self.eat(TokenKind::WHEN);
+        let when = self.eat(TK::WHEN);
         let condition = self.parse_expression();
-        let then = self.eat(TokenKind::THEN);
+        let then = self.eat(TK::THEN);
         let result = self.parse_expression();
         parse_tree::when_clause(when, condition, then, result)
     }
 
     fn peek_when_clause(&mut self) -> bool {
-        self.peek_kind(TokenKind::WHEN)
+        self.peek_kind(TK::WHEN)
     }
 
     // | EXISTS '(' query ')'                                                                #exists
     fn parse_exists(&mut self) -> ParseTree<'a> {
-        let exists = self.eat(TokenKind::EXISTS);
+        let exists = self.eat(TK::EXISTS);
         let (open_paren, query, close_paren) = self.parse_parenthesized_query();
         parse_tree::exists(exists, open_paren, query, close_paren)
     }
 
     // | '?'                                                                                 #parameter
     fn parse_parameter(&mut self) -> ParseTree<'a> {
-        self.eat(TokenKind::Question)
+        self.eat(TK::Question)
     }
 
     fn parse_literal(&mut self) -> ParseTree<'a> {
@@ -1767,8 +1762,8 @@ impl<'a> Parser<'a> {
     // | identifier                                                                          #columnReference
     fn parse_identifier_start_expression(&mut self) -> ParseTree<'a> {
         match self.peek_offset(1) {
-            TokenKind::Arrow => self.parse_parenless_lambda(),
-            TokenKind::String | TokenKind::UnicodeString => self.parse_type_constructor(),
+            TK::Arrow => self.parse_parenless_lambda(),
+            TK::String | TK::UnicodeString => self.parse_type_constructor(),
             _ => {
                 if self.peek_function_call() {
                     self.parse_function_call()
@@ -1781,14 +1776,14 @@ impl<'a> Parser<'a> {
 
     fn parse_parenless_lambda(&mut self) -> ParseTree<'a> {
         let parameter = self.eat_token();
-        let arrow = self.eat(TokenKind::Arrow);
+        let arrow = self.eat(TK::Arrow);
         let body = self.parse_expression();
         parse_tree::lambda(parameter, arrow, body)
     }
 
     fn peek_function_call(&mut self) -> bool {
         let mut offset = 1;
-        while self.peek_kind(TokenKind::Period) {
+        while self.peek_kind(TK::Period) {
             offset += 1;
             if self.peek_identifier_offset(offset) {
                 offset += 1;
@@ -1796,18 +1791,14 @@ impl<'a> Parser<'a> {
                 return false;
             }
         }
-        self.peek_kind_offset(TokenKind::OpenParen, offset)
+        self.peek_kind_offset(TK::OpenParen, offset)
     }
 
     fn parse_function_call(&mut self) -> ParseTree<'a> {
         let name = self.parse_qualified_name();
-        let open_paren = self.eat(TokenKind::OpenParen);
-        let (set_quantifier_opt, arguments, order_by_opt) = if self.peek_kind(TokenKind::Asterisk) {
-            (
-                self.eat_empty(),
-                self.eat(TokenKind::Asterisk),
-                self.eat_empty(),
-            )
+        let open_paren = self.eat(TK::OpenParen);
+        let (set_quantifier_opt, arguments, order_by_opt) = if self.peek_kind(TK::Asterisk) {
+            (self.eat_empty(), self.eat(TK::Asterisk), self.eat_empty())
         } else {
             let set_quantifier_opt = self.parse_set_quantifier_opt();
             let arguments = if set_quantifier_opt.is_empty() {
@@ -1821,7 +1812,7 @@ impl<'a> Parser<'a> {
             let order_by_opt = self.parse_order_by_opt();
             (set_quantifier_opt, arguments, order_by_opt)
         };
-        let close_paren = self.eat(TokenKind::CloseParen);
+        let close_paren = self.eat(TK::CloseParen);
         let filter_opt = self.parse_filter_opt();
         let over_opt = self.parse_over_opt();
         parse_tree::function_call(
@@ -1841,10 +1832,10 @@ impl<'a> Parser<'a> {
         if filter.is_empty() {
             filter
         } else {
-            let open_paren = self.eat(TokenKind::OpenParen);
-            let where_ = self.eat(TokenKind::WHERE);
+            let open_paren = self.eat(TK::OpenParen);
+            let where_ = self.eat(TK::WHERE);
             let predicate = self.parse_boolean_expression();
-            let close_paren = self.eat(TokenKind::CloseParen);
+            let close_paren = self.eat(TK::CloseParen);
             parse_tree::filter(filter, open_paren, where_, predicate, close_paren)
         }
     }
@@ -1860,19 +1851,19 @@ impl<'a> Parser<'a> {
         if over.is_empty() {
             over
         } else {
-            let open_paren = self.eat(TokenKind::OpenParen);
+            let open_paren = self.eat(TK::OpenParen);
             let partition_opt = self.eat_predefined_name_opt(PredefinedName::PARTITION);
             let (by, partitions) = if partition_opt.is_empty() {
                 (self.eat_empty(), self.eat_empty())
             } else {
                 (
-                    self.eat(TokenKind::BY),
+                    self.eat(TK::BY),
                     self.parse_comma_separated_list(|parser| parser.parse_expression()),
                 )
             };
             let order_by_opt = self.parse_order_by_opt();
             let window_frame = self.parse_window_frame();
-            let close_paren = self.eat(TokenKind::CloseParen);
+            let close_paren = self.eat(TK::CloseParen);
             parse_tree::over(
                 over,
                 open_paren,
@@ -1899,12 +1890,12 @@ impl<'a> Parser<'a> {
         } else {
             self.expected_error("RANGE, ROWS")
         };
-        let between_opt = self.eat_opt(TokenKind::BETWEEN);
+        let between_opt = self.eat_opt(TK::BETWEEN);
         let start = self.parse_frame_bound();
         let (and, end) = if between_opt.is_empty() {
             (self.eat_empty(), self.eat_empty())
         } else {
-            (self.eat(TokenKind::AND), self.parse_frame_bound())
+            (self.eat(TK::AND), self.parse_frame_bound())
         };
         parse_tree::window_frame(frame_type, between_opt, start, and, end)
     }
@@ -1943,14 +1934,14 @@ impl<'a> Parser<'a> {
     // | UNICODE_STRING (UESCAPE STRING)?      #unicodeStringLiteral
     fn parse_string(&mut self) -> ParseTree<'a> {
         match self.peek() {
-            TokenKind::String => self.parse_literal(),
-            TokenKind::UnicodeString => {
+            TK::String => self.parse_literal(),
+            TK::UnicodeString => {
                 let string = self.eat_token();
-                let uescape_opt = self.eat_opt(TokenKind::UESCAPE);
+                let uescape_opt = self.eat_opt(TK::UESCAPE);
                 let escape = if uescape_opt.is_empty() {
                     self.eat_empty()
                 } else {
-                    self.eat(TokenKind::String)
+                    self.eat(TK::String)
                 };
                 parse_tree::unicode_string(string, uescape_opt, escape)
             }
