@@ -1529,20 +1529,31 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
     fn peek_row_constructor(&mut self) -> bool {
-        panic!("TODO")
+        self.peek_predefined_name(PN::ROW) && self.peek_kind_offset(TK::OpenParen, 1)
     }
 
     fn parse_row_constructor(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let row = self.eat_predefined_name(PN::ROW);
+        let elements =
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
+        parse_tree::row(row, elements)
     }
 
+    // | TRY_CAST '(' expression AS type_ ')'                                                 #cast
     fn peek_try_cast(&mut self) -> bool {
-        panic!("TODO")
+        self.peek_predefined_name(PN::TRY_CAST) && self.peek_kind_offset(TK::OpenParen, 1)
     }
 
     fn parse_try_cast(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let try_cast = self.eat_predefined_name(PN::TRY_CAST);
+        let open_paren = self.eat(TK::OpenParen);
+        let value = self.parse_expression();
+        let as_ = self.eat(TK::AS);
+        let type_ = self.parse_type();
+        let close_paren = self.eat(TK::CloseParen);
+        parse_tree::try_cast(try_cast, open_paren, value, as_, type_, close_paren)
     }
 
     // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor

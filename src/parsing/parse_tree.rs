@@ -83,6 +83,8 @@ pub enum ParseTree<'a> {
     TypeConstructor(TypeConstructor<'a>),
     Array(Array<'a>),
     Interval(Interval<'a>),
+    Row(Row<'a>),
+    TryCast(TryCast<'a>),
 }
 
 // The core trees
@@ -2133,6 +2135,61 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Interval(tree) => tree.unbox(),
             _ => panic!("Expected Interval"),
+        }
+    }
+
+    pub fn is_row(&self) -> bool {
+        if let ParseTree::Row(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_row(&self) -> &Row {
+        if let ParseTree::Row(value) = self {
+            value
+        } else {
+            panic!("Expected Row")
+        }
+    }
+
+    pub fn unbox_row(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Row(tree) => tree.unbox(),
+            _ => panic!("Expected Row"),
+        }
+    }
+
+    pub fn is_try_cast(&self) -> bool {
+        if let ParseTree::TryCast(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_try_cast(&self) -> &TryCast {
+        if let ParseTree::TryCast(value) = self {
+            value
+        } else {
+            panic!("Expected TryCast")
+        }
+    }
+
+    pub fn unbox_try_cast(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::TryCast(tree) => tree.unbox(),
+            _ => panic!("Expected TryCast"),
         }
     }
 }
@@ -4761,6 +4818,83 @@ impl<'a> Interval<'a> {
             *self.from,
             *self.to_kw_opt,
             *self.to,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Row<'a> {
+    pub row: Box<ParseTree<'a>>,
+    pub elements: Box<ParseTree<'a>>,
+}
+
+pub fn row<'a>(row: ParseTree<'a>, elements: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Row(Row {
+        row: Box::new(row),
+        elements: Box::new(elements),
+    })
+}
+
+impl<'a> Row<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Row(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.row, *self.elements)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TryCast<'a> {
+    pub try_cast: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub as_: Box<ParseTree<'a>>,
+    pub type_: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn try_cast<'a>(
+    try_cast: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    value: ParseTree<'a>,
+    as_: ParseTree<'a>,
+    type_: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::TryCast(TryCast {
+        try_cast: Box::new(try_cast),
+        open_paren: Box::new(open_paren),
+        value: Box::new(value),
+        as_: Box::new(as_),
+        type_: Box::new(type_),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> TryCast<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::TryCast(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.try_cast,
+            *self.open_paren,
+            *self.value,
+            *self.as_,
+            *self.type_,
+            *self.close_paren,
         )
     }
 }

@@ -296,6 +296,18 @@ fn configs() -> Vec<TreeConfig> {
             "Interval",
             vec!["interval", "sign_opt", "value", "from", "to_kw_opt", "to"],
         ),
+        ("Row", vec!["row", "elements"]),
+        (
+            "TryCast",
+            vec![
+                "try_cast",
+                "open_paren",
+                "value",
+                "as_",
+                "type_",
+                "close_paren",
+            ],
+        ),
         // ("Class", vec![]),
     ]
 }
