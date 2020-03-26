@@ -1567,24 +1567,41 @@ impl<'a> Parser<'a> {
         parse_tree::extract(extract, open_paren, identifier, from, value, close_paren)
     }
 
+    // | name=CURRENT_PATH                                                                   #currentPath
     fn parse_current_path(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        self.parse_literal()
     }
 
+    // | name=CURRENT_USER                                                                   #currentUser
     fn parse_current_user(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        self.parse_literal()
     }
 
+    // | name=CURRENT_DATE                                                                   #specialDateTimeFunction
     fn parse_current_date(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        self.parse_literal()
     }
 
+    // | name=CURRENT_TIME ('(' precision=INTEGER_VALUE ')')?                                #specialDateTimeFunction
     fn parse_current_time(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let current_time = self.eat(TokenKind::CURRENT_TIME);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        } else {
+            (self.eat_empty(), self.eat_empty(), self.eat_empty())
+        };
+        parse_tree::current_time(current_time, open_paren, precision, close_paren)
     }
 
+    // | name=CURRENT_TIMESTAMP ('(' precision=INTEGER_VALUE ')')?                           #specialDateTimeFunction
     fn parse_current_timestamp(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let current_timestamp = self.eat(TokenKind::CURRENT_TIMESTAMP);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        } else {
+            (self.eat_empty(), self.eat_empty(), self.eat_empty())
+        };
+        parse_tree::current_timestamp(current_timestamp, open_paren, precision, close_paren)
     }
 
     fn parse_normalize(&mut self) -> ParseTree<'a> {

@@ -238,6 +238,19 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
+        (
+            "CurrentTime",
+            vec!["current_time", "open_paren", "precision", "close_paren"],
+        ),
+        (
+            "CurrentTimestamp",
+            vec![
+                "current_timestamp",
+                "open_paren",
+                "precision",
+                "close_paren",
+            ],
+        ),
         // ("Class", vec!["fields"]),
     ]
 }

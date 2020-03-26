@@ -71,6 +71,8 @@ pub enum ParseTree<'a> {
     SubqueryExpression(SubqueryExpression<'a>),
     Grouping(Grouping<'a>),
     Extract(Extract<'a>),
+    CurrentTime(CurrentTime<'a>),
+    CurrentTimestamp(CurrentTimestamp<'a>),
 }
 
 // The core trees
@@ -1803,6 +1805,56 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Extract(tree) => tree.unbox(),
             _ => panic!("Expected Extract"),
+        }
+    }
+
+    pub fn is_current_time(&self) -> bool {
+        if let ParseTree::CurrentTime(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_current_time(&self) -> &CurrentTime {
+        if let ParseTree::CurrentTime(value) = self {
+            value
+        } else {
+            panic!("Expected CurrentTime")
+        }
+    }
+
+    pub fn unbox_current_time(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::CurrentTime(tree) => tree.unbox(),
+            _ => panic!("Expected CurrentTime"),
+        }
+    }
+
+    pub fn is_current_timestamp(&self) -> bool {
+        if let ParseTree::CurrentTimestamp(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_current_timestamp(&self) -> &CurrentTimestamp {
+        if let ParseTree::CurrentTimestamp(value) = self {
+            value
+        } else {
+            panic!("Expected CurrentTimestamp")
+        }
+    }
+
+    pub fn unbox_current_timestamp(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::CurrentTimestamp(tree) => tree.unbox(),
+            _ => panic!("Expected CurrentTimestamp"),
         }
     }
 }
@@ -3951,6 +4003,80 @@ impl<'a> Extract<'a> {
             *self.identifier,
             *self.from,
             *self.value,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CurrentTime<'a> {
+    pub current_time: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub precision: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn current_time<'a>(
+    current_time: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    precision: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::CurrentTime(CurrentTime {
+        current_time: Box::new(current_time),
+        open_paren: Box::new(open_paren),
+        precision: Box::new(precision),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> CurrentTime<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CurrentTime(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.current_time,
+            *self.open_paren,
+            *self.precision,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CurrentTimestamp<'a> {
+    pub current_timestamp: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub precision: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn current_timestamp<'a>(
+    current_timestamp: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    precision: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::CurrentTimestamp(CurrentTimestamp {
+        current_timestamp: Box::new(current_timestamp),
+        open_paren: Box::new(open_paren),
+        precision: Box::new(precision),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> CurrentTimestamp<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CurrentTimestamp(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.current_timestamp,
+            *self.open_paren,
+            *self.precision,
             *self.close_paren,
         )
     }
