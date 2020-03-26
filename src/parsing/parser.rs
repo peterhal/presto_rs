@@ -1737,8 +1737,16 @@ impl<'a> Parser<'a> {
         parse_tree::literal(self.eat_token())
     }
 
+    // | identifier string                                                                   #typeConstructor
+    // | DOUBLE_PRECISION string                                                             #typeConstructor
     fn parse_type_constructor(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let type_ = if self.peek_kind(TK::DoublePrecision) {
+            self.eat_token()
+        } else {
+            self.parse_identifier()
+        };
+        let value = self.parse_string();
+        parse_tree::type_constructor(type_, value)
     }
 
     fn parse_subscript(&mut self) -> ParseTree<'a> {

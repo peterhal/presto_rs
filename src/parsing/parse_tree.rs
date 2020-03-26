@@ -80,6 +80,7 @@ pub enum ParseTree<'a> {
     WhenClause(WhenClause<'a>),
     Case(Case<'a>),
     Exists(Exists<'a>),
+    TypeConstructor(TypeConstructor<'a>),
 }
 
 // The core trees
@@ -2052,6 +2053,29 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Exists(tree) => tree.unbox(),
             _ => panic!("Expected Exists"),
+        }
+    }
+
+    pub fn is_type_constructor(&self) -> bool {
+        if let ParseTree::TypeConstructor(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_type_constructor(&self) -> &TypeConstructor {
+        if let ParseTree::TypeConstructor(value) = self {
+            value
+        } else {
+            panic!("Expected TypeConstructor")
+        }
+    }
+
+    pub fn unbox_type_constructor(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::TypeConstructor(tree) => tree.unbox(),
+            _ => panic!("Expected TypeConstructor"),
         }
     }
 }
@@ -4581,5 +4605,28 @@ impl<'a> Exists<'a> {
             *self.query,
             *self.close_paren,
         )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TypeConstructor<'a> {
+    pub type_: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+}
+
+pub fn type_constructor<'a>(type_: ParseTree<'a>, value: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::TypeConstructor(TypeConstructor {
+        type_: Box::new(type_),
+        value: Box::new(value),
+    })
+}
+
+impl<'a> TypeConstructor<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::TypeConstructor(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.type_, *self.value)
     }
 }
