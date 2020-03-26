@@ -63,6 +63,9 @@ pub enum ParseTree<'a> {
     Filter(Filter<'a>),
     Over(Over<'a>),
     WindowFrame(WindowFrame<'a>),
+    UnboundedFrame(UnboundedFrame<'a>),
+    CurrentRowBound(CurrentRowBound<'a>),
+    BoundedFrame(BoundedFrame<'a>),
 }
 
 // The core trees
@@ -1593,6 +1596,75 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::WindowFrame(tree) => tree.unbox(),
             _ => panic!("Expected WindowFrame"),
+        }
+    }
+
+    pub fn is_unbounded_frame(&self) -> bool {
+        if let ParseTree::UnboundedFrame(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_unbounded_frame(&self) -> &UnboundedFrame {
+        if let ParseTree::UnboundedFrame(value) = self {
+            value
+        } else {
+            panic!("Expected UnboundedFrame")
+        }
+    }
+
+    pub fn unbox_unbounded_frame(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::UnboundedFrame(tree) => tree.unbox(),
+            _ => panic!("Expected UnboundedFrame"),
+        }
+    }
+
+    pub fn is_current_row_bound(&self) -> bool {
+        if let ParseTree::CurrentRowBound(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_current_row_bound(&self) -> &CurrentRowBound {
+        if let ParseTree::CurrentRowBound(value) = self {
+            value
+        } else {
+            panic!("Expected CurrentRowBound")
+        }
+    }
+
+    pub fn unbox_current_row_bound(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::CurrentRowBound(tree) => tree.unbox(),
+            _ => panic!("Expected CurrentRowBound"),
+        }
+    }
+
+    pub fn is_bounded_frame(&self) -> bool {
+        if let ParseTree::BoundedFrame(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_bounded_frame(&self) -> &BoundedFrame {
+        if let ParseTree::BoundedFrame(value) = self {
+            value
+        } else {
+            panic!("Expected BoundedFrame")
+        }
+    }
+
+    pub fn unbox_bounded_frame(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::BoundedFrame(tree) => tree.unbox(),
+            _ => panic!("Expected BoundedFrame"),
         }
     }
 }
@@ -3485,5 +3557,74 @@ impl<'a> WindowFrame<'a> {
             *self.and,
             *self.end,
         )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct UnboundedFrame<'a> {
+    pub unbounded: Box<ParseTree<'a>>,
+    pub bound_type: Box<ParseTree<'a>>,
+}
+
+pub fn unbounded_frame<'a>(unbounded: ParseTree<'a>, bound_type: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::UnboundedFrame(UnboundedFrame {
+        unbounded: Box::new(unbounded),
+        bound_type: Box::new(bound_type),
+    })
+}
+
+impl<'a> UnboundedFrame<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::UnboundedFrame(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.unbounded, *self.bound_type)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CurrentRowBound<'a> {
+    pub current: Box<ParseTree<'a>>,
+    pub row: Box<ParseTree<'a>>,
+}
+
+pub fn current_row_bound<'a>(current: ParseTree<'a>, row: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::CurrentRowBound(CurrentRowBound {
+        current: Box::new(current),
+        row: Box::new(row),
+    })
+}
+
+impl<'a> CurrentRowBound<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CurrentRowBound(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.current, *self.row)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BoundedFrame<'a> {
+    pub bound: Box<ParseTree<'a>>,
+    pub bound_type: Box<ParseTree<'a>>,
+}
+
+pub fn bounded_frame<'a>(bound: ParseTree<'a>, bound_type: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::BoundedFrame(BoundedFrame {
+        bound: Box::new(bound),
+        bound_type: Box::new(bound_type),
+    })
+}
+
+impl<'a> BoundedFrame<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::BoundedFrame(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.bound, *self.bound_type)
     }
 }

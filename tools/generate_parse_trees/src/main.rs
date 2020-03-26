@@ -207,7 +207,10 @@ fn configs() -> Vec<TreeConfig> {
             "WindowFrame",
             vec!["frame_type", "between_opt", "start", "and", "end"],
         ),
-        // ("Class", "ctor", vec!["fields"]),
+        ("UnboundedFrame", vec!["unbounded", "bound_type"]),
+        ("CurrentRowBound", vec!["current", "row"]),
+        ("BoundedFrame", vec!["bound", "bound_type"]),
+        // ("Class", vec!["fields"]),
     ]
 }
 

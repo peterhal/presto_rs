@@ -1734,7 +1734,27 @@ impl<'a> Parser<'a> {
     // | CURRENT ROW                                   #currentRowBound
     // | expression boundType=(PRECEDING | FOLLOWING)  #boundedFrame // expression should be unsignedLiteral
     fn parse_frame_bound(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        if self.peek_predefined_name(PredefinedName::UNBOUNDED)
+            && (self.peek_predefined_name_offset(PredefinedName::PRECEDING, 1)
+                || self.peek_predefined_name_offset(PredefinedName::FOLLOWING, 1))
+        {
+            parse_tree::unbounded_frame(self.eat_token(), self.eat_token())
+        } else if self.peek_predefined_name_offset(PredefinedName::CURRENT, 0)
+            && self.peek_predefined_name_offset(PredefinedName::ROW, 1)
+        {
+            parse_tree::current_row_bound(self.eat_token(), self.eat_token())
+        } else {
+            let bound = self.parse_expression();
+            let bound_type = self.parse_bound_type();
+            parse_tree::bounded_frame(bound, bound_type)
+        }
+    }
+
+    fn parse_bound_type(&mut self) -> ParseTree<'a> {
+        match self.maybe_peek_predefined_name() {
+            Some(PredefinedName::PRECEDING) | Some(PredefinedName::FOLLOWING) => self.eat_token(),
+            _ => self.expected_error("PRECEDING, FOLLOWING"),
+        }
     }
 
     fn parse_string(&mut self) -> ParseTree<'a> {
