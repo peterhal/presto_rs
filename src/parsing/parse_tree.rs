@@ -67,6 +67,7 @@ pub enum ParseTree<'a> {
     CurrentRowBound(CurrentRowBound<'a>),
     BoundedFrame(BoundedFrame<'a>),
     UnicodeString(UnicodeString<'a>),
+    ConfigureExpression(ConfigureExpression<'a>),
 }
 
 // The core trees
@@ -1689,6 +1690,38 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::UnicodeString(tree) => tree.unbox(),
             _ => panic!("Expected UnicodeString"),
+        }
+    }
+
+    pub fn is_configure_expression(&self) -> bool {
+        if let ParseTree::ConfigureExpression(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_configure_expression(&self) -> &ConfigureExpression {
+        if let ParseTree::ConfigureExpression(value) = self {
+            value
+        } else {
+            panic!("Expected ConfigureExpression")
+        }
+    }
+
+    pub fn unbox_configure_expression(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::ConfigureExpression(tree) => tree.unbox(),
+            _ => panic!("Expected ConfigureExpression"),
         }
     }
 }
@@ -3679,5 +3712,59 @@ impl<'a> UnicodeString<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.string, *self.uescape_opt, *self.escape)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ConfigureExpression<'a> {
+    pub configure: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub identifier: Box<ParseTree<'a>>,
+    pub comma: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn configure_expression<'a>(
+    configure: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    identifier: ParseTree<'a>,
+    comma: ParseTree<'a>,
+    value: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::ConfigureExpression(ConfigureExpression {
+        configure: Box::new(configure),
+        open_paren: Box::new(open_paren),
+        identifier: Box::new(identifier),
+        comma: Box::new(comma),
+        value: Box::new(value),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> ConfigureExpression<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::ConfigureExpression(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.configure,
+            *self.open_paren,
+            *self.identifier,
+            *self.comma,
+            *self.value,
+            *self.close_paren,
+        )
     }
 }

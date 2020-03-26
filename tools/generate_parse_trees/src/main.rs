@@ -211,6 +211,17 @@ fn configs() -> Vec<TreeConfig> {
         ("CurrentRowBound", vec!["current", "row"]),
         ("BoundedFrame", vec!["bound", "bound_type"]),
         ("UnicodeString", vec!["string", "uescape_opt", "escape"]),
+        (
+            "ConfigureExpression",
+            vec![
+                "configure",
+                "open_paren",
+                "identifier",
+                "comma",
+                "value",
+                "close_paren",
+            ],
+        ),
         // ("Class", vec!["fields"]),
     ]
 }

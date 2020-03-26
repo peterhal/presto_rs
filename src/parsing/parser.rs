@@ -1486,12 +1486,42 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    // configureExpression
+    //     : CONFIGURE '(' identifier ',' configure_value_ ')'
     fn peek_configure_expression(&mut self) -> bool {
-        panic!("TODO")
+        self.peek_kind(TokenKind::CONFIGURE)
     }
 
     fn parse_configure_expression(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let configure = self.eat(TokenKind::CONFIGURE);
+        let open_paren = self.eat(TokenKind::OpenParen);
+        let identifier = self.parse_identifier();
+        let comma = self.eat(TokenKind::Comma);
+        let value = self.parse_configure_value();
+        let close_paren = self.eat(TokenKind::CloseParen);
+        parse_tree::configure_expression(
+            configure,
+            open_paren,
+            identifier,
+            comma,
+            value,
+            close_paren,
+        )
+    }
+
+    // configure_value_
+    // : string | number | booleanValue
+    fn parse_configure_value(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TokenKind::String
+            | TokenKind::UnicodeString
+            | TokenKind::Decimal
+            | TokenKind::Double
+            | TokenKind::Integer
+            | TokenKind::TRUE
+            | TokenKind::FALSE => self.parse_literal(),
+            _ => self.expected_error("configure value"),
+        }
     }
 
     fn peek_substring(&mut self) -> bool {
