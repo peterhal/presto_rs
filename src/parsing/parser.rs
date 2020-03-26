@@ -1638,12 +1638,26 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // | name=LOCALTIMESTAMP ('(' precision=INTEGER_VALUE ')')?                              #specialDateTimeFunction
     fn parse_localtimestamp(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let localtimestamp = self.eat(TokenKind::CURRENT_TIME);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        } else {
+            (self.eat_empty(), self.eat_empty(), self.eat_empty())
+        };
+        parse_tree::localtimestamp(localtimestamp, open_paren, precision, close_paren)
     }
 
+    // | name=LOCALTIME ('(' precision=INTEGER_VALUE ')')?                                   #specialDateTimeFunction
     fn parse_localtime(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let localtime = self.eat(TokenKind::CURRENT_TIME);
+        let (open_paren, precision, close_paren) = if self.peek_kind(TokenKind::OpenParen) {
+            self.parse_parenthesized(|parser| parser.eat(TokenKind::Integer))
+        } else {
+            (self.eat_empty(), self.eat_empty(), self.eat_empty())
+        };
+        parse_tree::localtime(localtime, open_paren, precision, close_paren)
     }
 
     fn parse_cast(&mut self) -> ParseTree<'a> {

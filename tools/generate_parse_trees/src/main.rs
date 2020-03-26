@@ -262,6 +262,14 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
+        (
+            "Localtime",
+            vec!["localtime", "open_paren", "precision", "close_paren"],
+        ),
+        (
+            "Localtimestamp",
+            vec!["localtimestamp", "open_paren", "precision", "close_paren"],
+        ),
         // ("Class", vec![]),
     ]
 }

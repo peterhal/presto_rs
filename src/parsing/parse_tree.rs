@@ -74,6 +74,8 @@ pub enum ParseTree<'a> {
     CurrentTime(CurrentTime<'a>),
     CurrentTimestamp(CurrentTimestamp<'a>),
     Normalize(Normalize<'a>),
+    Localtime(Localtime<'a>),
+    Localtimestamp(Localtimestamp<'a>),
 }
 
 // The core trees
@@ -1888,6 +1890,54 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Normalize(tree) => tree.unbox(),
             _ => panic!("Expected Normalize"),
+        }
+    }
+
+    pub fn is_localtime(&self) -> bool {
+        if let ParseTree::Localtime(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_localtime(&self) -> &Localtime {
+        if let ParseTree::Localtime(value) = self {
+            value
+        } else {
+            panic!("Expected Localtime")
+        }
+    }
+
+    pub fn unbox_localtime(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Localtime(tree) => tree.unbox(),
+            _ => panic!("Expected Localtime"),
+        }
+    }
+
+    pub fn is_localtimestamp(&self) -> bool {
+        if let ParseTree::Localtimestamp(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_localtimestamp(&self) -> &Localtimestamp {
+        if let ParseTree::Localtimestamp(value) = self {
+            value
+        } else {
+            panic!("Expected Localtimestamp")
+        }
+    }
+
+    pub fn unbox_localtimestamp(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Localtimestamp(tree) => tree.unbox(),
+            _ => panic!("Expected Localtimestamp"),
         }
     }
 }
@@ -4164,6 +4214,80 @@ impl<'a> Normalize<'a> {
             *self.value,
             *self.comma_opt,
             *self.normal_form,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Localtime<'a> {
+    pub localtime: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub precision: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn localtime<'a>(
+    localtime: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    precision: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Localtime(Localtime {
+        localtime: Box::new(localtime),
+        open_paren: Box::new(open_paren),
+        precision: Box::new(precision),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Localtime<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Localtime(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.localtime,
+            *self.open_paren,
+            *self.precision,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Localtimestamp<'a> {
+    pub localtimestamp: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub precision: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn localtimestamp<'a>(
+    localtimestamp: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    precision: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Localtimestamp(Localtimestamp {
+        localtimestamp: Box::new(localtimestamp),
+        open_paren: Box::new(open_paren),
+        precision: Box::new(precision),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Localtimestamp<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Localtimestamp(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.localtimestamp,
+            *self.open_paren,
+            *self.precision,
             *self.close_paren,
         )
     }
