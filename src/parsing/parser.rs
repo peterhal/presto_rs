@@ -1476,12 +1476,19 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // | POSITION '(' valueExpression IN valueExpression ')'                                 #position
     fn peek_position(&mut self) -> bool {
-        panic!("TODO")
+        self.peek_predefined_name(PN::POSITION) && self.peek_kind_offset(TK::OpenParen, 1)
     }
 
     fn parse_position(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let position = self.eat_predefined_name(PN::POSITION);
+        let open_paren = self.eat(TK::OpenParen);
+        let value = self.parse_value_expression();
+        let in_ = self.eat(TK::IN);
+        let target = self.parse_value_expression();
+        let close_paren = self.eat(TK::CloseParen);
+        parse_tree::position(position, open_paren, value, in_, target, close_paren)
     }
 
     // interval

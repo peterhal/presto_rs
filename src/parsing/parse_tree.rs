@@ -86,6 +86,7 @@ pub enum ParseTree<'a> {
     Row(Row<'a>),
     TryCast(TryCast<'a>),
     Substring(Substring<'a>),
+    Position(Position<'a>),
 }
 
 // The core trees
@@ -2225,6 +2226,38 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Substring(tree) => tree.unbox(),
             _ => panic!("Expected Substring"),
+        }
+    }
+
+    pub fn is_position(&self) -> bool {
+        if let ParseTree::Position(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_position(&self) -> &Position {
+        if let ParseTree::Position(value) = self {
+            value
+        } else {
+            panic!("Expected Position")
+        }
+    }
+
+    pub fn unbox_position(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Position(tree) => tree.unbox(),
+            _ => panic!("Expected Position"),
         }
     }
 }
@@ -4993,6 +5026,60 @@ impl<'a> Substring<'a> {
             *self.from_value,
             *self.for_opt,
             *self.for_value,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Position<'a> {
+    pub position: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub in_: Box<ParseTree<'a>>,
+    pub target: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn position<'a>(
+    position: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    value: ParseTree<'a>,
+    in_: ParseTree<'a>,
+    target: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Position(Position {
+        position: Box::new(position),
+        open_paren: Box::new(open_paren),
+        value: Box::new(value),
+        in_: Box::new(in_),
+        target: Box::new(target),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Position<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Position(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.position,
+            *self.open_paren,
+            *self.value,
+            *self.in_,
+            *self.target,
             *self.close_paren,
         )
     }

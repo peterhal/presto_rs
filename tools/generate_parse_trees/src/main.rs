@@ -321,6 +321,17 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
+        (
+            "Position",
+            vec![
+                "position",
+                "open_paren",
+                "value",
+                "in_",
+                "target",
+                "close_paren",
+            ],
+        ),
         // ("Class", vec![]),
     ]
 }
