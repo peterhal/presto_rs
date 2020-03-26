@@ -1660,8 +1660,15 @@ impl<'a> Parser<'a> {
         parse_tree::localtime(localtime, open_paren, precision, close_paren)
     }
 
+    // | CAST '(' expression AS type_ ')'                                                     #cast
     fn parse_cast(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let cast = self.eat(TokenKind::CAST);
+        let open_paren = self.eat(TokenKind::OpenParen);
+        let value = self.parse_expression();
+        let as_ = self.eat(TokenKind::AS);
+        let type_ = self.parse_type();
+        let close_paren = self.eat(TokenKind::CloseParen);
+        parse_tree::cast(cast, open_paren, value, as_, type_, close_paren)
     }
 
     fn parse_case(&mut self) -> ParseTree<'a> {
@@ -1889,6 +1896,10 @@ impl<'a> Parser<'a> {
             }
             _ => self.expected_error("string"),
         }
+    }
+
+    fn parse_type(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
     }
 
     fn parse_statement(&mut self) -> ParseTree<'a> {

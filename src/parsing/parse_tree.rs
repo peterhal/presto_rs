@@ -76,6 +76,7 @@ pub enum ParseTree<'a> {
     Normalize(Normalize<'a>),
     Localtime(Localtime<'a>),
     Localtimestamp(Localtimestamp<'a>),
+    Cast(Cast<'a>),
 }
 
 // The core trees
@@ -1938,6 +1939,38 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Localtimestamp(tree) => tree.unbox(),
             _ => panic!("Expected Localtimestamp"),
+        }
+    }
+
+    pub fn is_cast(&self) -> bool {
+        if let ParseTree::Cast(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_cast(&self) -> &Cast {
+        if let ParseTree::Cast(value) = self {
+            value
+        } else {
+            panic!("Expected Cast")
+        }
+    }
+
+    pub fn unbox_cast(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Cast(tree) => tree.unbox(),
+            _ => panic!("Expected Cast"),
         }
     }
 }
@@ -4288,6 +4321,60 @@ impl<'a> Localtimestamp<'a> {
             *self.localtimestamp,
             *self.open_paren,
             *self.precision,
+            *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Cast<'a> {
+    pub cast: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub as_: Box<ParseTree<'a>>,
+    pub type_: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn cast<'a>(
+    cast: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    value: ParseTree<'a>,
+    as_: ParseTree<'a>,
+    type_: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Cast(Cast {
+        cast: Box::new(cast),
+        open_paren: Box::new(open_paren),
+        value: Box::new(value),
+        as_: Box::new(as_),
+        type_: Box::new(type_),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Cast<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Cast(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.cast,
+            *self.open_paren,
+            *self.value,
+            *self.as_,
+            *self.type_,
             *self.close_paren,
         )
     }

@@ -270,6 +270,10 @@ fn configs() -> Vec<TreeConfig> {
             "Localtimestamp",
             vec!["localtimestamp", "open_paren", "precision", "close_paren"],
         ),
+        (
+            "Cast",
+            vec!["cast", "open_paren", "value", "as_", "type_", "close_paren"],
+        ),
         // ("Class", vec![]),
     ]
 }
