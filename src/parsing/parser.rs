@@ -1532,8 +1532,11 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    // | '(' query ')'                                                                       #subqueryExpression
     fn parse_subquery_expression(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let (open_paren, query, close_paren) =
+            self.parse_parenthesized(|parser| parser.parse_query());
+        parse_tree::subquery_expression(open_paren, query, close_paren)
     }
 
     fn parse_grouping(&mut self) -> ParseTree<'a> {

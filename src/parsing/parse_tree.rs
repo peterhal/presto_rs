@@ -68,6 +68,7 @@ pub enum ParseTree<'a> {
     BoundedFrame(BoundedFrame<'a>),
     UnicodeString(UnicodeString<'a>),
     ConfigureExpression(ConfigureExpression<'a>),
+    SubqueryExpression(SubqueryExpression<'a>),
 }
 
 // The core trees
@@ -1722,6 +1723,29 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::ConfigureExpression(tree) => tree.unbox(),
             _ => panic!("Expected ConfigureExpression"),
+        }
+    }
+
+    pub fn is_subquery_expression(&self) -> bool {
+        if let ParseTree::SubqueryExpression(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_subquery_expression(&self) -> &SubqueryExpression {
+        if let ParseTree::SubqueryExpression(value) = self {
+            value
+        } else {
+            panic!("Expected SubqueryExpression")
+        }
+    }
+
+    pub fn unbox_subquery_expression(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::SubqueryExpression(tree) => tree.unbox(),
+            _ => panic!("Expected SubqueryExpression"),
         }
     }
 }
@@ -3766,5 +3790,34 @@ impl<'a> ConfigureExpression<'a> {
             *self.value,
             *self.close_paren,
         )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SubqueryExpression<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn subquery_expression<'a>(
+    open_paren: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::SubqueryExpression(SubqueryExpression {
+        open_paren: Box::new(open_paren),
+        query: Box::new(query),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> SubqueryExpression<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::SubqueryExpression(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.open_paren, *self.query, *self.close_paren)
     }
 }
