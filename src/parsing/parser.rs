@@ -1749,14 +1749,6 @@ impl<'a> Parser<'a> {
         parse_tree::type_constructor(type_, value)
     }
 
-    fn parse_subscript(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
-    }
-
-    fn parse_dereference(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
-    }
-
     // | identifier string                                                                   #typeConstructor
     // | qualifiedName '(' ASTERISK ')' filter_? over?                                        #functionCall
     // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
