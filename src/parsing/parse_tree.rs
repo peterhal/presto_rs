@@ -77,6 +77,8 @@ pub enum ParseTree<'a> {
     Localtime(Localtime<'a>),
     Localtimestamp(Localtimestamp<'a>),
     Cast(Cast<'a>),
+    WhenClause(WhenClause<'a>),
+    Case(Case<'a>),
 }
 
 // The core trees
@@ -1971,6 +1973,61 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Cast(tree) => tree.unbox(),
             _ => panic!("Expected Cast"),
+        }
+    }
+
+    pub fn is_when_clause(&self) -> bool {
+        if let ParseTree::WhenClause(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_when_clause(&self) -> &WhenClause {
+        if let ParseTree::WhenClause(value) = self {
+            value
+        } else {
+            panic!("Expected WhenClause")
+        }
+    }
+
+    pub fn unbox_when_clause(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::WhenClause(tree) => tree.unbox(),
+            _ => panic!("Expected WhenClause"),
+        }
+    }
+
+    pub fn is_case(&self) -> bool {
+        if let ParseTree::Case(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_case(&self) -> &Case {
+        if let ParseTree::Case(value) = self {
+            value
+        } else {
+            panic!("Expected Case")
+        }
+    }
+
+    pub fn unbox_case(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Case(tree) => tree.unbox(),
+            _ => panic!("Expected Case"),
         }
     }
 }
@@ -4376,6 +4433,92 @@ impl<'a> Cast<'a> {
             *self.as_,
             *self.type_,
             *self.close_paren,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WhenClause<'a> {
+    pub when: Box<ParseTree<'a>>,
+    pub condition: Box<ParseTree<'a>>,
+    pub then: Box<ParseTree<'a>>,
+    pub result: Box<ParseTree<'a>>,
+}
+
+pub fn when_clause<'a>(
+    when: ParseTree<'a>,
+    condition: ParseTree<'a>,
+    then: ParseTree<'a>,
+    result: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::WhenClause(WhenClause {
+        when: Box::new(when),
+        condition: Box::new(condition),
+        then: Box::new(then),
+        result: Box::new(result),
+    })
+}
+
+impl<'a> WhenClause<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::WhenClause(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.when, *self.condition, *self.then, *self.result)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Case<'a> {
+    pub case: Box<ParseTree<'a>>,
+    pub value_opt: Box<ParseTree<'a>>,
+    pub when_clauses: Box<ParseTree<'a>>,
+    pub else_opt: Box<ParseTree<'a>>,
+    pub default: Box<ParseTree<'a>>,
+    pub end: Box<ParseTree<'a>>,
+}
+
+pub fn case<'a>(
+    case: ParseTree<'a>,
+    value_opt: ParseTree<'a>,
+    when_clauses: ParseTree<'a>,
+    else_opt: ParseTree<'a>,
+    default: ParseTree<'a>,
+    end: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Case(Case {
+        case: Box::new(case),
+        value_opt: Box::new(value_opt),
+        when_clauses: Box::new(when_clauses),
+        else_opt: Box::new(else_opt),
+        default: Box::new(default),
+        end: Box::new(end),
+    })
+}
+
+impl<'a> Case<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Case(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.case,
+            *self.value_opt,
+            *self.when_clauses,
+            *self.else_opt,
+            *self.default,
+            *self.end,
         )
     }
 }

@@ -242,6 +242,19 @@ impl<'a> Parser<'a> {
         elements.into_iter().zip(seperators.into_iter()).collect()
     }
 
+    // parse non-empty  list
+    fn parse_list_elements(
+        &mut self,
+        peek_element: Peeker<'a>,
+        parse_element: ElementParser<'a>,
+    ) -> Vec<(ParseTree<'a>, ParseTree<'a>)> {
+        let mut elements = Vec::new();
+        while elements.len() == 0 || peek_element(self) {
+            elements.push((parse_element(self), self.eat_empty()));
+        }
+        elements
+    }
+
     // parse possibly empty separated list
     fn parse_separated_list_elements_opt(
         &mut self,
@@ -254,6 +267,18 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         }
+    }
+
+    // Parse non-empty list.
+    fn parse_list(
+        &mut self,
+        peek_element: Peeker<'a>,
+        parse_element: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        let start_delimiter = self.eat_empty();
+        let elements_and_separators = self.parse_list_elements(peek_element, parse_element);
+        let end_delimiter = self.eat_empty();
+        parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
     // Parse non-empty separated list.
@@ -1671,8 +1696,41 @@ impl<'a> Parser<'a> {
         parse_tree::cast(cast, open_paren, value, as_, type_, close_paren)
     }
 
+    // | CASE valueExpression whenClause+ (ELSE elseExpression=expression)? END              #simpleCase
+    // | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
     fn parse_case(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let case = self.eat(TokenKind::CASE);
+        let value_opt = if self.peek_when_clause() {
+            self.eat_empty()
+        } else {
+            self.parse_expression()
+        };
+        let when_clauses = self.parse_list(
+            |parser| parser.peek_when_clause(),
+            |parser| parser.parse_when_clause(),
+        );
+        let else_opt = self.eat_opt(TokenKind::ELSE);
+        let default = if else_opt.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_expression()
+        };
+        let end = self.eat(TokenKind::END);
+        parse_tree::case(case, value_opt, when_clauses, else_opt, default, end)
+    }
+
+    // whenClause
+    // : WHEN condition=expression THEN result=expression
+    fn parse_when_clause(&mut self) -> ParseTree<'a> {
+        let when = self.eat(TokenKind::WHEN);
+        let condition = self.parse_expression();
+        let then = self.eat(TokenKind::THEN);
+        let result = self.parse_expression();
+        parse_tree::when_clause(when, condition, then, result)
+    }
+
+    fn peek_when_clause(&mut self) -> bool {
+        self.peek_kind(TokenKind::WHEN)
     }
 
     fn parse_exists(&mut self) -> ParseTree<'a> {

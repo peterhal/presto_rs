@@ -274,6 +274,18 @@ fn configs() -> Vec<TreeConfig> {
             "Cast",
             vec!["cast", "open_paren", "value", "as_", "type_", "close_paren"],
         ),
+        ("WhenClause", vec!["when", "condition", "then", "result"]),
+        (
+            "Case",
+            vec![
+                "case",
+                "value_opt",
+                "when_clauses",
+                "else_opt",
+                "default",
+                "end",
+            ],
+        ),
         // ("Class", vec![]),
     ]
 }
