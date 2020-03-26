@@ -1556,8 +1556,15 @@ impl<'a> Parser<'a> {
         parse_tree::grouping(grouping, groups)
     }
 
+    // | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     fn parse_extract(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let extract = self.eat(TokenKind::EXTRACT);
+        let open_paren = self.eat(TokenKind::OpenParen);
+        let identifier = self.parse_identifier();
+        let from = self.eat(TokenKind::FROM);
+        let value = self.parse_value_expression();
+        let close_paren = self.eat(TokenKind::CloseParen);
+        parse_tree::extract(extract, open_paren, identifier, from, value, close_paren)
     }
 
     fn parse_current_path(&mut self) -> ParseTree<'a> {

@@ -227,6 +227,17 @@ fn configs() -> Vec<TreeConfig> {
             vec!["open_paren", "query", "close_paren"],
         ),
         ("Grouping", vec!["grouping", "groups"]),
+        (
+            "Extract",
+            vec![
+                "extract",
+                "open_paren",
+                "identifier",
+                "from",
+                "value",
+                "close_paren",
+            ],
+        ),
         // ("Class", vec!["fields"]),
     ]
 }

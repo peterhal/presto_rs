@@ -70,6 +70,7 @@ pub enum ParseTree<'a> {
     ConfigureExpression(ConfigureExpression<'a>),
     SubqueryExpression(SubqueryExpression<'a>),
     Grouping(Grouping<'a>),
+    Extract(Extract<'a>),
 }
 
 // The core trees
@@ -1770,6 +1771,38 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Grouping(tree) => tree.unbox(),
             _ => panic!("Expected Grouping"),
+        }
+    }
+
+    pub fn is_extract(&self) -> bool {
+        if let ParseTree::Extract(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_extract(&self) -> &Extract {
+        if let ParseTree::Extract(value) = self {
+            value
+        } else {
+            panic!("Expected Extract")
+        }
+    }
+
+    pub fn unbox_extract(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Extract(tree) => tree.unbox(),
+            _ => panic!("Expected Extract"),
         }
     }
 }
@@ -3866,5 +3899,59 @@ impl<'a> Grouping<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.grouping, *self.groups)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Extract<'a> {
+    pub extract: Box<ParseTree<'a>>,
+    pub open_paren: Box<ParseTree<'a>>,
+    pub identifier: Box<ParseTree<'a>>,
+    pub from: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn extract<'a>(
+    extract: ParseTree<'a>,
+    open_paren: ParseTree<'a>,
+    identifier: ParseTree<'a>,
+    from: ParseTree<'a>,
+    value: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Extract(Extract {
+        extract: Box::new(extract),
+        open_paren: Box::new(open_paren),
+        identifier: Box::new(identifier),
+        from: Box::new(from),
+        value: Box::new(value),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> Extract<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Extract(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.extract,
+            *self.open_paren,
+            *self.identifier,
+            *self.from,
+            *self.value,
+            *self.close_paren,
+        )
     }
 }
