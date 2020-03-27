@@ -411,6 +411,10 @@ fn configs() -> Vec<TreeConfig> {
                 "query",
             ],
         ),
+        (
+            "Delete",
+            vec!["delete", "from", "table_name", "where_opt", "predicate"],
+        ),
         // ("Class", vec![]),
     ]
 }

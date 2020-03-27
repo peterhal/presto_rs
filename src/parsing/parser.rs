@@ -2273,6 +2273,7 @@ impl<'a> Parser<'a> {
             TK::SELECT | TK::TABLE | TK::VALUES | TK::OpenParen | TK::WITH => self.parse_query(),
             TK::CREATE => self.parse_create_statement(),
             TK::INSERT => self.parse_insert_into(),
+            TK::DELETE => self.parse_delete(),
             _ => panic!("TODO: Remaining statements"),
         }
     }
@@ -2453,7 +2454,7 @@ impl<'a> Parser<'a> {
 
     // (NOT NULL)?
     fn parse_not_null_opt(&mut self) -> ParseTree<'a> {
-        let not = self.eat(TK::NOT);
+        let not = self.eat_opt(TK::NOT);
         if not.is_empty() {
             not
         } else {
@@ -2498,5 +2499,19 @@ impl<'a> Parser<'a> {
         let column_aliases_opt = self.parse_column_aliases_opt();
         let query = self.parse_query();
         parse_tree::insert_into(insert, into, table_name, column_aliases_opt, query)
+    }
+
+    // | DELETE FROM qualifiedName (WHERE booleanExpression)?             #delete
+    fn parse_delete(&mut self) -> ParseTree<'a> {
+        let delete = self.eat(TK::DELETE);
+        let from = self.eat(TK::FROM);
+        let table_name = self.parse_qualified_name();
+        let where_opt = self.eat_opt(TK::WHERE);
+        let predicate = if where_opt.is_empty() {
+            self.eat_empty()
+        } else {
+            self.parse_boolean_expression()
+        };
+        parse_tree::delete(delete, from, table_name, where_opt, predicate)
     }
 }

@@ -105,6 +105,7 @@ pub enum ParseTree<'a> {
     NotNull(NotNull<'a>),
     LikeClause(LikeClause<'a>),
     InsertInto(InsertInto<'a>),
+    Delete(Delete<'a>),
 }
 
 // The core trees
@@ -2771,6 +2772,37 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_delete(&self) -> bool {
+        if let ParseTree::Delete(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_delete(&self) -> &Delete {
+        if let ParseTree::Delete(value) = self {
+            value
+        } else {
+            panic!("Expected Delete")
+        }
+    }
+
+    pub fn unbox_delete(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::Delete(tree) => tree.unbox(),
+            _ => panic!("Expected Delete"),
+        }
+    }
+
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
         match self {
             ParseTree::Token(token) => token.children(),
@@ -2881,6 +2913,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::NotNull(not_null) => not_null.children(),
             ParseTree::LikeClause(like_clause) => like_clause.children(),
             ParseTree::InsertInto(insert_into) => insert_into.children(),
+            ParseTree::Delete(delete) => delete.children(),
         }
     }
 }
@@ -7199,6 +7232,65 @@ impl<'a> InsertInto<'a> {
             *self.table_name,
             *self.column_aliases_opt,
             *self.query,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Delete<'a> {
+    pub delete: Box<ParseTree<'a>>,
+    pub from: Box<ParseTree<'a>>,
+    pub table_name: Box<ParseTree<'a>>,
+    pub where_opt: Box<ParseTree<'a>>,
+    pub predicate: Box<ParseTree<'a>>,
+}
+
+pub fn delete<'a>(
+    delete: ParseTree<'a>,
+    from: ParseTree<'a>,
+    table_name: ParseTree<'a>,
+    where_opt: ParseTree<'a>,
+    predicate: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Delete(Delete {
+        delete: Box::new(delete),
+        from: Box::new(from),
+        table_name: Box::new(table_name),
+        where_opt: Box::new(where_opt),
+        predicate: Box::new(predicate),
+    })
+}
+
+impl<'a> Delete<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Delete(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.delete);
+        result.push(&*self.from);
+        result.push(&*self.table_name);
+        result.push(&*self.where_opt);
+        result.push(&*self.predicate);
+        result
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.delete,
+            *self.from,
+            *self.table_name,
+            *self.where_opt,
+            *self.predicate,
         )
     }
 }
