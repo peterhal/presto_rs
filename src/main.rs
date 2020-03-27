@@ -8,18 +8,21 @@ use std::fs;
 mod lexing;
 mod parsing;
 
-fn lex_and_dump(contents: &str) {
+fn lex_and_dump(contents: &str) -> bool {
     let mut lexer = Lexer::new(contents);
+    let mut had_error = false;
     loop {
         let token = lexer.lex_token();
         let errors = token.errors;
         if !errors.is_empty() {
             println!("{:#?}", errors);
+            had_error = true;
         }
         if lexer.at_end() {
             break;
         }
-    }
+    };
+    had_error
 }
 
 fn parse(contents: &str) {
@@ -40,10 +43,9 @@ fn main() {
         let read_result = fs::read_to_string(filename);
         match read_result {
             Ok(contents) => {
-                lex_and_dump(&contents);
-                println!("");
-                // parse(&contents);
-                // println!("Hello world!\n{}", contents);
+                if !lex_and_dump(&contents) {
+                    parse(&contents);
+                }
             }
             Err(e) => println!("Error reading file {}", e),
         }
