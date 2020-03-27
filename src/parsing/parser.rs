@@ -2175,6 +2175,187 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TK::SELECT | TK::TABLE | TK::VALUES | TK::OpenParen | TK::WITH => self.parse_query(),
+            TK::CREATE => self.parse_create_statement(),
+            TK::INSERT => self.parse_insert_into(),
+            _ => panic!("TODO: Remaining statements"),
+        }
+    }
+
+    // | CREATE SCHEMA (IF NOT EXISTS)? qualifiedName
+    // (WITH properties)?                                             #createSchema
+    // | CREATE TABLE (IF NOT EXISTS)? qualifiedName columnAliases?
+    //     (COMMENT string)?
+    //     (WITH properties)? AS (query | '('query')')
+    //     (WITH (NO)? DATA)?                                             #createTableAsSelect
+    // | CREATE TABLE (IF NOT EXISTS)? qualifiedName
+    //     '(' tableElement (',' tableElement)* ')'
+    //      (COMMENT string)?
+    //      (WITH properties)?                                            #createTable
+    // | CREATE (OR REPLACE)? VIEW qualifiedName AS query                 #createView
+    // | CREATE ROLE name=identifier
+    //     (WITH ADMIN grantor)?                                          #createRole
+    fn parse_create_statement(&mut self) -> ParseTree<'a> {
+        match self.peek_offset(1) {
+            TK::TABLE => self.parse_create_table(),
+            TK::OR => self.parse_create_view(),
+            TK::Identifier => match self.maybe_peek_predefined_name_offset(1) {
+                Some(PN::SCHEMA) => self.parse_create_schema(),
+                Some(PN::VIEW) => self.parse_create_view(),
+                Some(PN::ROLE) => self.parse_create_role(),
+                _ => self.expected_error("create statement"),
+            },
+            _ => self.expected_error("create statement"),
+        }
+    }
+
+    fn parse_create_table(&mut self) -> ParseTree<'a> {
+        let create = self.eat(TK::CREATE);
+        let table = self.eat(TK::TABLE);
+        let if_not_exists_opt = self.parse_if_not_exists_opt();
+        let table_name = self.parse_qualified_name();
+        if self.peek_kind(TK::OpenParen) && self.peek_table_element_offset(1) {
+            // | CREATE TABLE (IF NOT EXISTS)? qualifiedName
+            //     '(' tableElement (',' tableElement)* ')'
+            //      (COMMENT string)?
+            //      (WITH properties)?                                            #createTable
+            let table_elements = self
+                .parse_parenthesized_comma_separated_list(|parser| parser.parse_table_element());
+            let comment_opt = self.parse_comment_opt();
+            let with_properties_opt = self.parse_with_properties_opt();
+            parse_tree::create_table(
+                create,
+                table,
+                if_not_exists_opt,
+                table_name,
+                table_elements,
+                comment_opt,
+                with_properties_opt,
+            )
+        } else {
+            // | CREATE TABLE (IF NOT EXISTS)? qualifiedName columnAliases?
+            //     (COMMENT string)?
+            //     (WITH properties)? AS (query | '('query')')
+            //     (WITH (NO)? DATA)?                                             #createTableAsSelect
+            let column_aliases_opt = self.parse_column_aliases_opt();
+            let comment_opt = self.parse_comment_opt();
+            let with_properties_opt = self.parse_with_properties_opt();
+            let as_ = self.eat(TK::AS);
+            let (open_paren_opt, query, close_paren_opt) = if self.peek_kind(TK::OpenParen) {
+                self.parse_parenthesized_query()
+            } else {
+                (self.eat_empty(), self.parse_query(), self.eat_empty())
+            };
+            let with_data_opt = self.parse_with_data_opt();
+            parse_tree::create_table_as_select(
+                create,
+                table,
+                if_not_exists_opt,
+                table_name,
+                column_aliases_opt,
+                comment_opt,
+                with_properties_opt,
+                as_,
+                open_paren_opt,
+                query,
+                close_paren_opt,
+                with_data_opt,
+            )
+        }
+    }
+
+    // (IF NOT EXISTS)?
+    fn parse_if_not_exists_opt(&mut self) -> ParseTree<'a> {
+        let if_ = self.eat_predefined_name_opt(PN::IF);
+        if if_.is_empty() {
+            if_
+        } else {
+            let not = self.eat(TK::NOT);
+            let exists = self.eat(TK::EXISTS);
+            parse_tree::if_not_exists(if_, not, exists)
+        }
+    }
+
+    // (COMMENT string)?
+    fn parse_comment_opt(&mut self) -> ParseTree<'a> {
+        let comment = self.eat_predefined_name_opt(PN::COMMENT);
+        if comment.is_empty() {
+            comment
+        } else {
+            let value = self.parse_string();
+            parse_tree::comment(comment, value)
+        }
+    }
+
+    // (WITH properties)?
+    fn parse_with_properties_opt(&mut self) -> ParseTree<'a> {
+        let with = self.eat_opt(TK::WITH);
+        if with.is_empty() {
+            with
+        } else {
+            let properties =
+                self.parse_parenthesized_comma_separated_list(|parser| parser.parse_property());
+            parse_tree::with_properties(with, properties)
+        }
+    }
+
+    // property_
+    // : identifier EQ expression
+    fn parse_property(&mut self) -> ParseTree<'a> {
+        let identifier = self.parse_identifier();
+        let eq = self.eat(TK::Equal);
+        let value = self.parse_expression();
+        parse_tree::property(identifier, eq, value)
+    }
+
+    // (WITH (NO)? DATA)?
+    fn parse_with_data_opt(&mut self) -> ParseTree<'a> {
+        let with = self.eat(TK::WITH);
+        if with.is_empty() {
+            with
+        } else {
+            let no_opt = self.eat_predefined_name_opt(PN::NO);
+            let data = self.eat_predefined_name(PN::DATA);
+            parse_tree::with_data(with, no_opt, data)
+        }
+    }
+
+    // tableElement
+    //     : columnDefinition
+    //     | likeClause
+    //     ;
+    fn peek_table_element_offset(&mut self, offset: usize) -> bool {
+        // disambiguating between tableElement and column_aliases
+        self.peek_kind_offset(TK::LIKE, offset)
+            || (self.peek_kind_offset(TK::Identifier, offset)
+                && !self.peek_kind_offset(TK::Comma, offset + 1))
+    }
+
+    fn parse_table_element(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    // columnDefinition
+    //     : identifier type_ (NOT NULL)? (COMMENT string)? (WITH properties)?
+    //     ;
+
+    // likeClause
+    //     : LIKE qualifiedName (optionType=(INCLUDING | EXCLUDING) PROPERTIES)?
+
+    fn parse_create_view(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_create_schema(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_create_role(&mut self) -> ParseTree<'a> {
+        panic!("TODO")
+    }
+
+    fn parse_insert_into(&mut self) -> ParseTree<'a> {
         panic!("TODO")
     }
 }

@@ -94,6 +94,13 @@ pub enum ParseTree<'a> {
     RowType(RowType<'a>),
     RowTypeElement(RowTypeElement<'a>),
     IntervalType(IntervalType<'a>),
+    IfNotExists(IfNotExists<'a>),
+    CreateTable(CreateTable<'a>),
+    CreateTableAsSelect(CreateTableAsSelect<'a>),
+    WithProperties(WithProperties<'a>),
+    Property(Property<'a>),
+    WithData(WithData<'a>),
+    Comment(Comment<'a>),
 }
 
 // The core trees
@@ -2437,6 +2444,192 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::IntervalType(tree) => tree.unbox(),
             _ => panic!("Expected IntervalType"),
+        }
+    }
+
+    pub fn is_if_not_exists(&self) -> bool {
+        if let ParseTree::IfNotExists(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_if_not_exists(&self) -> &IfNotExists {
+        if let ParseTree::IfNotExists(value) = self {
+            value
+        } else {
+            panic!("Expected IfNotExists")
+        }
+    }
+
+    pub fn unbox_if_not_exists(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::IfNotExists(tree) => tree.unbox(),
+            _ => panic!("Expected IfNotExists"),
+        }
+    }
+
+    pub fn is_create_table(&self) -> bool {
+        if let ParseTree::CreateTable(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_create_table(&self) -> &CreateTable {
+        if let ParseTree::CreateTable(value) = self {
+            value
+        } else {
+            panic!("Expected CreateTable")
+        }
+    }
+
+    pub fn unbox_create_table(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::CreateTable(tree) => tree.unbox(),
+            _ => panic!("Expected CreateTable"),
+        }
+    }
+
+    pub fn is_create_table_as_select(&self) -> bool {
+        if let ParseTree::CreateTableAsSelect(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_create_table_as_select(&self) -> &CreateTableAsSelect {
+        if let ParseTree::CreateTableAsSelect(value) = self {
+            value
+        } else {
+            panic!("Expected CreateTableAsSelect")
+        }
+    }
+
+    pub fn unbox_create_table_as_select(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::CreateTableAsSelect(tree) => tree.unbox(),
+            _ => panic!("Expected CreateTableAsSelect"),
+        }
+    }
+
+    pub fn is_with_properties(&self) -> bool {
+        if let ParseTree::WithProperties(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_with_properties(&self) -> &WithProperties {
+        if let ParseTree::WithProperties(value) = self {
+            value
+        } else {
+            panic!("Expected WithProperties")
+        }
+    }
+
+    pub fn unbox_with_properties(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::WithProperties(tree) => tree.unbox(),
+            _ => panic!("Expected WithProperties"),
+        }
+    }
+
+    pub fn is_property(&self) -> bool {
+        if let ParseTree::Property(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_property(&self) -> &Property {
+        if let ParseTree::Property(value) = self {
+            value
+        } else {
+            panic!("Expected Property")
+        }
+    }
+
+    pub fn unbox_property(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Property(tree) => tree.unbox(),
+            _ => panic!("Expected Property"),
+        }
+    }
+
+    pub fn is_with_data(&self) -> bool {
+        if let ParseTree::WithData(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_with_data(&self) -> &WithData {
+        if let ParseTree::WithData(value) = self {
+            value
+        } else {
+            panic!("Expected WithData")
+        }
+    }
+
+    pub fn unbox_with_data(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::WithData(tree) => tree.unbox(),
+            _ => panic!("Expected WithData"),
+        }
+    }
+
+    pub fn is_comment(&self) -> bool {
+        if let ParseTree::Comment(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_comment(&self) -> &Comment {
+        if let ParseTree::Comment(value) = self {
+            value
+        } else {
+            panic!("Expected Comment")
+        }
+    }
+
+    pub fn unbox_comment(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Comment(tree) => tree.unbox(),
+            _ => panic!("Expected Comment"),
         }
     }
 }
@@ -5476,5 +5669,281 @@ impl<'a> IntervalType<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.interval, *self.from, *self.to_kw, *self.to)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct IfNotExists<'a> {
+    pub if_: Box<ParseTree<'a>>,
+    pub not: Box<ParseTree<'a>>,
+    pub exists: Box<ParseTree<'a>>,
+}
+
+pub fn if_not_exists<'a>(
+    if_: ParseTree<'a>,
+    not: ParseTree<'a>,
+    exists: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::IfNotExists(IfNotExists {
+        if_: Box::new(if_),
+        not: Box::new(not),
+        exists: Box::new(exists),
+    })
+}
+
+impl<'a> IfNotExists<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::IfNotExists(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.if_, *self.not, *self.exists)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateTable<'a> {
+    pub create: Box<ParseTree<'a>>,
+    pub table: Box<ParseTree<'a>>,
+    pub if_not_exists_opt: Box<ParseTree<'a>>,
+    pub table_name: Box<ParseTree<'a>>,
+    pub table_elements: Box<ParseTree<'a>>,
+    pub comment_opt: Box<ParseTree<'a>>,
+    pub with_properties_opt: Box<ParseTree<'a>>,
+}
+
+pub fn create_table<'a>(
+    create: ParseTree<'a>,
+    table: ParseTree<'a>,
+    if_not_exists_opt: ParseTree<'a>,
+    table_name: ParseTree<'a>,
+    table_elements: ParseTree<'a>,
+    comment_opt: ParseTree<'a>,
+    with_properties_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::CreateTable(CreateTable {
+        create: Box::new(create),
+        table: Box::new(table),
+        if_not_exists_opt: Box::new(if_not_exists_opt),
+        table_name: Box::new(table_name),
+        table_elements: Box::new(table_elements),
+        comment_opt: Box::new(comment_opt),
+        with_properties_opt: Box::new(with_properties_opt),
+    })
+}
+
+impl<'a> CreateTable<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CreateTable(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.create,
+            *self.table,
+            *self.if_not_exists_opt,
+            *self.table_name,
+            *self.table_elements,
+            *self.comment_opt,
+            *self.with_properties_opt,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateTableAsSelect<'a> {
+    pub create: Box<ParseTree<'a>>,
+    pub table: Box<ParseTree<'a>>,
+    pub if_not_exists_opt: Box<ParseTree<'a>>,
+    pub table_name: Box<ParseTree<'a>>,
+    pub column_aliases_opt: Box<ParseTree<'a>>,
+    pub comment_opt: Box<ParseTree<'a>>,
+    pub with_properties_opt: Box<ParseTree<'a>>,
+    pub as_: Box<ParseTree<'a>>,
+    pub open_paren_opt: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+    pub close_paren_opt: Box<ParseTree<'a>>,
+    pub with_data_opt: Box<ParseTree<'a>>,
+}
+
+pub fn create_table_as_select<'a>(
+    create: ParseTree<'a>,
+    table: ParseTree<'a>,
+    if_not_exists_opt: ParseTree<'a>,
+    table_name: ParseTree<'a>,
+    column_aliases_opt: ParseTree<'a>,
+    comment_opt: ParseTree<'a>,
+    with_properties_opt: ParseTree<'a>,
+    as_: ParseTree<'a>,
+    open_paren_opt: ParseTree<'a>,
+    query: ParseTree<'a>,
+    close_paren_opt: ParseTree<'a>,
+    with_data_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::CreateTableAsSelect(CreateTableAsSelect {
+        create: Box::new(create),
+        table: Box::new(table),
+        if_not_exists_opt: Box::new(if_not_exists_opt),
+        table_name: Box::new(table_name),
+        column_aliases_opt: Box::new(column_aliases_opt),
+        comment_opt: Box::new(comment_opt),
+        with_properties_opt: Box::new(with_properties_opt),
+        as_: Box::new(as_),
+        open_paren_opt: Box::new(open_paren_opt),
+        query: Box::new(query),
+        close_paren_opt: Box::new(close_paren_opt),
+        with_data_opt: Box::new(with_data_opt),
+    })
+}
+
+impl<'a> CreateTableAsSelect<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CreateTableAsSelect(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.create,
+            *self.table,
+            *self.if_not_exists_opt,
+            *self.table_name,
+            *self.column_aliases_opt,
+            *self.comment_opt,
+            *self.with_properties_opt,
+            *self.as_,
+            *self.open_paren_opt,
+            *self.query,
+            *self.close_paren_opt,
+            *self.with_data_opt,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WithProperties<'a> {
+    pub with: Box<ParseTree<'a>>,
+    pub properties: Box<ParseTree<'a>>,
+}
+
+pub fn with_properties<'a>(with: ParseTree<'a>, properties: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::WithProperties(WithProperties {
+        with: Box::new(with),
+        properties: Box::new(properties),
+    })
+}
+
+impl<'a> WithProperties<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::WithProperties(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.with, *self.properties)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Property<'a> {
+    pub identifier: Box<ParseTree<'a>>,
+    pub eq: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+}
+
+pub fn property<'a>(
+    identifier: ParseTree<'a>,
+    eq: ParseTree<'a>,
+    value: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Property(Property {
+        identifier: Box::new(identifier),
+        eq: Box::new(eq),
+        value: Box::new(value),
+    })
+}
+
+impl<'a> Property<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Property(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.identifier, *self.eq, *self.value)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WithData<'a> {
+    pub with: Box<ParseTree<'a>>,
+    pub no_opt: Box<ParseTree<'a>>,
+    pub data: Box<ParseTree<'a>>,
+}
+
+pub fn with_data<'a>(
+    with: ParseTree<'a>,
+    no_opt: ParseTree<'a>,
+    data: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::WithData(WithData {
+        with: Box::new(with),
+        no_opt: Box::new(no_opt),
+        data: Box::new(data),
+    })
+}
+
+impl<'a> WithData<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::WithData(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.with, *self.no_opt, *self.data)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Comment<'a> {
+    pub comment: Box<ParseTree<'a>>,
+    pub value: Box<ParseTree<'a>>,
+}
+
+pub fn comment<'a>(comment: ParseTree<'a>, value: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::Comment(Comment {
+        comment: Box::new(comment),
+        value: Box::new(value),
+    })
+}
+
+impl<'a> Comment<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Comment(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.comment, *self.value)
     }
 }
