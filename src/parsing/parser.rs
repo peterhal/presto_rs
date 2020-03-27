@@ -2078,7 +2078,7 @@ impl<'a> Parser<'a> {
                 )
             };
             let order_by_opt = self.parse_order_by_opt();
-            let window_frame = self.parse_window_frame();
+            let window_frame = self.parse_window_frame_opt();
             let close_paren = self.eat(TK::CloseParen);
             parse_tree::over(
                 over,
@@ -2098,21 +2098,20 @@ impl<'a> Parser<'a> {
     // | frameType=ROWS startBound=frameBound
     // | frameType=RANGE BETWEEN startBound=frameBound AND end=frameBound
     // | frameType=ROWS BETWEEN startBound=frameBound AND end=frameBound
-    fn parse_window_frame(&mut self) -> ParseTree<'a> {
-        let frame_type =
-            if self.peek_predefined_name(PN::RANGE) || self.peek_predefined_name(PN::ROWS) {
-                self.eat_token()
+    fn parse_window_frame_opt(&mut self) -> ParseTree<'a> {
+        if self.peek_predefined_name(PN::RANGE) || self.peek_predefined_name(PN::ROWS) {
+            let frame_type = self.eat_token();
+            let between_opt = self.eat_opt(TK::BETWEEN);
+            let start = self.parse_frame_bound();
+            let (and, end) = if between_opt.is_empty() {
+                (self.eat_empty(), self.eat_empty())
             } else {
-                self.expected_error("RANGE, ROWS")
+                (self.eat(TK::AND), self.parse_frame_bound())
             };
-        let between_opt = self.eat_opt(TK::BETWEEN);
-        let start = self.parse_frame_bound();
-        let (and, end) = if between_opt.is_empty() {
-            (self.eat_empty(), self.eat_empty())
+            parse_tree::window_frame(frame_type, between_opt, start, and, end)
         } else {
-            (self.eat(TK::AND), self.parse_frame_bound())
-        };
-        parse_tree::window_frame(frame_type, between_opt, start, and, end)
+            self.eat_empty()
+        }
     }
 
     // frameBound
