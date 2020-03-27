@@ -274,7 +274,11 @@ impl<'a> Lexer<'a> {
         self.lex_any_string_literal(start, TokenKind::String)
     }
 
+    // UNICODE_STRING
+    // : 'U&\'' ( ~'\'' | '\'\'' )* '\''
+    // U& already consumed
     pub fn lex_unicode_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+        self.eat('\'');
         self.lex_any_string_literal(start, TokenKind::UnicodeString)
     }
 
@@ -282,6 +286,7 @@ impl<'a> Lexer<'a> {
         self.lex_any_string_literal(start, TokenKind::BinaryLiteral)
     }
 
+    // leading ' already consumed
     pub fn lex_any_string_literal(
         &mut self,
         start: &LexerPosition<'a>,
@@ -576,7 +581,7 @@ impl<'a> Lexer<'a> {
                 '0'..='9' => self.lex_number(&start, ch),
                 // Identifier start char
                 'a'..='z' | 'A'..='Z' | '_' => {
-                    if ch.eq_ignore_ascii_case(&'u') && self.eat_opt('\'') {
+                    if ch.eq_ignore_ascii_case(&'u') && self.eat_opt('&') {
                         self.lex_unicode_string_literal(&start)
                     } else if ch.eq_ignore_ascii_case(&'x') && self.eat_opt('\'') {
                         self.lex_binary_literal(&start)
