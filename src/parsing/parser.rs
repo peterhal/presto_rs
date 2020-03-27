@@ -158,14 +158,15 @@ impl<'a> Parser<'a> {
     }
 
     fn error(&mut self, message: String) -> ParseTree<'a> {
-        // panic!("WTF");
-        parse_tree::error(SyntaxError {
+        let result = parse_tree::error(SyntaxError {
             error_code: syntax_error::ERROR_SYNTAX_ERROR,
             messages: vec![Message {
                 range: self.get_empty_range(),
                 message,
             }],
-        })
+        });
+        panic!("WTF {}", format!("{:#?}", result));
+        result
     }
 
     fn expected_error(&mut self, expected: &str) -> ParseTree<'a> {
@@ -246,7 +247,9 @@ impl<'a> Parser<'a> {
             let at_end = separator.is_empty();
             seperators.push(separator);
             !at_end
-        } {}
+        } {
+            elements.push(parse_element(self));
+        }
         elements.into_iter().zip(seperators.into_iter()).collect()
     }
 
@@ -1967,6 +1970,9 @@ impl<'a> Parser<'a> {
         parse_tree::lambda(parameter, arrow, body)
     }
 
+    // | qualifiedName '(' ASTERISK ')' filter_? over?                                        #functionCall
+    // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
+    //     (ORDER BY sortItem (',' sortItem)*)? ')' filter_? over?                            #functionCall
     fn peek_function_call(&mut self) -> bool {
         let mut offset = 1;
         while self.peek_kind(TK::Period) {
