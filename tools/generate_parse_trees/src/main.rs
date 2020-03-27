@@ -332,6 +332,26 @@ fn configs() -> Vec<TreeConfig> {
                 "close_paren",
             ],
         ),
+        ("ArrayTypeSuffix", vec!["base_type", "array"]),
+        ("NamedType", vec!["name", "type_parameters"]),
+        (
+            "ArrayType",
+            vec!["array", "open_angle", "element_type", "close_angle"],
+        ),
+        (
+            "MapType",
+            vec![
+                "map",
+                "open_angle",
+                "key_type",
+                "comma",
+                "value_type",
+                "close_angle",
+            ],
+        ),
+        ("RowType", vec!["row", "element_types"]),
+        ("RowTypeElement", vec!["identifier", "type_"]),
+        ("IntervalType", vec!["interval", "from", "to_kw", "to"]),
         // ("Class", vec![]),
     ]
 }

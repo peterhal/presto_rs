@@ -1528,11 +1528,19 @@ impl<'a> Parser<'a> {
 
     // intervalField
     // : YEAR | MONTH | DAY | HOUR | MINUTE | SECOND
-    fn parse_interval_field(&mut self) -> ParseTree<'a> {
-        match self.maybe_peek_predefined_name() {
+    fn peek_interval_field_offset(&mut self, offset: usize) -> bool {
+        match self.maybe_peek_predefined_name_offset(offset) {
             Some(PN::YEAR) | Some(PN::MONTH) | Some(PN::DAY) | Some(PN::HOUR)
-            | Some(PN::MINUTE) | Some(PN::SECOND) => self.eat_token(),
-            _ => self.expected_error("interval field"),
+            | Some(PN::MINUTE) | Some(PN::SECOND) => true,
+            _ => false,
+        }
+    }
+
+    fn parse_interval_field(&mut self) -> ParseTree<'a> {
+        if self.peek_interval_field_offset(0) {
+            self.eat_token()
+        } else {
+            self.expected_error("interval field")
         }
     }
 
@@ -2045,8 +2053,125 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // type_
+    // : type_ ARRAY
     fn parse_type(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let mut root_type = self.parse_root_type();
+        while self.peek_predefined_name(PN::ARRAY) {
+            let array = self.eat_predefined_name(PN::ARRAY);
+            root_type = parse_tree::array_type_suffix(root_type, array)
+        }
+        root_type
+    }
+
+    // | ARRAY '<' type_ '>'
+    // | MAP '<' type_ ',' type_ '>'
+    // | ROW '(' identifier type_ (',' identifier type_)* ')'
+    // | baseType ('(' typeParameter (',' typeParameter)* ')')?
+    // | INTERVAL from_=intervalField TO to=intervalField
+    fn parse_root_type(&mut self) -> ParseTree<'a> {
+        match self.peek() {
+            TK::TimeWithTimeZone | TK::TimestampWithTimeZone | TK::DoublePrecision => (),
+            TK::Identifier => {
+                match self.maybe_peek_predefined_name() {
+                    Some(PN::ARRAY) => {
+                        if self.peek_array_type() {
+                            return self.parse_array_type();
+                        }
+                    }
+                    Some(PN::MAP) => {
+                        if self.peek_map_type() {
+                            return self.parse_map_type();
+                        }
+                    }
+                    Some(PN::ROW) => {
+                        if self.peek_row_type() {
+                            return self.parse_row_type();
+                        }
+                    }
+                    Some(PN::INTERVAL) => {
+                        if self.peek_interval_type() {
+                            return self.parse_interval_type();
+                        }
+                    }
+                    _ => (),
+                };
+                ()
+            }
+            _ => return self.expected_error("type"),
+        }
+        let type_name = self.eat_token();
+        let type_parameters = self
+            .parse_parenthesized_comma_separated_list_opt(|parser| parser.parse_type_parameter());
+        parse_tree::named_type(type_name, type_parameters)
+    }
+
+    // typeParameter
+    // : INTEGER_VALUE | type_
+    fn parse_type_parameter(&mut self) -> ParseTree<'a> {
+        if self.peek_kind(TK::Integer) {
+            self.eat_token()
+        } else {
+            self.parse_type()
+        }
+    }
+
+    // | ARRAY '<' type_ '>'
+    fn peek_array_type(&mut self) -> bool {
+        self.peek_predefined_name(PN::ARRAY) && self.peek_kind_offset(TK::OpenAngle, 1)
+    }
+
+    fn parse_array_type(&mut self) -> ParseTree<'a> {
+        let array = self.eat_predefined_name(PN::ARRAY);
+        let (open_angle, element_type, close_angle) =
+            self.parse_delimited(TK::OpenAngle, |parser| parser.parse_type(), TK::CloseAngle);
+        parse_tree::array_type(array, open_angle, element_type, close_angle)
+    }
+
+    // | MAP '<' type_ ',' type_ '>'
+    fn peek_map_type(&mut self) -> bool {
+        self.peek_predefined_name(PN::MAP) && self.peek_kind_offset(TK::OpenAngle, 1)
+    }
+
+    fn parse_map_type(&mut self) -> ParseTree<'a> {
+        let map = self.eat_predefined_name(PN::MAP);
+        let open_angle = self.eat(TK::OpenAngle);
+        let key_type = self.parse_type();
+        let comma = self.eat(TK::Comma);
+        let value_type = self.parse_type();
+        let close_angle = self.eat(TK::CloseAngle);
+        parse_tree::map_type(map, open_angle, key_type, comma, value_type, close_angle)
+    }
+
+    // | ROW '(' identifier type_ (',' identifier type_)* ')'
+    fn peek_row_type(&mut self) -> bool {
+        self.peek_predefined_name(PN::ROW) && self.peek_kind_offset(TK::OpenParen, 1)
+    }
+
+    fn parse_row_type(&mut self) -> ParseTree<'a> {
+        let row = self.eat_predefined_name(PN::ROW);
+        let element_types =
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_row_type_element());
+        parse_tree::row_type(row, element_types)
+    }
+
+    fn parse_row_type_element(&mut self) -> ParseTree<'a> {
+        let identifier = self.parse_identifier();
+        let type_ = self.parse_type();
+        parse_tree::row_type_element(identifier, type_)
+    }
+
+    // | INTERVAL from_=intervalField TO to=intervalField
+    fn peek_interval_type(&mut self) -> bool {
+        self.peek_predefined_name(PN::INTERVAL) && self.peek_interval_field_offset(1)
+    }
+
+    fn parse_interval_type(&mut self) -> ParseTree<'a> {
+        let interval = self.eat_predefined_name(PN::INTERVAL);
+        let from = self.parse_interval_field();
+        let to_kw = self.eat_predefined_name(PN::TO);
+        let to = self.parse_interval_field();
+        parse_tree::interval_type(interval, from, to_kw, to)
     }
 
     fn parse_statement(&mut self) -> ParseTree<'a> {

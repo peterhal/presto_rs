@@ -87,6 +87,13 @@ pub enum ParseTree<'a> {
     TryCast(TryCast<'a>),
     Substring(Substring<'a>),
     Position(Position<'a>),
+    ArrayTypeSuffix(ArrayTypeSuffix<'a>),
+    NamedType(NamedType<'a>),
+    ArrayType(ArrayType<'a>),
+    MapType(MapType<'a>),
+    RowType(RowType<'a>),
+    RowTypeElement(RowTypeElement<'a>),
+    IntervalType(IntervalType<'a>),
 }
 
 // The core trees
@@ -2258,6 +2265,178 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Position(tree) => tree.unbox(),
             _ => panic!("Expected Position"),
+        }
+    }
+
+    pub fn is_array_type_suffix(&self) -> bool {
+        if let ParseTree::ArrayTypeSuffix(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_array_type_suffix(&self) -> &ArrayTypeSuffix {
+        if let ParseTree::ArrayTypeSuffix(value) = self {
+            value
+        } else {
+            panic!("Expected ArrayTypeSuffix")
+        }
+    }
+
+    pub fn unbox_array_type_suffix(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::ArrayTypeSuffix(tree) => tree.unbox(),
+            _ => panic!("Expected ArrayTypeSuffix"),
+        }
+    }
+
+    pub fn is_named_type(&self) -> bool {
+        if let ParseTree::NamedType(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_named_type(&self) -> &NamedType {
+        if let ParseTree::NamedType(value) = self {
+            value
+        } else {
+            panic!("Expected NamedType")
+        }
+    }
+
+    pub fn unbox_named_type(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::NamedType(tree) => tree.unbox(),
+            _ => panic!("Expected NamedType"),
+        }
+    }
+
+    pub fn is_array_type(&self) -> bool {
+        if let ParseTree::ArrayType(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_array_type(&self) -> &ArrayType {
+        if let ParseTree::ArrayType(value) = self {
+            value
+        } else {
+            panic!("Expected ArrayType")
+        }
+    }
+
+    pub fn unbox_array_type(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::ArrayType(tree) => tree.unbox(),
+            _ => panic!("Expected ArrayType"),
+        }
+    }
+
+    pub fn is_map_type(&self) -> bool {
+        if let ParseTree::MapType(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_map_type(&self) -> &MapType {
+        if let ParseTree::MapType(value) = self {
+            value
+        } else {
+            panic!("Expected MapType")
+        }
+    }
+
+    pub fn unbox_map_type(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::MapType(tree) => tree.unbox(),
+            _ => panic!("Expected MapType"),
+        }
+    }
+
+    pub fn is_row_type(&self) -> bool {
+        if let ParseTree::RowType(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_row_type(&self) -> &RowType {
+        if let ParseTree::RowType(value) = self {
+            value
+        } else {
+            panic!("Expected RowType")
+        }
+    }
+
+    pub fn unbox_row_type(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::RowType(tree) => tree.unbox(),
+            _ => panic!("Expected RowType"),
+        }
+    }
+
+    pub fn is_row_type_element(&self) -> bool {
+        if let ParseTree::RowTypeElement(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_row_type_element(&self) -> &RowTypeElement {
+        if let ParseTree::RowTypeElement(value) = self {
+            value
+        } else {
+            panic!("Expected RowTypeElement")
+        }
+    }
+
+    pub fn unbox_row_type_element(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::RowTypeElement(tree) => tree.unbox(),
+            _ => panic!("Expected RowTypeElement"),
+        }
+    }
+
+    pub fn is_interval_type(&self) -> bool {
+        if let ParseTree::IntervalType(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_interval_type(&self) -> &IntervalType {
+        if let ParseTree::IntervalType(value) = self {
+            value
+        } else {
+            panic!("Expected IntervalType")
+        }
+    }
+
+    pub fn unbox_interval_type(
+        self,
+    ) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::IntervalType(tree) => tree.unbox(),
+            _ => panic!("Expected IntervalType"),
         }
     }
 }
@@ -5082,5 +5261,220 @@ impl<'a> Position<'a> {
             *self.target,
             *self.close_paren,
         )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ArrayTypeSuffix<'a> {
+    pub base_type: Box<ParseTree<'a>>,
+    pub array: Box<ParseTree<'a>>,
+}
+
+pub fn array_type_suffix<'a>(base_type: ParseTree<'a>, array: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::ArrayTypeSuffix(ArrayTypeSuffix {
+        base_type: Box::new(base_type),
+        array: Box::new(array),
+    })
+}
+
+impl<'a> ArrayTypeSuffix<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::ArrayTypeSuffix(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.base_type, *self.array)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct NamedType<'a> {
+    pub name: Box<ParseTree<'a>>,
+    pub type_parameters: Box<ParseTree<'a>>,
+}
+
+pub fn named_type<'a>(name: ParseTree<'a>, type_parameters: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::NamedType(NamedType {
+        name: Box::new(name),
+        type_parameters: Box::new(type_parameters),
+    })
+}
+
+impl<'a> NamedType<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::NamedType(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.name, *self.type_parameters)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ArrayType<'a> {
+    pub array: Box<ParseTree<'a>>,
+    pub open_angle: Box<ParseTree<'a>>,
+    pub element_type: Box<ParseTree<'a>>,
+    pub close_angle: Box<ParseTree<'a>>,
+}
+
+pub fn array_type<'a>(
+    array: ParseTree<'a>,
+    open_angle: ParseTree<'a>,
+    element_type: ParseTree<'a>,
+    close_angle: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::ArrayType(ArrayType {
+        array: Box::new(array),
+        open_angle: Box::new(open_angle),
+        element_type: Box::new(element_type),
+        close_angle: Box::new(close_angle),
+    })
+}
+
+impl<'a> ArrayType<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::ArrayType(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.array,
+            *self.open_angle,
+            *self.element_type,
+            *self.close_angle,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct MapType<'a> {
+    pub map: Box<ParseTree<'a>>,
+    pub open_angle: Box<ParseTree<'a>>,
+    pub key_type: Box<ParseTree<'a>>,
+    pub comma: Box<ParseTree<'a>>,
+    pub value_type: Box<ParseTree<'a>>,
+    pub close_angle: Box<ParseTree<'a>>,
+}
+
+pub fn map_type<'a>(
+    map: ParseTree<'a>,
+    open_angle: ParseTree<'a>,
+    key_type: ParseTree<'a>,
+    comma: ParseTree<'a>,
+    value_type: ParseTree<'a>,
+    close_angle: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::MapType(MapType {
+        map: Box::new(map),
+        open_angle: Box::new(open_angle),
+        key_type: Box::new(key_type),
+        comma: Box::new(comma),
+        value_type: Box::new(value_type),
+        close_angle: Box::new(close_angle),
+    })
+}
+
+impl<'a> MapType<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::MapType(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.map,
+            *self.open_angle,
+            *self.key_type,
+            *self.comma,
+            *self.value_type,
+            *self.close_angle,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RowType<'a> {
+    pub row: Box<ParseTree<'a>>,
+    pub element_types: Box<ParseTree<'a>>,
+}
+
+pub fn row_type<'a>(row: ParseTree<'a>, element_types: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::RowType(RowType {
+        row: Box::new(row),
+        element_types: Box::new(element_types),
+    })
+}
+
+impl<'a> RowType<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::RowType(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.row, *self.element_types)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RowTypeElement<'a> {
+    pub identifier: Box<ParseTree<'a>>,
+    pub type_: Box<ParseTree<'a>>,
+}
+
+pub fn row_type_element<'a>(identifier: ParseTree<'a>, type_: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::RowTypeElement(RowTypeElement {
+        identifier: Box::new(identifier),
+        type_: Box::new(type_),
+    })
+}
+
+impl<'a> RowTypeElement<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::RowTypeElement(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.identifier, *self.type_)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct IntervalType<'a> {
+    pub interval: Box<ParseTree<'a>>,
+    pub from: Box<ParseTree<'a>>,
+    pub to_kw: Box<ParseTree<'a>>,
+    pub to: Box<ParseTree<'a>>,
+}
+
+pub fn interval_type<'a>(
+    interval: ParseTree<'a>,
+    from: ParseTree<'a>,
+    to_kw: ParseTree<'a>,
+    to: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::IntervalType(IntervalType {
+        interval: Box::new(interval),
+        from: Box::new(from),
+        to_kw: Box::new(to_kw),
+        to: Box::new(to),
+    })
+}
+
+impl<'a> IntervalType<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::IntervalType(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.interval, *self.from, *self.to_kw, *self.to)
     }
 }
