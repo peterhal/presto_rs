@@ -20,8 +20,8 @@ fn lex_and_dump(contents: &str) {
 
 fn parse(contents: &str) {
     let mut parser = Parser::new(contents);
-    let tree = parser.parse_query();
-    println!("{:#?}", tree);
+    let _tree = parser.parse_query();
+    // println!("{:#?}", tree);
 }
 
 fn main() {
@@ -34,10 +34,10 @@ fn main() {
     let filename = &args[1];
     let read_result = fs::read_to_string(filename);
     match read_result {
-        Ok(contents) => {
+        Ok(_contents) => {
             // lex_and_dump(&contents);
             parse("WITH RECURSIVE");
-            println!("Hello world!\n{}", contents);
+            // println!("Hello world!\n{}", contents);
         }
         Err(e) => println!("Error reading file {}", e),
     }
