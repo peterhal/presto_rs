@@ -401,6 +401,16 @@ fn configs() -> Vec<TreeConfig> {
             "LikeClause",
             vec!["like", "name", "option_type_opt", "properties"],
         ),
+        (
+            "InsertInto",
+            vec![
+                "insert",
+                "into",
+                "table_name",
+                "column_aliases_opt",
+                "query",
+            ],
+        ),
         // ("Class", vec![]),
     ]
 }

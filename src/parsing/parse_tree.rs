@@ -104,6 +104,7 @@ pub enum ParseTree<'a> {
     ColumnDefinition(ColumnDefinition<'a>),
     NotNull(NotNull<'a>),
     LikeClause(LikeClause<'a>),
+    InsertInto(InsertInto<'a>),
 }
 
 // The core trees
@@ -2710,6 +2711,37 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::LikeClause(tree) => tree.unbox(),
             _ => panic!("Expected LikeClause"),
+        }
+    }
+
+    pub fn is_insert_into(&self) -> bool {
+        if let ParseTree::InsertInto(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_insert_into(&self) -> &InsertInto {
+        if let ParseTree::InsertInto(value) = self {
+            value
+        } else {
+            panic!("Expected InsertInto")
+        }
+    }
+
+    pub fn unbox_insert_into(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::InsertInto(tree) => tree.unbox(),
+            _ => panic!("Expected InsertInto"),
         }
     }
 }
@@ -6133,6 +6165,55 @@ impl<'a> LikeClause<'a> {
             *self.name,
             *self.option_type_opt,
             *self.properties,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct InsertInto<'a> {
+    pub insert: Box<ParseTree<'a>>,
+    pub into: Box<ParseTree<'a>>,
+    pub table_name: Box<ParseTree<'a>>,
+    pub column_aliases_opt: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+}
+
+pub fn insert_into<'a>(
+    insert: ParseTree<'a>,
+    into: ParseTree<'a>,
+    table_name: ParseTree<'a>,
+    column_aliases_opt: ParseTree<'a>,
+    query: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::InsertInto(InsertInto {
+        insert: Box::new(insert),
+        into: Box::new(into),
+        table_name: Box::new(table_name),
+        column_aliases_opt: Box::new(column_aliases_opt),
+        query: Box::new(query),
+    })
+}
+
+impl<'a> InsertInto<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::InsertInto(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.insert,
+            *self.into,
+            *self.table_name,
+            *self.column_aliases_opt,
+            *self.query,
         )
     }
 }

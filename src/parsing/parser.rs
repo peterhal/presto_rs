@@ -2396,7 +2396,13 @@ impl<'a> Parser<'a> {
         panic!("TODO")
     }
 
+    // | INSERT INTO qualifiedName columnAliases? query                   #insertInto
     fn parse_insert_into(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let insert = self.eat(TK::INSERT);
+        let into = self.eat(TK::INTO);
+        let table_name = self.parse_qualified_name();
+        let column_aliases_opt = self.parse_column_aliases_opt();
+        let query = self.parse_query();
+        parse_tree::insert_into(insert, into, table_name, column_aliases_opt, query)
     }
 }
