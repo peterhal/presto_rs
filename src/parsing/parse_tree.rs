@@ -117,6 +117,12 @@ pub fn empty<'a>(range: TextRange) -> ParseTree<'a> {
     ParseTree::Empty(Empty { range })
 }
 
+impl Empty {
+    pub fn children(&self) -> Vec<&'static ParseTree<'static>> {
+        Vec::new()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Token<'a> {
     pub token: token::Token<'a>,
@@ -124,6 +130,12 @@ pub struct Token<'a> {
 
 pub fn token<'a>(token: token::Token<'a>) -> ParseTree<'a> {
     ParseTree::Token(Token { token })
+}
+
+impl<'a> Token<'a> {
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        Vec::new()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -163,6 +175,17 @@ impl<'a> List<'a> {
             *self.end_delimiter,
         )
     }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2 + self.elements_and_separators.len() * 2);
+        result.push(&*self.start_delimiter);
+        for (element, separator) in &self.elements_and_separators {
+            result.push(&element);
+            result.push(&separator);
+        }
+        result.push(&*self.end_delimiter);
+        result
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -176,6 +199,12 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
         range,
         message: message,
     })
+}
+
+impl Error {
+    pub fn children(&self) -> Vec<&'static ParseTree<'static>> {
+        Vec::new()
+    }
 }
 
 // core impl
@@ -2744,6 +2773,119 @@ impl<'a> ParseTree<'a> {
             _ => panic!("Expected InsertInto"),
         }
     }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        match self {
+            ParseTree::Token(token) => token.children(),
+            ParseTree::List(list) => list.children(),
+            ParseTree::Error(error) => error.children(),
+            ParseTree::Empty(empty) => empty.children(),
+            ParseTree::Query(query) => query.children(),
+            ParseTree::With(with) => with.children(),
+            ParseTree::NamedQuery(named_query) => named_query.children(),
+            ParseTree::QueryNoWith(query_no_with) => query_no_with.children(),
+            ParseTree::OrderBy(order_by) => order_by.children(),
+            ParseTree::Limit(limit) => limit.children(),
+            ParseTree::QuerySetOperation(query_set_operation) => query_set_operation.children(),
+            ParseTree::SortItem(sort_item) => sort_item.children(),
+            ParseTree::Subquery(subquery) => subquery.children(),
+            ParseTree::InlineTable(inline_table) => inline_table.children(),
+            ParseTree::Table(table) => table.children(),
+            ParseTree::QuerySpecification(query_specification) => query_specification.children(),
+            ParseTree::QualifiedName(qualified_name) => qualified_name.children(),
+            ParseTree::SelectAll(select_all) => select_all.children(),
+            ParseTree::QualifiedSelectAll(qualified_select_all) => qualified_select_all.children(),
+            ParseTree::SelectItem(select_item) => select_item.children(),
+            ParseTree::SubqueryRelation(subquery_relation) => subquery_relation.children(),
+            ParseTree::ParenthesizedRelation(parenthesized_relation) => {
+                parenthesized_relation.children()
+            }
+            ParseTree::TableName(table_name) => table_name.children(),
+            ParseTree::Lateral(lateral) => lateral.children(),
+            ParseTree::Unnest(unnest) => unnest.children(),
+            ParseTree::SampledRelation(sampled_relation) => sampled_relation.children(),
+            ParseTree::AliasedRelation(aliased_relation) => aliased_relation.children(),
+            ParseTree::CrossJoin(cross_join) => cross_join.children(),
+            ParseTree::Join(join) => join.children(),
+            ParseTree::NaturalJoin(natural_join) => natural_join.children(),
+            ParseTree::OuterJoinKind(outer_join_kind) => outer_join_kind.children(),
+            ParseTree::OnJoinCriteria(on_join_criteria) => on_join_criteria.children(),
+            ParseTree::UsingJoinCriteria(using_join_criteria) => using_join_criteria.children(),
+            ParseTree::GroupBy(group_by) => group_by.children(),
+            ParseTree::Rollup(rollup) => rollup.children(),
+            ParseTree::Cube(cube) => cube.children(),
+            ParseTree::GroupingSets(grouping_sets) => grouping_sets.children(),
+            ParseTree::BinaryExpression(binary_expression) => binary_expression.children(),
+            ParseTree::UnaryExpression(unary_expression) => unary_expression.children(),
+            ParseTree::QuantifiedComparison(quantified_comparison) => {
+                quantified_comparison.children()
+            }
+            ParseTree::NullPredicate(null_predicate) => null_predicate.children(),
+            ParseTree::DistinctFrom(distinct_from) => distinct_from.children(),
+            ParseTree::Between(between) => between.children(),
+            ParseTree::Like(like) => like.children(),
+            ParseTree::InSubquery(in_subquery) => in_subquery.children(),
+            ParseTree::InList(in_list) => in_list.children(),
+            ParseTree::AtTimeZone(at_time_zone) => at_time_zone.children(),
+            ParseTree::Dereference(dereference) => dereference.children(),
+            ParseTree::Subscript(subscript) => subscript.children(),
+            ParseTree::Lambda(lambda) => lambda.children(),
+            ParseTree::Literal(literal) => literal.children(),
+            ParseTree::RowConstructor(row_constructor) => row_constructor.children(),
+            ParseTree::ParenthesizedExpression(parenthesized_expression) => {
+                parenthesized_expression.children()
+            }
+            ParseTree::Identifier(identifier) => identifier.children(),
+            ParseTree::FunctionCall(function_call) => function_call.children(),
+            ParseTree::Filter(filter) => filter.children(),
+            ParseTree::Over(over) => over.children(),
+            ParseTree::WindowFrame(window_frame) => window_frame.children(),
+            ParseTree::UnboundedFrame(unbounded_frame) => unbounded_frame.children(),
+            ParseTree::CurrentRowBound(current_row_bound) => current_row_bound.children(),
+            ParseTree::BoundedFrame(bounded_frame) => bounded_frame.children(),
+            ParseTree::UnicodeString(unicode_string) => unicode_string.children(),
+            ParseTree::ConfigureExpression(configure_expression) => configure_expression.children(),
+            ParseTree::SubqueryExpression(subquery_expression) => subquery_expression.children(),
+            ParseTree::Grouping(grouping) => grouping.children(),
+            ParseTree::Extract(extract) => extract.children(),
+            ParseTree::CurrentTime(current_time) => current_time.children(),
+            ParseTree::CurrentTimestamp(current_timestamp) => current_timestamp.children(),
+            ParseTree::Normalize(normalize) => normalize.children(),
+            ParseTree::Localtime(localtime) => localtime.children(),
+            ParseTree::Localtimestamp(localtimestamp) => localtimestamp.children(),
+            ParseTree::Cast(cast) => cast.children(),
+            ParseTree::WhenClause(when_clause) => when_clause.children(),
+            ParseTree::Case(case) => case.children(),
+            ParseTree::Exists(exists) => exists.children(),
+            ParseTree::TypeConstructor(type_constructor) => type_constructor.children(),
+            ParseTree::Array(array) => array.children(),
+            ParseTree::Interval(interval) => interval.children(),
+            ParseTree::Row(row) => row.children(),
+            ParseTree::TryCast(try_cast) => try_cast.children(),
+            ParseTree::Substring(substring) => substring.children(),
+            ParseTree::Position(position) => position.children(),
+            ParseTree::ArrayTypeSuffix(array_type_suffix) => array_type_suffix.children(),
+            ParseTree::NamedType(named_type) => named_type.children(),
+            ParseTree::ArrayType(array_type) => array_type.children(),
+            ParseTree::MapType(map_type) => map_type.children(),
+            ParseTree::RowType(row_type) => row_type.children(),
+            ParseTree::RowTypeElement(row_type_element) => row_type_element.children(),
+            ParseTree::IntervalType(interval_type) => interval_type.children(),
+            ParseTree::IfNotExists(if_not_exists) => if_not_exists.children(),
+            ParseTree::CreateTable(create_table) => create_table.children(),
+            ParseTree::CreateTableAsSelect(create_table_as_select) => {
+                create_table_as_select.children()
+            }
+            ParseTree::WithProperties(with_properties) => with_properties.children(),
+            ParseTree::Property(property) => property.children(),
+            ParseTree::WithData(with_data) => with_data.children(),
+            ParseTree::Comment(comment) => comment.children(),
+            ParseTree::ColumnDefinition(column_definition) => column_definition.children(),
+            ParseTree::NotNull(not_null) => not_null.children(),
+            ParseTree::LikeClause(like_clause) => like_clause.children(),
+            ParseTree::InsertInto(insert_into) => insert_into.children(),
+        }
+    }
 }
 
 // The language specific trees
@@ -2763,6 +2905,13 @@ pub fn query<'a>(with: ParseTree<'a>, query_no_with: ParseTree<'a>) -> ParseTree
 impl<'a> Query<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Query(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.with);
+        result.push(&*self.query_no_with);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -2792,6 +2941,14 @@ pub fn with<'a>(
 impl<'a> With<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::With(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.with);
+        result.push(&*self.recursive);
+        result.push(&*self.named_queries);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -2830,6 +2987,17 @@ pub fn named_query<'a>(
 impl<'a> NamedQuery<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::NamedQuery(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.name);
+        result.push(&*self.column_aliases_opt);
+        result.push(&*self.as_);
+        result.push(&*self.open_paren);
+        result.push(&*self.query);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -2877,6 +3045,14 @@ impl<'a> QueryNoWith<'a> {
         ParseTree::QueryNoWith(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.query_term);
+        result.push(&*self.order_by_opt);
+        result.push(&*self.limit_opt);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.query_term, *self.order_by_opt, *self.limit_opt)
     }
@@ -2906,6 +3082,14 @@ impl<'a> OrderBy<'a> {
         ParseTree::OrderBy(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.order);
+        result.push(&*self.by);
+        result.push(&*self.sort_items);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.order, *self.by, *self.sort_items)
     }
@@ -2927,6 +3111,13 @@ pub fn limit<'a>(limit: ParseTree<'a>, value: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> Limit<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Limit(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.limit);
+        result.push(&*self.value);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -2959,6 +3150,15 @@ pub fn query_set_operation<'a>(
 impl<'a> QuerySetOperation<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QuerySetOperation(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.left);
+        result.push(&*self.operator);
+        result.push(&*self.set_quantifier_opt);
+        result.push(&*self.right);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -2998,6 +3198,15 @@ impl<'a> SortItem<'a> {
         ParseTree::SortItem(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.expression);
+        result.push(&*self.ordering_opt);
+        result.push(&*self.nulls);
+        result.push(&*self.null_ordering_opt);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (
             *self.expression,
@@ -3032,6 +3241,14 @@ impl<'a> Subquery<'a> {
         ParseTree::Subquery(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.open_paren);
+        result.push(&*self.query_no_with);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query_no_with, *self.close_paren)
     }
@@ -3055,6 +3272,13 @@ impl<'a> InlineTable<'a> {
         ParseTree::InlineTable(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.values);
+        result.push(&*self.expressions);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.values, *self.expressions)
     }
@@ -3076,6 +3300,13 @@ pub fn table<'a>(table: ParseTree<'a>, qualified_name: ParseTree<'a>) -> ParseTr
 impl<'a> Table<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Table(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.table);
+        result.push(&*self.qualified_name);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -3134,6 +3365,23 @@ impl<'a> QuerySpecification<'a> {
         ParseTree::QuerySpecification(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(12);
+        result.push(&*self.select);
+        result.push(&*self.set_quantifier_opt);
+        result.push(&*self.select_items);
+        result.push(&*self.from);
+        result.push(&*self.relations);
+        result.push(&*self.where_);
+        result.push(&*self.where_predicate);
+        result.push(&*self.group);
+        result.push(&*self.by);
+        result.push(&*self.group_by);
+        result.push(&*self.having);
+        result.push(&*self.having_predicate);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -3183,6 +3431,12 @@ impl<'a> QualifiedName<'a> {
         ParseTree::QualifiedName(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.names);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.names,)
     }
@@ -3202,6 +3456,12 @@ pub fn select_all<'a>(asterisk: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> SelectAll<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SelectAll(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.asterisk);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
@@ -3233,6 +3493,14 @@ impl<'a> QualifiedSelectAll<'a> {
         ParseTree::QualifiedSelectAll(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.qualifier);
+        result.push(&*self.period);
+        result.push(&*self.asterisk);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.qualifier, *self.period, *self.asterisk)
     }
@@ -3260,6 +3528,14 @@ pub fn select_item<'a>(
 impl<'a> SelectItem<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SelectItem(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.expression);
+        result.push(&*self.as_);
+        result.push(&*self.identifier);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -3291,6 +3567,14 @@ impl<'a> SubqueryRelation<'a> {
         ParseTree::SubqueryRelation(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.open_paren);
+        result.push(&*self.query);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query, *self.close_paren)
     }
@@ -3320,6 +3604,14 @@ impl<'a> ParenthesizedRelation<'a> {
         ParseTree::ParenthesizedRelation(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.open_paren);
+        result.push(&*self.relation);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.relation, *self.close_paren)
     }
@@ -3339,6 +3631,12 @@ pub fn table_name<'a>(name: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> TableName<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::TableName(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.name);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
@@ -3371,6 +3669,15 @@ pub fn lateral<'a>(
 impl<'a> Lateral<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Lateral(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.lateral);
+        result.push(&*self.open_paren);
+        result.push(&*self.query);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -3408,6 +3715,15 @@ pub fn unnest<'a>(
 impl<'a> Unnest<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Unnest(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.unnest);
+        result.push(&*self.expressions);
+        result.push(&*self.with);
+        result.push(&*self.ordinality);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -3451,6 +3767,17 @@ pub fn sampled_relation<'a>(
 impl<'a> SampledRelation<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::SampledRelation(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.aliased_relation);
+        result.push(&*self.tablesample);
+        result.push(&*self.sample_type);
+        result.push(&*self.open_paren);
+        result.push(&*self.expression);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -3501,6 +3828,15 @@ impl<'a> AliasedRelation<'a> {
         ParseTree::AliasedRelation(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.relation_primary);
+        result.push(&*self.as_opt);
+        result.push(&*self.identifier);
+        result.push(&*self.column_aliases_opt);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (
             *self.relation_primary,
@@ -3538,6 +3874,15 @@ impl<'a> CrossJoin<'a> {
         ParseTree::CrossJoin(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.left);
+        result.push(&*self.cross);
+        result.push(&*self.join);
+        result.push(&*self.right);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.left, *self.cross, *self.join, *self.right)
     }
@@ -3571,6 +3916,16 @@ pub fn join<'a>(
 impl<'a> Join<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Join(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.left);
+        result.push(&*self.join_type);
+        result.push(&*self.join);
+        result.push(&*self.right);
+        result.push(&*self.join_criteria);
+        result
     }
 
     pub fn unbox(
@@ -3622,6 +3977,16 @@ impl<'a> NaturalJoin<'a> {
         ParseTree::NaturalJoin(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.left);
+        result.push(&*self.natural);
+        result.push(&*self.join_type);
+        result.push(&*self.join);
+        result.push(&*self.right);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -3659,6 +4024,13 @@ impl<'a> OuterJoinKind<'a> {
         ParseTree::OuterJoinKind(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.kind);
+        result.push(&*self.outer_opt);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.kind, *self.outer_opt)
     }
@@ -3682,6 +4054,13 @@ impl<'a> OnJoinCriteria<'a> {
         ParseTree::OnJoinCriteria(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.on);
+        result.push(&*self.predicate);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.on, *self.predicate)
     }
@@ -3703,6 +4082,13 @@ pub fn using_join_criteria<'a>(using: ParseTree<'a>, names: ParseTree<'a>) -> Pa
 impl<'a> UsingJoinCriteria<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::UsingJoinCriteria(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.using);
+        result.push(&*self.names);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -3731,6 +4117,13 @@ impl<'a> GroupBy<'a> {
         ParseTree::GroupBy(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.set_quantifier_opt);
+        result.push(&*self.grouping_elements);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.set_quantifier_opt, *self.grouping_elements)
     }
@@ -3754,6 +4147,13 @@ impl<'a> Rollup<'a> {
         ParseTree::Rollup(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.rollup);
+        result.push(&*self.expressions);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.rollup, *self.expressions)
     }
@@ -3775,6 +4175,13 @@ pub fn cube<'a>(cube: ParseTree<'a>, expressions: ParseTree<'a>) -> ParseTree<'a
 impl<'a> Cube<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Cube(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.cube);
+        result.push(&*self.expressions);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -3806,6 +4213,14 @@ impl<'a> GroupingSets<'a> {
         ParseTree::GroupingSets(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.grouping);
+        result.push(&*self.sets);
+        result.push(&*self.grouping_sets);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.grouping, *self.sets, *self.grouping_sets)
     }
@@ -3835,6 +4250,14 @@ impl<'a> BinaryExpression<'a> {
         ParseTree::BinaryExpression(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.left);
+        result.push(&*self.operator);
+        result.push(&*self.right);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.left, *self.operator, *self.right)
     }
@@ -3856,6 +4279,13 @@ pub fn unary_expression<'a>(operator: ParseTree<'a>, operand: ParseTree<'a>) -> 
 impl<'a> UnaryExpression<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::UnaryExpression(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.operator);
+        result.push(&*self.operand);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -3894,6 +4324,17 @@ pub fn quantified_comparison<'a>(
 impl<'a> QuantifiedComparison<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::QuantifiedComparison(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.operand);
+        result.push(&*self.operator);
+        result.push(&*self.comparison_quantifier);
+        result.push(&*self.open_paren);
+        result.push(&*self.query);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -3944,6 +4385,15 @@ impl<'a> NullPredicate<'a> {
         ParseTree::NullPredicate(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.value);
+        result.push(&*self.is);
+        result.push(&*self.not_opt);
+        result.push(&*self.null);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.value, *self.is, *self.not_opt, *self.null)
     }
@@ -3974,6 +4424,15 @@ pub fn distinct_from<'a>(
 impl<'a> DistinctFrom<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::DistinctFrom(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.left);
+        result.push(&*self.distinct);
+        result.push(&*self.from);
+        result.push(&*self.right);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -4012,6 +4471,17 @@ pub fn between<'a>(
 impl<'a> Between<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Between(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.value);
+        result.push(&*self.not_opt);
+        result.push(&*self.between);
+        result.push(&*self.lower);
+        result.push(&*self.and);
+        result.push(&*self.upper);
+        result
     }
 
     pub fn unbox(
@@ -4068,6 +4538,17 @@ impl<'a> Like<'a> {
         ParseTree::Like(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.value);
+        result.push(&*self.not_opt);
+        result.push(&*self.like);
+        result.push(&*self.patrern);
+        result.push(&*self.escape_opt);
+        result.push(&*self.escape_value_opt);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -4122,6 +4603,17 @@ impl<'a> InSubquery<'a> {
         ParseTree::InSubquery(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.value);
+        result.push(&*self.not_opt);
+        result.push(&*self.in_);
+        result.push(&*self.open_paren);
+        result.push(&*self.query);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -4170,6 +4662,15 @@ impl<'a> InList<'a> {
         ParseTree::InList(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.value);
+        result.push(&*self.not_opt);
+        result.push(&*self.in_);
+        result.push(&*self.expressions);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.value, *self.not_opt, *self.in_, *self.expressions)
     }
@@ -4203,6 +4704,16 @@ pub fn at_time_zone<'a>(
 impl<'a> AtTimeZone<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::AtTimeZone(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.value);
+        result.push(&*self.at);
+        result.push(&*self.time);
+        result.push(&*self.zone);
+        result.push(&*self.specifier);
+        result
     }
 
     pub fn unbox(
@@ -4248,6 +4759,14 @@ impl<'a> Dereference<'a> {
         ParseTree::Dereference(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.object);
+        result.push(&*self.period);
+        result.push(&*self.field_name);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.object, *self.period, *self.field_name)
     }
@@ -4278,6 +4797,15 @@ pub fn subscript<'a>(
 impl<'a> Subscript<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Subscript(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.operand);
+        result.push(&*self.open_square);
+        result.push(&*self.index);
+        result.push(&*self.close_square);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -4314,6 +4842,14 @@ impl<'a> Lambda<'a> {
         ParseTree::Lambda(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.parameters);
+        result.push(&*self.array);
+        result.push(&*self.body);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.parameters, *self.array, *self.body)
     }
@@ -4335,6 +4871,12 @@ impl<'a> Literal<'a> {
         ParseTree::Literal(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.value);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.value,)
     }
@@ -4354,6 +4896,12 @@ pub fn row_constructor<'a>(elements: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> RowConstructor<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::RowConstructor(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.elements);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
@@ -4385,6 +4933,14 @@ impl<'a> ParenthesizedExpression<'a> {
         ParseTree::ParenthesizedExpression(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.open_paren);
+        result.push(&*self.value);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.value, *self.close_paren)
     }
@@ -4404,6 +4960,12 @@ pub fn identifier<'a>(value: ParseTree<'a>) -> ParseTree<'a> {
 impl<'a> Identifier<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Identifier(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.value);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
@@ -4448,6 +5010,19 @@ pub fn function_call<'a>(
 impl<'a> FunctionCall<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::FunctionCall(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(8);
+        result.push(&*self.name);
+        result.push(&*self.open_paren);
+        result.push(&*self.set_quantifier_opt);
+        result.push(&*self.arguments);
+        result.push(&*self.order_by_opt);
+        result.push(&*self.close_paren);
+        result.push(&*self.filter_opt);
+        result.push(&*self.over_opt);
+        result
     }
 
     pub fn unbox(
@@ -4503,6 +5078,16 @@ pub fn filter<'a>(
 impl<'a> Filter<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Filter(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.filter);
+        result.push(&*self.open_paren);
+        result.push(&*self.where_);
+        result.push(&*self.predicate);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -4563,6 +5148,19 @@ impl<'a> Over<'a> {
         ParseTree::Over(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(8);
+        result.push(&*self.over);
+        result.push(&*self.open_paren);
+        result.push(&*self.partition_opt);
+        result.push(&*self.by);
+        result.push(&*self.partitions);
+        result.push(&*self.order_by_opt);
+        result.push(&*self.window_frame);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -4618,6 +5216,16 @@ impl<'a> WindowFrame<'a> {
         ParseTree::WindowFrame(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.frame_type);
+        result.push(&*self.between_opt);
+        result.push(&*self.start);
+        result.push(&*self.and);
+        result.push(&*self.end);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -4655,6 +5263,13 @@ impl<'a> UnboundedFrame<'a> {
         ParseTree::UnboundedFrame(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.unbounded);
+        result.push(&*self.bound_type);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.unbounded, *self.bound_type)
     }
@@ -4678,6 +5293,13 @@ impl<'a> CurrentRowBound<'a> {
         ParseTree::CurrentRowBound(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.current);
+        result.push(&*self.row);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.current, *self.row)
     }
@@ -4699,6 +5321,13 @@ pub fn bounded_frame<'a>(bound: ParseTree<'a>, bound_type: ParseTree<'a>) -> Par
 impl<'a> BoundedFrame<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::BoundedFrame(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.bound);
+        result.push(&*self.bound_type);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -4728,6 +5357,14 @@ pub fn unicode_string<'a>(
 impl<'a> UnicodeString<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::UnicodeString(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.string);
+        result.push(&*self.uescape_opt);
+        result.push(&*self.escape);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -4766,6 +5403,17 @@ pub fn configure_expression<'a>(
 impl<'a> ConfigureExpression<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::ConfigureExpression(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.configure);
+        result.push(&*self.open_paren);
+        result.push(&*self.identifier);
+        result.push(&*self.comma);
+        result.push(&*self.value);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -4813,6 +5461,14 @@ impl<'a> SubqueryExpression<'a> {
         ParseTree::SubqueryExpression(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.open_paren);
+        result.push(&*self.query);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query, *self.close_paren)
     }
@@ -4834,6 +5490,13 @@ pub fn grouping<'a>(grouping: ParseTree<'a>, groups: ParseTree<'a>) -> ParseTree
 impl<'a> Grouping<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Grouping(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.grouping);
+        result.push(&*self.groups);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -4872,6 +5535,17 @@ pub fn extract<'a>(
 impl<'a> Extract<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Extract(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.extract);
+        result.push(&*self.open_paren);
+        result.push(&*self.identifier);
+        result.push(&*self.from);
+        result.push(&*self.value);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -4922,6 +5596,15 @@ impl<'a> CurrentTime<'a> {
         ParseTree::CurrentTime(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.current_time);
+        result.push(&*self.open_paren);
+        result.push(&*self.precision);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (
             *self.current_time,
@@ -4957,6 +5640,15 @@ pub fn current_timestamp<'a>(
 impl<'a> CurrentTimestamp<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::CurrentTimestamp(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.current_timestamp);
+        result.push(&*self.open_paren);
+        result.push(&*self.precision);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -5000,6 +5692,17 @@ pub fn normalize<'a>(
 impl<'a> Normalize<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Normalize(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.normalize);
+        result.push(&*self.open_paren);
+        result.push(&*self.value);
+        result.push(&*self.comma_opt);
+        result.push(&*self.normal_form);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -5050,6 +5753,15 @@ impl<'a> Localtime<'a> {
         ParseTree::Localtime(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.localtime);
+        result.push(&*self.open_paren);
+        result.push(&*self.precision);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (
             *self.localtime,
@@ -5085,6 +5797,15 @@ pub fn localtimestamp<'a>(
 impl<'a> Localtimestamp<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Localtimestamp(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.localtimestamp);
+        result.push(&*self.open_paren);
+        result.push(&*self.precision);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -5128,6 +5849,17 @@ pub fn cast<'a>(
 impl<'a> Cast<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Cast(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.cast);
+        result.push(&*self.open_paren);
+        result.push(&*self.value);
+        result.push(&*self.as_);
+        result.push(&*self.type_);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -5178,6 +5910,15 @@ impl<'a> WhenClause<'a> {
         ParseTree::WhenClause(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.when);
+        result.push(&*self.condition);
+        result.push(&*self.then);
+        result.push(&*self.result);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.when, *self.condition, *self.then, *self.result)
     }
@@ -5214,6 +5955,17 @@ pub fn case<'a>(
 impl<'a> Case<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Case(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.case);
+        result.push(&*self.value_opt);
+        result.push(&*self.when_clauses);
+        result.push(&*self.else_opt);
+        result.push(&*self.default);
+        result.push(&*self.end);
+        result
     }
 
     pub fn unbox(
@@ -5264,6 +6016,15 @@ impl<'a> Exists<'a> {
         ParseTree::Exists(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.exists);
+        result.push(&*self.open_paren);
+        result.push(&*self.query);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (
             *self.exists,
@@ -5292,6 +6053,13 @@ impl<'a> TypeConstructor<'a> {
         ParseTree::TypeConstructor(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.type_);
+        result.push(&*self.value);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.type_, *self.value)
     }
@@ -5313,6 +6081,13 @@ pub fn array<'a>(array: ParseTree<'a>, elements: ParseTree<'a>) -> ParseTree<'a>
 impl<'a> Array<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Array(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.array);
+        result.push(&*self.elements);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -5351,6 +6126,17 @@ pub fn interval<'a>(
 impl<'a> Interval<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Interval(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.interval);
+        result.push(&*self.sign_opt);
+        result.push(&*self.value);
+        result.push(&*self.from);
+        result.push(&*self.to_kw_opt);
+        result.push(&*self.to);
+        result
     }
 
     pub fn unbox(
@@ -5392,6 +6178,13 @@ impl<'a> Row<'a> {
         ParseTree::Row(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.row);
+        result.push(&*self.elements);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.row, *self.elements)
     }
@@ -5428,6 +6221,17 @@ pub fn try_cast<'a>(
 impl<'a> TryCast<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::TryCast(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.try_cast);
+        result.push(&*self.open_paren);
+        result.push(&*self.value);
+        result.push(&*self.as_);
+        result.push(&*self.type_);
+        result.push(&*self.close_paren);
+        result
     }
 
     pub fn unbox(
@@ -5490,6 +6294,19 @@ impl<'a> Substring<'a> {
         ParseTree::Substring(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(8);
+        result.push(&*self.substring);
+        result.push(&*self.open_paren);
+        result.push(&*self.value);
+        result.push(&*self.from);
+        result.push(&*self.from_value);
+        result.push(&*self.for_opt);
+        result.push(&*self.for_value);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -5548,6 +6365,17 @@ impl<'a> Position<'a> {
         ParseTree::Position(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.position);
+        result.push(&*self.open_paren);
+        result.push(&*self.value);
+        result.push(&*self.in_);
+        result.push(&*self.target);
+        result.push(&*self.close_paren);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -5587,6 +6415,13 @@ impl<'a> ArrayTypeSuffix<'a> {
         ParseTree::ArrayTypeSuffix(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.base_type);
+        result.push(&*self.array);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.base_type, *self.array)
     }
@@ -5608,6 +6443,13 @@ pub fn named_type<'a>(name: ParseTree<'a>, type_parameters: ParseTree<'a>) -> Pa
 impl<'a> NamedType<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::NamedType(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.name);
+        result.push(&*self.type_parameters);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -5640,6 +6482,15 @@ pub fn array_type<'a>(
 impl<'a> ArrayType<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::ArrayType(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.array);
+        result.push(&*self.open_angle);
+        result.push(&*self.element_type);
+        result.push(&*self.close_angle);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -5685,6 +6536,17 @@ impl<'a> MapType<'a> {
         ParseTree::MapType(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(6);
+        result.push(&*self.map);
+        result.push(&*self.open_angle);
+        result.push(&*self.key_type);
+        result.push(&*self.comma);
+        result.push(&*self.value_type);
+        result.push(&*self.close_angle);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -5724,6 +6586,13 @@ impl<'a> RowType<'a> {
         ParseTree::RowType(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.row);
+        result.push(&*self.element_types);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.row, *self.element_types)
     }
@@ -5745,6 +6614,13 @@ pub fn row_type_element<'a>(identifier: ParseTree<'a>, type_: ParseTree<'a>) -> 
 impl<'a> RowTypeElement<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::RowTypeElement(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.identifier);
+        result.push(&*self.type_);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -5779,6 +6655,15 @@ impl<'a> IntervalType<'a> {
         ParseTree::IntervalType(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.interval);
+        result.push(&*self.from);
+        result.push(&*self.to_kw);
+        result.push(&*self.to);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.interval, *self.from, *self.to_kw, *self.to)
     }
@@ -5806,6 +6691,14 @@ pub fn if_not_exists<'a>(
 impl<'a> IfNotExists<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::IfNotExists(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.if_);
+        result.push(&*self.not);
+        result.push(&*self.exists);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -5847,6 +6740,18 @@ pub fn create_table<'a>(
 impl<'a> CreateTable<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::CreateTable(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(7);
+        result.push(&*self.create);
+        result.push(&*self.table);
+        result.push(&*self.if_not_exists_opt);
+        result.push(&*self.table_name);
+        result.push(&*self.table_elements);
+        result.push(&*self.comment_opt);
+        result.push(&*self.with_properties_opt);
+        result
     }
 
     pub fn unbox(
@@ -5923,6 +6828,23 @@ impl<'a> CreateTableAsSelect<'a> {
         ParseTree::CreateTableAsSelect(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(12);
+        result.push(&*self.create);
+        result.push(&*self.table);
+        result.push(&*self.if_not_exists_opt);
+        result.push(&*self.table_name);
+        result.push(&*self.column_aliases_opt);
+        result.push(&*self.comment_opt);
+        result.push(&*self.with_properties_opt);
+        result.push(&*self.as_);
+        result.push(&*self.open_paren_opt);
+        result.push(&*self.query);
+        result.push(&*self.close_paren_opt);
+        result.push(&*self.with_data_opt);
+        result
+    }
+
     pub fn unbox(
         self,
     ) -> (
@@ -5974,6 +6896,13 @@ impl<'a> WithProperties<'a> {
         ParseTree::WithProperties(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.with);
+        result.push(&*self.properties);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.with, *self.properties)
     }
@@ -6001,6 +6930,14 @@ pub fn property<'a>(
 impl<'a> Property<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Property(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.identifier);
+        result.push(&*self.eq);
+        result.push(&*self.value);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -6032,6 +6969,14 @@ impl<'a> WithData<'a> {
         ParseTree::WithData(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.with);
+        result.push(&*self.no_opt);
+        result.push(&*self.data);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.with, *self.no_opt, *self.data)
     }
@@ -6053,6 +6998,13 @@ pub fn comment<'a>(comment: ParseTree<'a>, value: ParseTree<'a>) -> ParseTree<'a
 impl<'a> Comment<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::Comment(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.comment);
+        result.push(&*self.value);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
@@ -6088,6 +7040,16 @@ pub fn column_definition<'a>(
 impl<'a> ColumnDefinition<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::ColumnDefinition(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.identifier);
+        result.push(&*self.type_);
+        result.push(&*self.not_null_opt);
+        result.push(&*self.comment_opt);
+        result.push(&*self.with_properties_opt);
+        result
     }
 
     pub fn unbox(
@@ -6127,6 +7089,13 @@ impl<'a> NotNull<'a> {
         ParseTree::NotNull(self)
     }
 
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.not);
+        result.push(&*self.null);
+        result
+    }
+
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.not, *self.null)
     }
@@ -6157,6 +7126,15 @@ pub fn like_clause<'a>(
 impl<'a> LikeClause<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::LikeClause(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.like);
+        result.push(&*self.name);
+        result.push(&*self.option_type_opt);
+        result.push(&*self.properties);
+        result
     }
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
@@ -6197,6 +7175,16 @@ pub fn insert_into<'a>(
 impl<'a> InsertInto<'a> {
     pub fn to_tree(self) -> ParseTree<'a> {
         ParseTree::InsertInto(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(5);
+        result.push(&*self.insert);
+        result.push(&*self.into);
+        result.push(&*self.table_name);
+        result.push(&*self.column_aliases_opt);
+        result.push(&*self.query);
+        result
     }
 
     pub fn unbox(

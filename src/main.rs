@@ -21,7 +21,7 @@ fn lex_and_dump(contents: &str) -> bool {
         if lexer.at_end() {
             break;
         }
-    };
+    }
     had_error
 }
 

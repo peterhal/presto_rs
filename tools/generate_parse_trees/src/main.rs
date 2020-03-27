@@ -441,6 +441,12 @@ pub fn empty<'a>(range: TextRange) -> ParseTree<'a> {
     ParseTree::Empty(Empty { range })
 }
 
+impl Empty {
+    pub fn children(&self) -> Vec<&'static ParseTree<'static>> {
+        Vec::new()
+    }
+}
+
 "#;
 
 const TOKEN_DEFINITION: &str = r#"Token<'a> {
@@ -449,6 +455,12 @@ const TOKEN_DEFINITION: &str = r#"Token<'a> {
 
 pub fn token<'a>(token: token::Token<'a>) -> ParseTree<'a> {
     ParseTree::Token(Token { token })
+}
+
+impl<'a> Token<'a> {
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        Vec::new()
+    }
 }
 
 "#;
@@ -483,6 +495,17 @@ impl<'a> List<'a> {
             *self.end_delimiter,
         )
     }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2 + self.elements_and_separators.len() * 2);
+        result.push(&*self.start_delimiter);
+        for (element, separator) in &self.elements_and_separators {
+            result.push(&element);
+            result.push(&separator);
+        }
+        result.push(&*self.end_delimiter);
+        result
+    }
 }
 
 "#;
@@ -497,6 +520,12 @@ pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
         range,
         message: message,
     })
+}
+
+impl Error {
+    pub fn children(&self) -> Vec<&'static ParseTree<'static>> {
+        Vec::new()
+    }
 }
 
 "#;
@@ -601,6 +630,24 @@ fn main() {
         print_is_as_impl(ctor_name.as_str(), class_name);
         print_unbox(ctor_name.as_str(), class_name, fields);
     }
+    // children
+    print!("    pub fn children(&self) -> Vec<&ParseTree<'a>> {{\n");
+    print!("        match self {{\n");
+    print!("            ParseTree::Token(token) => token.children(),\n");
+    print!("            ParseTree::List(list) => list.children(),\n");
+    print!("            ParseTree::Error(error) => error.children(),\n");
+    print!("            ParseTree::Empty(empty) => empty.children(),\n");
+    for config in &cs {
+        let (class_name, ctor_name, _) = get_config(config);
+        print!(
+            "            ParseTree::{0}({1}) => {1}.children(),",
+            class_name, ctor_name
+        );
+    }
+    print!("        }}\n");
+
+    print!("{}", END);
+
     print!("{}", END);
 
     print!("{}", "// The language specific trees\n");
@@ -638,6 +685,18 @@ fn main() {
 "#,
             class_name
         );
+
+        // children
+        print!("    pub fn children(&self) -> Vec<&ParseTree<'a>> {{\n");
+        print!(
+            "        let mut result = Vec::with_capacity({});",
+            fields.len()
+        );
+        for field_name in fields {
+            print!("        result.push(&*self.{0});\n", field_name);
+        }
+        print!("        result");
+        print!("{}", END);
 
         // unbox
         print!("    pub fn unbox(self) -> (\n");
