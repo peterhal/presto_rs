@@ -396,6 +396,22 @@ impl<'a> Parser<'a> {
             self.eat_empty()
         }
     }
+
+    // Parse parenthesized, possibly empty comma separated list.
+    // Terminating commas are not consumed.
+    fn parse_parenthesized_comma_separated_opt_list(
+        &mut self,
+        peek_element: Peeker<'a>,
+        parse_element: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        self.parse_delimited_separated_list_opt(
+            TK::OpenParen,
+            TK::Comma,
+            peek_element,
+            parse_element,
+            TK::CloseParen,
+        )
+    }
 }
 
 // Presto Language specific functions
@@ -972,7 +988,15 @@ impl<'a> Parser<'a> {
     fn parse_grouping_set(&mut self) -> ParseTree<'a> {
         // parenthesized expressions will show up as
         // either a row constructor or a paren expression.
-        self.parse_expression()
+        let elements = if self.peek_kind(TK::OpenParen) {
+            self.parse_parenthesized_comma_separated_opt_list(
+                |parser| parser.peek_expression(),
+                |parser| parser.parse_expression(),
+            )
+        } else {
+            self.parse_expression()
+        };
+        parse_tree::grouping_set(elements)
     }
 
     // expression

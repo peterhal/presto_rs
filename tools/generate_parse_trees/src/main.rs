@@ -415,6 +415,7 @@ fn configs() -> Vec<TreeConfig> {
             "Delete",
             vec!["delete", "from", "table_name", "where_opt", "predicate"],
         ),
+        ("GroupingSet", vec!["elements"]),
         // ("Class", vec![]),
     ]
 }

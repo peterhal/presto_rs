@@ -106,6 +106,7 @@ pub enum ParseTree<'a> {
     LikeClause(LikeClause<'a>),
     InsertInto(InsertInto<'a>),
     Delete(Delete<'a>),
+    GroupingSet(GroupingSet<'a>),
 }
 
 // The core trees
@@ -2803,6 +2804,29 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_grouping_set(&self) -> bool {
+        if let ParseTree::GroupingSet(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_grouping_set(&self) -> &GroupingSet {
+        if let ParseTree::GroupingSet(value) = self {
+            value
+        } else {
+            panic!("Expected GroupingSet")
+        }
+    }
+
+    pub fn unbox_grouping_set(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::GroupingSet(tree) => tree.unbox(),
+            _ => panic!("Expected GroupingSet"),
+        }
+    }
+
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
         match self {
             ParseTree::Token(token) => token.children(),
@@ -2914,6 +2938,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::LikeClause(like_clause) => like_clause.children(),
             ParseTree::InsertInto(insert_into) => insert_into.children(),
             ParseTree::Delete(delete) => delete.children(),
+            ParseTree::GroupingSet(grouping_set) => grouping_set.children(),
         }
     }
 }
@@ -7292,5 +7317,32 @@ impl<'a> Delete<'a> {
             *self.where_opt,
             *self.predicate,
         )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GroupingSet<'a> {
+    pub elements: Box<ParseTree<'a>>,
+}
+
+pub fn grouping_set<'a>(elements: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::GroupingSet(GroupingSet {
+        elements: Box::new(elements),
+    })
+}
+
+impl<'a> GroupingSet<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::GroupingSet(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.elements);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.elements,)
     }
 }
