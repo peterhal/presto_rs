@@ -123,9 +123,9 @@ impl<'a> Parser<'a> {
     fn maybe_peek_predefined_name_offset(&mut self, offset: usize) -> Option<PN> {
         let token = self.peek_token_offset(offset);
         if token.kind == TK::Identifier {
-            None
-        } else {
             predefined_names::maybe_get_predefined_name(token.value)
+        } else {
+            None
         }
     }
 
@@ -158,6 +158,7 @@ impl<'a> Parser<'a> {
     }
 
     fn error(&mut self, message: String) -> ParseTree<'a> {
+        // panic!("WTF");
         parse_tree::error(SyntaxError {
             error_code: syntax_error::ERROR_SYNTAX_ERROR,
             messages: vec![Message {
@@ -978,8 +979,89 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_expression(&mut self) -> bool {
-        // TODO: tighten this up
-        !self.peek_kind(TK::CloseParen)
+        match self.peek() {
+            TK::NOT
+            | TK::Plus
+            | TK::Minus
+
+            // : NULL                                                                                #nullLiteral
+            | TK::NULL
+            // | DOUBLE_PRECISION string                                                             #typeConstructor
+            | TK::DoublePrecision
+            // | booleanValue                                                                        #booleanLiteral
+            | TK::TRUE | TK::FALSE
+            // | number                                                                              #numericLiteral
+            | TK::Decimal | TK::Double | TK::Integer
+            // | string                                                                              #stringLiteral
+            | TK::String | TK::UnicodeString
+            // | BINARY_LITERAL                                                                      #binaryLiteral
+            | TK::BinaryLiteral
+            // | '?'                                                                                 #parameter
+            | TK::Question
+            // // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
+            // | EXISTS '(' query ')'                                                                #exists
+            | TK::EXISTS
+            // | CASE valueExpression whenClause+ (ELSE elseExpression=expression)? END              #simpleCase
+            // | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
+            | TK::CASE
+            // | CAST '(' expression AS type_ ')'                                                     #cast
+            | TK::CAST
+            // | name=CURRENT_DATE                                                                   #specialDateTimeFunction
+            | TK::CURRENT_DATE
+            // | name=CURRENT_TIME ('(' precision=INTEGER_VALUE ')')?                                #specialDateTimeFunction
+            | TK::CURRENT_TIME
+            // | name=CURRENT_TIMESTAMP ('(' precision=INTEGER_VALUE ')')?                           #specialDateTimeFunction
+            | TK::CURRENT_TIMESTAMP
+            // | name=LOCALTIME ('(' precision=INTEGER_VALUE ')')?                                   #specialDateTimeFunction
+            | TK::LOCALTIME
+            // | name=LOCALTIMESTAMP ('(' precision=INTEGER_VALUE ')')?                              #specialDateTimeFunction
+            | TK::LOCALTIMESTAMP
+            // | name=CURRENT_USER                                                                   #currentUser
+            | TK::CURRENT_USER
+            // | name=CURRENT_PATH                                                                   #currentPath
+            | TK::CURRENT_PATH
+            // | NORMALIZE '(' valueExpression (',' normalForm)? ')'                                 #normalize
+            | TK::NORMALIZE
+            // | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
+            | TK::EXTRACT
+            // | GROUPING '(' (qualifiedName (',' qualifiedName)*)? ')'                              #groupingOperation
+            | TK::GROUPING
+            // | configureExpression                                                                 #conf
+            | TK::CONFIGURE
+
+            // | '(' expression (',' expression)+ ')'                                                #rowConstructor
+            // | '(' (identifier (',' identifier)*)? ')' '->' expression                             #lambda
+            // | '(' query ')'                                                                       #subqueryExpression
+            // | '(' expression ')'                                                                  #parenthesizedExpression
+            | TK::OpenParen
+
+            // | interval                                                                            #intervalLiteral
+            // | identifier string                                                                   #typeConstructor
+            // | POSITION '(' valueExpression IN valueExpression ')'                                 #position
+            // | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
+            // | qualifiedName '(' ASTERISK ')' filter_? over?                                        #functionCall
+            // | qualifiedName '(' (setQuantifier? expression (',' expression)*)?
+            //     (ORDER BY sortItem (',' sortItem)*)? ')' filter_? over?                            #functionCall
+            // | identifier '->' expression                                                          #lambda
+            // | TRY_CAST '(' expression AS type_ ')'                                                 #cast
+            // | ARRAY '[' (expression (',' expression)*)? ']'                                       #arrayConstructor
+            // | identifier                                                                          #columnReference
+            // | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+            //
+            // TODO: The disambiguation of several of these is incorrect
+            // Currently we're prefering the special syntgax form
+            // when we could have a function call. This applies to:
+            //    POSITION
+            //    TRY_CAST
+            //    SUBSTRING
+            // Currently cannot parse functions calls with those names.
+            // Need to verify if that's an issue.
+            //
+            // TODO: This could be tightened up a bit.
+            | TK::Identifier
+            | TK::QuotedIdentifier | TK::BackquotedIdentifier | TK::DigitIdentifier => true,
+            _ => false,
+            }
     }
 
     // booleanExpression
@@ -2180,7 +2262,7 @@ impl<'a> Parser<'a> {
         parse_tree::interval_type(interval, from, to_kw, to)
     }
 
-    fn parse_statement(&mut self) -> ParseTree<'a> {
+    pub fn parse_statement(&mut self) -> ParseTree<'a> {
         match self.peek() {
             TK::SELECT | TK::TABLE | TK::VALUES | TK::OpenParen | TK::WITH => self.parse_query(),
             TK::CREATE => self.parse_create_statement(),

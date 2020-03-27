@@ -45,7 +45,7 @@ fn errors_of_tree<'a>(tree: &'a ParseTree<'a>) -> Vec<&'a SyntaxError> {
 
 fn parse(contents: &str) {
     let mut parser = Parser::new(contents);
-    let tree = parser.parse_query();
+    let tree = parser.parse_statement();
     let errors = errors_of_tree(&tree);
     if errors.is_empty() {
         //    println!("{:#?}", tree);
