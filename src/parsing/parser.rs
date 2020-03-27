@@ -2333,15 +2333,56 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_table_element(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        if self.peek_kind(TK::LIKE) {
+            self.parse_like_clause()
+        } else {
+            self.parse_column_definition()
+        }
     }
 
     // columnDefinition
     //     : identifier type_ (NOT NULL)? (COMMENT string)? (WITH properties)?
-    //     ;
+    fn parse_column_definition(&mut self) -> ParseTree<'a> {
+        let identifier = self.parse_identifier();
+        let type_ = self.parse_type();
+        let not_null_opt = self.parse_not_null_opt();
+        let comment_opt = self.parse_comment_opt();
+        let with_properties_opt = self.parse_with_properties_opt();
+        parse_tree::column_definition(
+            identifier,
+            type_,
+            not_null_opt,
+            comment_opt,
+            with_properties_opt,
+        )
+    }
+
+    // (NOT NULL)?
+    fn parse_not_null_opt(&mut self) -> ParseTree<'a> {
+        let not = self.eat(TK::NOT);
+        if not.is_empty() {
+            not
+        } else {
+            let null = self.eat(TK::NULL);
+            parse_tree::not_null(not, null)
+        }
+    }
 
     // likeClause
     //     : LIKE qualifiedName (optionType=(INCLUDING | EXCLUDING) PROPERTIES)?
+    fn parse_like_clause(&mut self) -> ParseTree<'a> {
+        let like = self.eat(TK::LIKE);
+        let name = self.parse_qualified_name();
+        let (option_type_opt, properties) = if match self.maybe_peek_predefined_name() {
+            Some(PN::INCLUDING) | Some(PN::EXCLUDING) => true,
+            _ => false,
+        } {
+            (self.eat_token(), self.eat_predefined_name(PN::PROPERTIES))
+        } else {
+            (self.eat_empty(), self.eat_empty())
+        };
+        parse_tree::like_clause(like, name, option_type_opt, properties)
+    }
 
     fn parse_create_view(&mut self) -> ParseTree<'a> {
         panic!("TODO")

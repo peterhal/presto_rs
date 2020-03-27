@@ -101,6 +101,9 @@ pub enum ParseTree<'a> {
     Property(Property<'a>),
     WithData(WithData<'a>),
     Comment(Comment<'a>),
+    ColumnDefinition(ColumnDefinition<'a>),
+    NotNull(NotNull<'a>),
+    LikeClause(LikeClause<'a>),
 }
 
 // The core trees
@@ -2630,6 +2633,83 @@ impl<'a> ParseTree<'a> {
         match self {
             ParseTree::Comment(tree) => tree.unbox(),
             _ => panic!("Expected Comment"),
+        }
+    }
+
+    pub fn is_column_definition(&self) -> bool {
+        if let ParseTree::ColumnDefinition(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_column_definition(&self) -> &ColumnDefinition {
+        if let ParseTree::ColumnDefinition(value) = self {
+            value
+        } else {
+            panic!("Expected ColumnDefinition")
+        }
+    }
+
+    pub fn unbox_column_definition(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::ColumnDefinition(tree) => tree.unbox(),
+            _ => panic!("Expected ColumnDefinition"),
+        }
+    }
+
+    pub fn is_not_null(&self) -> bool {
+        if let ParseTree::NotNull(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_not_null(&self) -> &NotNull {
+        if let ParseTree::NotNull(value) = self {
+            value
+        } else {
+            panic!("Expected NotNull")
+        }
+    }
+
+    pub fn unbox_not_null(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::NotNull(tree) => tree.unbox(),
+            _ => panic!("Expected NotNull"),
+        }
+    }
+
+    pub fn is_like_clause(&self) -> bool {
+        if let ParseTree::LikeClause(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_like_clause(&self) -> &LikeClause {
+        if let ParseTree::LikeClause(value) = self {
+            value
+        } else {
+            panic!("Expected LikeClause")
+        }
+    }
+
+    pub fn unbox_like_clause(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::LikeClause(tree) => tree.unbox(),
+            _ => panic!("Expected LikeClause"),
         }
     }
 }
@@ -5945,5 +6025,114 @@ impl<'a> Comment<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.comment, *self.value)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ColumnDefinition<'a> {
+    pub identifier: Box<ParseTree<'a>>,
+    pub type_: Box<ParseTree<'a>>,
+    pub not_null_opt: Box<ParseTree<'a>>,
+    pub comment_opt: Box<ParseTree<'a>>,
+    pub with_properties_opt: Box<ParseTree<'a>>,
+}
+
+pub fn column_definition<'a>(
+    identifier: ParseTree<'a>,
+    type_: ParseTree<'a>,
+    not_null_opt: ParseTree<'a>,
+    comment_opt: ParseTree<'a>,
+    with_properties_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::ColumnDefinition(ColumnDefinition {
+        identifier: Box::new(identifier),
+        type_: Box::new(type_),
+        not_null_opt: Box::new(not_null_opt),
+        comment_opt: Box::new(comment_opt),
+        with_properties_opt: Box::new(with_properties_opt),
+    })
+}
+
+impl<'a> ColumnDefinition<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::ColumnDefinition(self)
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.identifier,
+            *self.type_,
+            *self.not_null_opt,
+            *self.comment_opt,
+            *self.with_properties_opt,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct NotNull<'a> {
+    pub not: Box<ParseTree<'a>>,
+    pub null: Box<ParseTree<'a>>,
+}
+
+pub fn not_null<'a>(not: ParseTree<'a>, null: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::NotNull(NotNull {
+        not: Box::new(not),
+        null: Box::new(null),
+    })
+}
+
+impl<'a> NotNull<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::NotNull(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.not, *self.null)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct LikeClause<'a> {
+    pub like: Box<ParseTree<'a>>,
+    pub name: Box<ParseTree<'a>>,
+    pub option_type_opt: Box<ParseTree<'a>>,
+    pub properties: Box<ParseTree<'a>>,
+}
+
+pub fn like_clause<'a>(
+    like: ParseTree<'a>,
+    name: ParseTree<'a>,
+    option_type_opt: ParseTree<'a>,
+    properties: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::LikeClause(LikeClause {
+        like: Box::new(like),
+        name: Box::new(name),
+        option_type_opt: Box::new(option_type_opt),
+        properties: Box::new(properties),
+    })
+}
+
+impl<'a> LikeClause<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::LikeClause(self)
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.like,
+            *self.name,
+            *self.option_type_opt,
+            *self.properties,
+        )
     }
 }

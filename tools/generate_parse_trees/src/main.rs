@@ -386,7 +386,21 @@ fn configs() -> Vec<TreeConfig> {
         ("Property", vec!["identifier", "eq", "value"]),
         ("WithData", vec!["with", "no_opt", "data"]),
         ("Comment", vec!["comment", "value"]),
-        // ("Class", vec![]),
+        (
+            "ColumnDefinition",
+            vec![
+                "identifier",
+                "type_",
+                "not_null_opt",
+                "comment_opt",
+                "with_properties_opt",
+            ],
+        ),
+        ("NotNull", vec!["not", "null"]),
+        (
+            "LikeClause",
+            vec!["like", "name", "option_type_opt", "properties"],
+        ),
         // ("Class", vec![]),
     ]
 }
