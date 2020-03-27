@@ -1,7 +1,7 @@
 use crate::lexing::{
     lexer::Lexer, position, position::Position, predefined_names,
-    predefined_names::PredefinedName as PN, text_range::TextRange, token::Token,
-    token_kind::TokenKind as TK,
+    predefined_names::PredefinedName as PN, syntax_error, syntax_error::Message,
+    syntax_error::SyntaxError, text_range::TextRange, token::Token, token_kind::TokenKind as TK,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
 
@@ -158,7 +158,13 @@ impl<'a> Parser<'a> {
     }
 
     fn error(&mut self, message: String) -> ParseTree<'a> {
-        parse_tree::error(self.get_empty_range(), message)
+        parse_tree::error(SyntaxError {
+            error_code: syntax_error::ERROR_SYNTAX_ERROR,
+            messages: vec![Message {
+                range: self.get_empty_range(),
+                message,
+            }],
+        })
     }
 
     fn expected_error(&mut self, expected: &str) -> ParseTree<'a> {

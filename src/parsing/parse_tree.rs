@@ -1,4 +1,4 @@
-use crate::lexing::{text_range::TextRange, token};
+use crate::lexing::{syntax_error::SyntaxError, text_range::TextRange, token};
 
 #[derive(Clone, Debug)]
 pub enum ParseTree<'a> {
@@ -190,15 +190,11 @@ impl<'a> List<'a> {
 
 #[derive(Clone, Debug)]
 pub struct Error {
-    pub range: TextRange,
-    pub message: String,
+    pub error: SyntaxError,
 }
 
-pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
-    ParseTree::Error(Error {
-        range,
-        message: message,
-    })
+pub fn error<'a>(error: SyntaxError) -> ParseTree<'a> {
+    ParseTree::Error(Error { error })
 }
 
 impl Error {
@@ -208,6 +204,7 @@ impl Error {
 }
 
 // core impl
+
 impl<'a> ParseTree<'a> {
     pub fn unbox_list(
         self,

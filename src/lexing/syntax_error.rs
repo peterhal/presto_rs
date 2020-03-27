@@ -35,10 +35,13 @@ impl fmt::Display for SyntaxError {
     }
 }
 
-// syntax errors 100-200
+// lex errors 100-199
 pub const ERROR_EXPECTED_CHAR: i32 = 101;
 pub const ERROR_UNTERMINATED_DELIMITED_COMMENT: i32 = 102;
 pub const ERROR_INVALID_TOKEN_START: i32 = 103;
 pub const ERROR_UNTERMINATED_STRING_LITERAL: i32 = 104;
 pub const ERROR_UNTERMINATED_QUOTED_IDENTIFIER: i32 = 105;
 pub const ERROR_UNTERMINATED_BACK_QUOTED_IDENTIFIER: i32 = 106;
+
+// parse errors 200-299
+pub const ERROR_SYNTAX_ERROR: i32 = 201;

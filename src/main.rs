@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
 use crate::lexing::lexer::Lexer;
+use crate::lexing::syntax_error::SyntaxError;
+use crate::parsing::parse_tree::ParseTree;
+use crate::parsing::parse_tree_visitor::visit_post_order;
 use crate::parsing::parser::Parser;
 use std::env;
 use std::fs;
@@ -23,6 +26,21 @@ fn lex_and_dump(contents: &str) -> bool {
         }
     }
     had_error
+}
+
+fn errors_of_tree<'a>(tree: &'a ParseTree<'a>) -> Vec<&'a SyntaxError> {
+    let mut errors: Vec<&'a SyntaxError> = Vec::new();
+    let mut visit = |tree: &'a ParseTree<'a>| match tree {
+        ParseTree::Token(tree) => {
+            for error in &tree.token.errors {
+                errors.push(&error)
+            }
+        }
+        ParseTree::Error(error) => errors.push(&error.error),
+        _ => (),
+    };
+    visit_post_order(tree, &mut visit);
+    errors
 }
 
 fn parse(contents: &str) {

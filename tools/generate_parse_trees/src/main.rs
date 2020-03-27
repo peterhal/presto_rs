@@ -415,7 +415,7 @@ fn configs() -> Vec<TreeConfig> {
     ]
 }
 
-const FILE_HEADER: &str = r#"use crate::lexing::{text_range::TextRange, token};
+const FILE_HEADER: &str = r#"use crate::lexing::{syntax_error::SyntaxError, text_range::TextRange, token};
 
 #[derive(Clone, Debug)]
 pub enum ParseTree<'a> {
@@ -511,14 +511,12 @@ impl<'a> List<'a> {
 "#;
 
 const ERROR_DEFINITION: &str = r#"Error {
-    pub range: TextRange,
-    pub message: String,
+    pub error: SyntaxError,
 }
 
-pub fn error<'a>(range: TextRange, message: String) -> ParseTree<'a> {
+pub fn error<'a>(error: SyntaxError) -> ParseTree<'a> {
     ParseTree::Error(Error {
-        range,
-        message: message,
+        error,
     })
 }
 
@@ -531,6 +529,7 @@ impl Error {
 "#;
 
 const CORE_IMPL: &str = r#"// core impl
+
 impl<'a> ParseTree<'a> {
     pub fn unbox_list(self) -> (ParseTree<'a>, Vec<(ParseTree<'a>, ParseTree<'a>)>, ParseTree<'a>) {
         match self {
