@@ -11,7 +11,11 @@ mod parsing;
 fn lex_and_dump(contents: &str) {
     let mut lexer = Lexer::new(contents);
     loop {
-        println!("{}", lexer.lex_token());
+        let token = lexer.lex_token();
+        let errors = token.errors;
+        if !errors.is_empty() {
+            println!("{:#?}", errors);
+        }
         if lexer.at_end() {
             break;
         }
@@ -20,8 +24,8 @@ fn lex_and_dump(contents: &str) {
 
 fn parse(contents: &str) {
     let mut parser = Parser::new(contents);
-    let _tree = parser.parse_query();
-    // println!("{:#?}", tree);
+    let tree = parser.parse_query();
+    println!("{:#?}", tree);
 }
 
 fn main() {
@@ -31,14 +35,17 @@ fn main() {
         return;
     }
 
-    let filename = &args[1];
-    let read_result = fs::read_to_string(filename);
-    match read_result {
-        Ok(_contents) => {
-            // lex_and_dump(&contents);
-            parse("WITH RECURSIVE");
-            // println!("Hello world!\n{}", contents);
+    for filename in &args[1..] {
+        println!("{}", filename);
+        let read_result = fs::read_to_string(filename);
+        match read_result {
+            Ok(contents) => {
+                lex_and_dump(&contents);
+                println!("");
+                // parse(&contents);
+                // println!("Hello world!\n{}", contents);
+            }
+            Err(e) => println!("Error reading file {}", e),
         }
-        Err(e) => println!("Error reading file {}", e),
     }
 }
