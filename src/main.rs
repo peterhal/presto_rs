@@ -5,7 +5,10 @@ use crate::lexing::syntax_error::SyntaxError;
 use crate::parsing::parse_tree::ParseTree;
 use crate::parsing::parse_tree_visitor::visit_post_order;
 use crate::parsing::parser::Parser;
+extern crate csv;
+use csv::Reader;
 use std::env;
+use std::error::Error;
 use std::fs;
 
 mod lexing;
@@ -54,23 +57,51 @@ fn parse(contents: &str) {
     }
 }
 
+fn process_query(query: &str) {
+    if !lex_and_dump(query) {
+        parse(query);
+    }
+}
+
+fn read_queries_from_csv(path: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    let mut result = Vec::new();
+    let mut rdr = Reader::from_path(path)?;
+    for record_result in rdr.records() {
+        let record = record_result?;
+        if let Some(field) = record.get(1) {
+            result.push(field.to_string());
+        }
+    }
+    Ok(result)
+}
+
+fn process_csv(path: &str) -> Result<(), Box<dyn Error>> {
+    println!("{}", path);
+    let queries = read_queries_from_csv(path)?;
+    for query in &queries {
+        process_query(&query);
+        print!(".");
+    }
+    Ok(())
+}
+
+fn read_and_parse_files(file_names: &[String]) {
+    for filename in file_names {
+        println!("{}", filename);
+        let read_result = fs::read_to_string(filename);
+        match read_result {
+            Ok(contents) => process_query(&contents),
+            Err(e) => println!("Error reading file {}", e),
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("Missing file name");
         return;
     }
-
-    for filename in &args[1..] {
-        println!("{}", filename);
-        let read_result = fs::read_to_string(filename);
-        match read_result {
-            Ok(contents) => {
-                if !lex_and_dump(&contents) {
-                    parse(&contents);
-                }
-            }
-            Err(e) => println!("Error reading file {}", e),
-        }
-    }
+    // read_and_parse_files(&args[1..]);
+    process_csv(&args[1]);
 }

@@ -1772,7 +1772,12 @@ impl<'a> Parser<'a> {
         // string is present, to disambiguate with type constructor
         self.peek_predefined_name(PN::INTERVAL)
             && match self.peek_offset(1) {
-                TK::Plus | TK::Minus | TK::String | TK::UnicodeString | TK::Identifier | TK::CONFIGURE => true,
+                TK::Plus
+                | TK::Minus
+                | TK::String
+                | TK::UnicodeString
+                | TK::Identifier
+                | TK::CONFIGURE => true,
                 _ => false,
             }
     }

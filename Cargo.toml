@@ -3,3 +3,6 @@
 name = "presto_rs"
 version = "0.0.1"
 authors = [ "Peter Hallam <peterhal@fb.com>" ]
+
+[dependencies]
+csv = "1.1"
