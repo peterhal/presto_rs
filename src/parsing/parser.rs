@@ -751,7 +751,7 @@ impl<'a> Parser<'a> {
                 return false;
             }
         }
-        offset > 0 && self.peek_kind(TK::Asterisk)
+        offset > 0 && self.peek_kind_offset(TK::Asterisk, offset)
     }
 
     // relation
@@ -1385,8 +1385,24 @@ impl<'a> Parser<'a> {
     // qualifiedName
     // : identifier ('.' identifier)*
     fn parse_qualified_name(&mut self) -> ParseTree<'a> {
+        // don't use parse_separated_list as period
+        // is in the follow set of qualified_name
+        let mut elements = Vec::new();
+        let mut seperators = Vec::new();
+        let start = self.eat_empty();
+        elements.push(self.parse_identifier());
+        while self.peek_kind(TK::Period) && self.peek_identifier_offset(1) {
+            seperators.push(self.eat_opt(TK::Period));
+            elements.push(self.parse_identifier());
+        }
+        seperators.push(self.eat_empty());
+        let end = self.eat_empty();
         parse_tree::qualified_name(
-            self.parse_separated_list(TK::Period, |parser| parser.parse_identifier()),
+            parse_tree::list(
+                start,
+                elements.into_iter().zip(seperators.into_iter()).collect(),
+                end,
+            )
         )
     }
 
@@ -2197,6 +2213,14 @@ impl<'a> Parser<'a> {
         root_type
     }
 
+    fn peek_type_offset(&mut self, offset: usize) -> bool {
+        match self.peek_offset(offset) {
+            TK::TimeWithTimeZone | TK::TimestampWithTimeZone | TK::DoublePrecision
+            | TK::Identifier => true,
+            _ => false,
+        }
+    }
+
     // | ARRAY '<' type_ '>'
     // | MAP '<' type_ ',' type_ '>'
     // | ROW '(' identifier type_ (',' identifier type_)* ')'
@@ -2279,6 +2303,12 @@ impl<'a> Parser<'a> {
     // | ROW '(' identifier type_ (',' identifier type_)* ')'
     fn peek_row_type(&mut self) -> bool {
         self.peek_predefined_name(PN::ROW) && self.peek_kind_offset(TK::OpenParen, 1)
+            && self.peek_row_element_offset(2)
+    }
+
+    // identifier type_
+    fn peek_row_element_offset(&mut self, offset: usize) -> bool {
+        self.peek_identifier_offset(offset) && self.peek_type_offset(offset + 1)
     }
 
     fn parse_row_type(&mut self) -> ParseTree<'a> {
