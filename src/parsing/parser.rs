@@ -1284,6 +1284,8 @@ impl<'a> Parser<'a> {
     fn parse_comparison_operator_suffix(&mut self, value: ParseTree<'a>) -> ParseTree<'a> {
         assert!(self.peek_comparison_operator());
         let operator = self.eat_token();
+        // TODO: Need better disambiguation between function_call
+        // and comparison_quantifier((query) + 1)
         if self.peek_quantified_comparison() {
             let comparison_quantifier = self.eat_token();
             let (open_paren, query, close_paren) = self.parse_parenthesized_query();
@@ -1365,6 +1367,7 @@ impl<'a> Parser<'a> {
     // | NOT? IN '(' query ')'                                               #inSubquery
     fn parse_in_suffix(&mut self, value: ParseTree<'a>, not_opt: ParseTree<'a>) -> ParseTree<'a> {
         let in_ = self.eat(TK::IN);
+        // TODO: need better disambiguation between paren_expression and subquery
         if self.peek_kind(TK::OpenParen) && self.peek_query_primary_offset(1) {
             let (open_paren, query, close_paren) = self.parse_parenthesized_query();
             parse_tree::in_subquery(value, not_opt, in_, open_paren, query, close_paren)
@@ -1582,6 +1585,8 @@ impl<'a> Parser<'a> {
             // | '(' query ')'                                                                       #subqueryExpression
             // | '(' expression ')'                                                                  #parenthesizedExpression
             TK::OpenParen => {
+                // TODO: need to defer ambiguity here
+                // similar to parse_relation_or_query
                 if self.peek_query_offset(1) {
                     self.parse_subquery_expression()
                 } else if self.peek_lambda() {
@@ -1761,9 +1766,13 @@ impl<'a> Parser<'a> {
     // interval
     // : INTERVAL sign=(PLUS | MINUS)? (string | configureExpression) from_=intervalField (TO to=intervalField)?
     fn peek_interval(&mut self) -> bool {
+        // TODO: must peek all the way to the interval_field
+        // to ensure diambiguation with additive_binary if sign is present
+        // TODO: must peek to interval field if no-sign present,
+        // string is present, to disambiguate with type constructor
         self.peek_predefined_name(PN::INTERVAL)
             && match self.peek_offset(1) {
-                TK::Plus | TK::Minus | TK::String | TK::UnicodeString | TK::Identifier => true,
+                TK::Plus | TK::Minus | TK::String | TK::UnicodeString | TK::Identifier | TK::CONFIGURE => true,
                 _ => false,
             }
     }
