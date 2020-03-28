@@ -577,11 +577,13 @@ impl<'a> Parser<'a> {
 
     // | left=queryTerm operator=(UNION | EXCEPT) setQuantifier? right=queryTerm  #setOperation
     fn parse_union_query_term(&mut self) -> ParseTree<'a> {
-        let mut left = self.parse_intersect_query_term();
-        while {
-            let op_kind = self.peek();
-            op_kind == TK::UNION || op_kind == TK::EXCEPT
-        } {
+        let left = self.parse_intersect_query_term();
+        self.parse_union_query_term_tail(left)
+    }
+
+    fn parse_union_query_term_tail(&mut self, left: ParseTree<'a>) -> ParseTree<'a> {
+        let mut left = left;
+        while self.peek_union_query_term_tail() {
             let operator = self.eat_token();
             let set_quantifier_opt = self.parse_set_quantifier_opt();
             let right = self.parse_intersect_query_term();
@@ -590,16 +592,30 @@ impl<'a> Parser<'a> {
         left
     }
 
+    fn peek_union_query_term_tail(&mut self) -> bool {
+        let op_kind = self.peek();
+        op_kind == TK::UNION || op_kind == TK::EXCEPT
+    }
+
     // | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm         #setOperation
     fn parse_intersect_query_term(&mut self) -> ParseTree<'a> {
-        let mut left = self.parse_query_primary();
-        while self.peek_kind(TK::INTERSECT) {
+        let left = self.parse_query_primary();
+        self.parse_intersect_query_term_tail(left)
+    }
+
+    fn parse_intersect_query_term_tail(&mut self, left: ParseTree<'a>) -> ParseTree<'a> {
+        let mut left = left;
+        while self.peek_intersect_query_term_tail() {
             let operator = self.eat_token();
             let set_quantifier_opt = self.parse_set_quantifier_opt();
             let right = self.parse_query_primary();
             left = parse_tree::query_set_operation(left, operator, set_quantifier_opt, right);
         }
         left
+    }
+
+    fn peek_intersect_query_term_tail(&mut self) -> bool {
+        self.peek_kind(TK::INTERSECT)
     }
 
     // setQuantifier
