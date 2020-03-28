@@ -501,6 +501,17 @@ impl<'a> Parser<'a> {
     //   (LIMIT limit=(INTEGER_VALUE | ALL))?
     fn parse_query_no_with(&mut self) -> ParseTree<'a> {
         let query_term = self.parse_query_term();
+        self.parse_query_no_with_tail(query_term)
+    }
+
+    fn peek_query_no_with_tail(&mut self) -> bool {
+        self.peek_kind(TK::ORDER)
+            || (self.peek_predefined_name(PN::LIMIT)
+                && (self.peek_predefined_name_offset(PN::ALL, 1)
+                    || self.peek_kind_offset(TK::Integer, 1)))
+    }
+
+    fn parse_query_no_with_tail(&mut self, query_term: ParseTree<'a>) -> ParseTree<'a> {
         let order_by_opt = self.parse_order_by_opt();
         let limit_opt = self.parse_limit_opt();
         parse_tree::query_no_with(query_term, order_by_opt, limit_opt)
@@ -612,6 +623,12 @@ impl<'a> Parser<'a> {
             left = parse_tree::query_set_operation(left, operator, set_quantifier_opt, right);
         }
         left
+    }
+
+    fn parse_query_primary_tail(&mut self, query_primary: ParseTree<'a>) -> ParseTree<'a> {
+        let query_intersect = self.parse_intersect_query_term_tail(query_primary);
+        let query_term = self.parse_union_query_term_tail(query_intersect);
+        self.parse_query_no_with_tail(query_term)
     }
 
     fn peek_intersect_query_term_tail(&mut self) -> bool {
@@ -934,24 +951,33 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn peek_query_primary_follow(&mut self) -> bool {
+        self.peek_intersect_query_term_tail()
+            || self.peek_union_query_term_tail()
+            || self.peek_query_no_with_tail()
+    }
+
     fn parse_relation_or_query(&mut self) -> ParseTree<'a> {
         if self.peek_kind(TK::OpenParen) {
             let (open_paren, relation_or_query, close_paren) =
                 self.parse_parenthesized(|parser| parser.parse_relation_or_query());
             if relation_or_query.is_query_no_with() {
                 if self.peek_sampled_relation_tail() {
-                    let sampled_relation = self.parse_sampled_relation_tail(parse_tree::subquery(
-                        open_paren,
-                        relation_or_query,
-                        close_paren,
-                    ));
+                    let subquery = parse_tree::subquery(open_paren, relation_or_query, close_paren);
+                    let sampled_relation = self.parse_sampled_relation_tail(subquery);
                     self.parse_join_relation_tail(sampled_relation)
+                } else if self.peek_query_primary_follow() {
+                    let subquery = parse_tree::subquery(open_paren, relation_or_query, close_paren);
+                    self.parse_query_primary_tail(subquery)
                 } else {
-                    // TODO: handle query tails ...
+                    // TODO: don't decide yet on subquery or relation
                     parse_tree::subquery_relation(open_paren, relation_or_query, close_paren)
                 }
             } else {
-                parse_tree::parenthesized_relation(open_paren, relation_or_query, close_paren)
+                let sampled_relation = self.parse_sampled_relation_tail(
+                    parse_tree::parenthesized_relation(open_paren, relation_or_query, close_paren),
+                );
+                self.parse_join_relation_tail(sampled_relation)
             }
         } else if self.peek_query_offset(0) {
             self.parse_query()
