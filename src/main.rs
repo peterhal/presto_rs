@@ -48,7 +48,7 @@ fn parse(contents: &str) {
     let tree = parser.parse_statement();
     let errors = errors_of_tree(&tree);
     if errors.is_empty() {
-        //    println!("{:#?}", tree);
+        println!("{:#?}", tree);
     } else {
         println!("{:#?}", errors[0]);
     }

@@ -771,7 +771,7 @@ impl<'a> Parser<'a> {
                     let right = self.parse_sampled_relation();
                     left = parse_tree::cross_join(left, cross, join, right)
                 }
-                TK::INNER | TK::LEFT | TK::RIGHT | TK::FULL => {
+                TK::JOIN | TK::INNER | TK::LEFT | TK::RIGHT | TK::FULL => {
                     let join_type = self.parse_join_type();
                     let join = self.eat(TK::JOIN);
                     let right = self.parse_relation();
@@ -851,15 +851,25 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn peek_tablesample_suffix(&mut self) -> bool {
+        self.peek_predefined_name(PN::TABLESAMPLE) && self.peek_sample_type_offset(1)
+    }
+
+    fn peek_sample_type_offset(&mut self, offset: usize) -> bool {
+        match self.maybe_peek_predefined_name_offset(offset) {
+            Some(PN::BERNOULLI) | Some(PN::SYSTEM) => true,
+            _ => false,
+        }
+    }
+
     // sampleType
     // : BERNOULLI
     // | SYSTEM
     fn parse_sample_type(&mut self) -> ParseTree<'a> {
-        let bernoulli = self.eat_predefined_name_opt(PN::BERNOULLI);
-        if bernoulli.is_empty() {
-            self.eat_predefined_name(PN::SYSTEM)
+        if self.peek_sample_type_offset(0) {
+            self.eat_token()
         } else {
-            bernoulli
+            self.expected_error("sample type")
         }
     }
 
@@ -867,7 +877,12 @@ impl<'a> Parser<'a> {
     // : relationPrimary (AS? identifier columnAliases?)?
     fn parse_aliased_relation(&mut self) -> ParseTree<'a> {
         let relation_primary = self.parse_relation_primary();
-        if self.peek_kind(TK::AS) || self.peek_identifier() {
+        if (self.peek_kind(TK::AS) || self.peek_identifier()) &&
+        // need to avoid consuming a TABLESAMPLE as an alias
+        // This is due to the ANTLR grammar being recursive
+        // through the relation production.
+        !self.peek_tablesample_suffix()
+        {
             let as_opt = self.eat_opt(TK::AS);
             let identifier = self.parse_identifier();
             let column_aliases_opt = self.parse_column_aliases_opt();
@@ -886,7 +901,8 @@ impl<'a> Parser<'a> {
     fn parse_relation_primary(&mut self) -> ParseTree<'a> {
         match self.peek() {
             TK::OpenParen => {
-                if self.peek_query_offset(1) {
+                // Prefer relation over query when nested parens encountered
+                if !self.peek_kind_offset(TK::OpenParen, 1) && self.peek_query_offset(1) {
                     let (open_paren, query, close_paren) = self.parse_parenthesized_query();
                     parse_tree::subquery_relation(open_paren, query, close_paren)
                 } else {
