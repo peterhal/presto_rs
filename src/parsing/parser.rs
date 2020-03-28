@@ -909,7 +909,8 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_tablesample_suffix_offset(&mut self, offset: usize) -> bool {
-        self.peek_predefined_name_offset(PN::TABLESAMPLE, offset) && self.peek_sample_type_offset(2)
+        self.peek_predefined_name_offset(PN::TABLESAMPLE, offset)
+            && self.peek_sample_type_offset(offset + 1)
     }
 
     fn peek_sample_type_offset(&mut self, offset: usize) -> bool {
@@ -957,21 +958,46 @@ impl<'a> Parser<'a> {
             || self.peek_query_no_with_tail()
     }
 
+    // yields one of:
+    //   one of several relation trees:
+    //          joins, sampled, subquery_relation
+    //   query - possibly with or without a with clause
+    //   query_no_with
+    //   relation_or_query
     fn parse_relation_or_query(&mut self) -> ParseTree<'a> {
         if self.peek_kind(TK::OpenParen) {
             let (open_paren, relation_or_query, close_paren) =
                 self.parse_parenthesized(|parser| parser.parse_relation_or_query());
-            if relation_or_query.is_query_no_with() {
-                if self.peek_sampled_relation_tail() {
-                    let subquery = parse_tree::subquery(open_paren, relation_or_query, close_paren);
-                    let sampled_relation = self.parse_sampled_relation_tail(subquery);
+            let must_be_subquery_relation =
+                relation_or_query.is_query() && !relation_or_query.as_query().with.is_empty();
+            if must_be_subquery_relation {
+                parse_tree::subquery_relation(open_paren, relation_or_query, close_paren)
+            } else if {
+                let can_be_query_primary = !must_be_subquery_relation
+                    && (relation_or_query.is_query_no_with()
+                        || relation_or_query.is_query()
+                        || relation_or_query.is_relation_or_query());
+                can_be_query_primary
+            } {
+                // it is possible for both relation_tail and query_primary_tail
+                // to be true: when followed by LIMIT x; which can only be a query.
+                let relation_tail =
+                    self.peek_join_relation_tail() || self.peek_sampled_relation_tail();
+                let must_be_query_tail = self.peek_query_primary_follow();
+                if relation_tail && !must_be_query_tail {
+                    let subquery_relation =
+                        parse_tree::subquery_relation(open_paren, relation_or_query, close_paren);
+                    let sampled_relation = self.parse_sampled_relation_tail(subquery_relation);
                     self.parse_join_relation_tail(sampled_relation)
-                } else if self.peek_query_primary_follow() {
+                } else if must_be_query_tail {
                     let subquery = parse_tree::subquery(open_paren, relation_or_query, close_paren);
+                    // this yields a query_no_with
                     self.parse_query_primary_tail(subquery)
                 } else {
-                    // TODO: don't decide yet on subquery or relation
-                    parse_tree::subquery_relation(open_paren, relation_or_query, close_paren)
+                    // we have a query which can be consumed as either
+                    // a subquery or a subquery_relation...
+                    // make the decision up the tree.
+                    parse_tree::relation_or_query(open_paren, relation_or_query, close_paren)
                 }
             } else {
                 let sampled_relation = self.parse_sampled_relation_tail(
@@ -980,6 +1006,7 @@ impl<'a> Parser<'a> {
                 self.parse_join_relation_tail(sampled_relation)
             }
         } else if self.peek_query_offset(0) {
+            // yields a query
             self.parse_query()
         } else {
             self.parse_relation()
@@ -997,7 +1024,10 @@ impl<'a> Parser<'a> {
             TK::OpenParen => {
                 let (open_paren, relation_or_query, close_paren) =
                     self.parse_parenthesized(|parser| parser.parse_relation_or_query());
-                if relation_or_query.is_query() {
+                if relation_or_query.is_query()
+                    || relation_or_query.is_query_no_with()
+                    || relation_or_query.is_relation_or_query()
+                {
                     parse_tree::subquery_relation(open_paren, relation_or_query, close_paren)
                 } else {
                     parse_tree::parenthesized_relation(open_paren, relation_or_query, close_paren)

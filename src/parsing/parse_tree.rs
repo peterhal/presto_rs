@@ -107,6 +107,7 @@ pub enum ParseTree<'a> {
     InsertInto(InsertInto<'a>),
     Delete(Delete<'a>),
     GroupingSet(GroupingSet<'a>),
+    RelationOrQuery(RelationOrQuery<'a>),
 }
 
 // The core trees
@@ -2827,6 +2828,29 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_relation_or_query(&self) -> bool {
+        if let ParseTree::RelationOrQuery(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_relation_or_query(&self) -> &RelationOrQuery {
+        if let ParseTree::RelationOrQuery(value) = self {
+            value
+        } else {
+            panic!("Expected RelationOrQuery")
+        }
+    }
+
+    pub fn unbox_relation_or_query(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::RelationOrQuery(tree) => tree.unbox(),
+            _ => panic!("Expected RelationOrQuery"),
+        }
+    }
+
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
         match self {
             ParseTree::Token(token) => token.children(),
@@ -2939,6 +2963,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::InsertInto(insert_into) => insert_into.children(),
             ParseTree::Delete(delete) => delete.children(),
             ParseTree::GroupingSet(grouping_set) => grouping_set.children(),
+            ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.children(),
         }
     }
 }
@@ -7344,5 +7369,42 @@ impl<'a> GroupingSet<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.elements,)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RelationOrQuery<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub query_or_relation: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn relation_or_query<'a>(
+    open_paren: ParseTree<'a>,
+    query_or_relation: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::RelationOrQuery(RelationOrQuery {
+        open_paren: Box::new(open_paren),
+        query_or_relation: Box::new(query_or_relation),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> RelationOrQuery<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::RelationOrQuery(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.open_paren);
+        result.push(&*self.query_or_relation);
+        result.push(&*self.close_paren);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.open_paren, *self.query_or_relation, *self.close_paren)
     }
 }

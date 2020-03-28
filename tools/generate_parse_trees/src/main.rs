@@ -416,6 +416,10 @@ fn configs() -> Vec<TreeConfig> {
             vec!["delete", "from", "table_name", "where_opt", "predicate"],
         ),
         ("GroupingSet", vec!["elements"]),
+        (
+            "RelationOrQuery",
+            vec!["open_paren", "query_or_relation", "close_paren"],
+        ),
         // ("Class", vec![]),
     ]
 }
