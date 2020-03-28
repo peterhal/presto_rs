@@ -762,32 +762,47 @@ impl<'a> Parser<'a> {
     //   )                                           #joinRelation
     // | sampledRelation                             #relationDefault
     fn parse_relation(&mut self) -> ParseTree<'a> {
-        let mut left = self.parse_sampled_relation();
-        loop {
-            match self.peek() {
+        let left = self.parse_sampled_relation();
+        self.parse_join_relation_tail(left)
+    }
+
+    fn peek_join_relation_tail(&mut self) -> bool {
+        match self.peek() {
+            TK::CROSS | TK::JOIN | TK::INNER | TK::LEFT | TK::RIGHT | TK::FULL | TK::NATURAL => {
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn parse_join_relation_tail(&mut self, left: ParseTree<'a>) -> ParseTree<'a> {
+        let mut left = left;
+        while self.peek_join_relation_tail() {
+            left = match self.peek() {
                 TK::CROSS => {
                     let cross = self.eat(TK::CROSS);
                     let join = self.eat(TK::JOIN);
                     let right = self.parse_sampled_relation();
-                    left = parse_tree::cross_join(left, cross, join, right)
+                    parse_tree::cross_join(left, cross, join, right)
                 }
                 TK::JOIN | TK::INNER | TK::LEFT | TK::RIGHT | TK::FULL => {
                     let join_type = self.parse_join_type();
                     let join = self.eat(TK::JOIN);
                     let right = self.parse_relation();
                     let join_criteria = self.parse_join_criteria();
-                    left = parse_tree::join(left, join_type, join, right, join_criteria)
+                    parse_tree::join(left, join_type, join, right, join_criteria)
                 }
                 TK::NATURAL => {
                     let natural = self.eat(TK::CROSS);
                     let join_type = self.parse_join_type();
                     let join = self.eat(TK::JOIN);
                     let right = self.parse_sampled_relation();
-                    left = parse_tree::natural_join(left, natural, join_type, join, right)
+                    parse_tree::natural_join(left, natural, join_type, join, right)
                 }
-                _ => return left,
+                _ => panic!("Unexpected join tail"),
             }
         }
+        left
     }
 
     // joinType
@@ -832,7 +847,12 @@ impl<'a> Parser<'a> {
     //     TABLESAMPLE sampleType '(' percentage=expression ')'
     //   )?
     fn parse_sampled_relation(&mut self) -> ParseTree<'a> {
-        let aliased_relation = self.parse_aliased_relation();
+        let relation_primary = self.parse_relation_primary();
+        self.parse_sampled_relation_tail(relation_primary)
+    }
+
+    fn parse_sampled_relation_tail(&mut self, relation_primary: ParseTree<'a>) -> ParseTree<'a> {
+        let aliased_relation = self.parse_aliased_relation_tail(relation_primary);
         let tablesample = self.eat_predefined_name_opt(PN::TABLESAMPLE);
         if tablesample.is_empty() {
             aliased_relation
@@ -851,8 +871,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn peek_tablesample_suffix(&mut self) -> bool {
-        self.peek_predefined_name(PN::TABLESAMPLE) && self.peek_sample_type_offset(1)
+    fn peek_sampled_relation_tail(&mut self) -> bool {
+        self.peek_aliased_relation_tail_offset(0) || self.peek_tablesample_suffix_offset(0)
+    }
+
+    fn peek_tablesample_suffix_offset(&mut self, offset: usize) -> bool {
+        self.peek_predefined_name_offset(PN::TABLESAMPLE, offset) && self.peek_sample_type_offset(2)
     }
 
     fn peek_sample_type_offset(&mut self, offset: usize) -> bool {
@@ -875,20 +899,48 @@ impl<'a> Parser<'a> {
 
     // aliasedRelation
     // : relationPrimary (AS? identifier columnAliases?)?
-    fn parse_aliased_relation(&mut self) -> ParseTree<'a> {
-        let relation_primary = self.parse_relation_primary();
-        if (self.peek_kind(TK::AS) || self.peek_identifier()) &&
+    fn peek_aliased_relation_tail_offset(&mut self, offset: usize) -> bool {
+        (self.peek_kind_offset(TK::AS, offset) || self.peek_identifier_offset(offset)) &&
         // need to avoid consuming a TABLESAMPLE as an alias
         // This is due to the ANTLR grammar being recursive
         // through the relation production.
-        !self.peek_tablesample_suffix()
-        {
+        !self.peek_tablesample_suffix_offset(offset)
+    }
+
+    fn parse_aliased_relation_tail(&mut self, relation_primary: ParseTree<'a>) -> ParseTree<'a> {
+        if self.peek_aliased_relation_tail_offset(0) {
             let as_opt = self.eat_opt(TK::AS);
             let identifier = self.parse_identifier();
             let column_aliases_opt = self.parse_column_aliases_opt();
             parse_tree::aliased_relation(relation_primary, as_opt, identifier, column_aliases_opt)
         } else {
             relation_primary
+        }
+    }
+
+    fn parse_relation_or_query(&mut self) -> ParseTree<'a> {
+        if self.peek_kind(TK::OpenParen) {
+            let (open_paren, relation_or_query, close_paren) =
+                self.parse_parenthesized(|parser| parser.parse_relation_or_query());
+            if relation_or_query.is_query_no_with() {
+                if self.peek_sampled_relation_tail() {
+                    let sampled_relation = self.parse_sampled_relation_tail(parse_tree::subquery(
+                        open_paren,
+                        relation_or_query,
+                        close_paren,
+                    ));
+                    self.parse_join_relation_tail(sampled_relation)
+                } else {
+                    // TODO: handle query tails ...
+                    parse_tree::subquery_relation(open_paren, relation_or_query, close_paren)
+                }
+            } else {
+                parse_tree::parenthesized_relation(open_paren, relation_or_query, close_paren)
+            }
+        } else if self.peek_query_offset(0) {
+            self.parse_query()
+        } else {
+            self.parse_relation()
         }
     }
 
@@ -901,14 +953,12 @@ impl<'a> Parser<'a> {
     fn parse_relation_primary(&mut self) -> ParseTree<'a> {
         match self.peek() {
             TK::OpenParen => {
-                // Prefer relation over query when nested parens encountered
-                if !self.peek_kind_offset(TK::OpenParen, 1) && self.peek_query_offset(1) {
-                    let (open_paren, query, close_paren) = self.parse_parenthesized_query();
-                    parse_tree::subquery_relation(open_paren, query, close_paren)
+                let (open_paren, relation_or_query, close_paren) =
+                    self.parse_parenthesized(|parser| parser.parse_relation_or_query());
+                if relation_or_query.is_query() {
+                    parse_tree::subquery_relation(open_paren, relation_or_query, close_paren)
                 } else {
-                    let (open_paren, relation, close_paren) =
-                        self.parse_parenthesized(|parser| parser.parse_relation());
-                    parse_tree::parenthesized_relation(open_paren, relation, close_paren)
+                    parse_tree::parenthesized_relation(open_paren, relation_or_query, close_paren)
                 }
             }
             TK::UNNEST => self.parse_unnest(),
@@ -1397,13 +1447,11 @@ impl<'a> Parser<'a> {
         }
         seperators.push(self.eat_empty());
         let end = self.eat_empty();
-        parse_tree::qualified_name(
-            parse_tree::list(
-                start,
-                elements.into_iter().zip(seperators.into_iter()).collect(),
-                end,
-            )
-        )
+        parse_tree::qualified_name(parse_tree::list(
+            start,
+            elements.into_iter().zip(seperators.into_iter()).collect(),
+            end,
+        ))
     }
 
     fn peek_qualified_name(&mut self) -> bool {
@@ -2215,7 +2263,9 @@ impl<'a> Parser<'a> {
 
     fn peek_type_offset(&mut self, offset: usize) -> bool {
         match self.peek_offset(offset) {
-            TK::TimeWithTimeZone | TK::TimestampWithTimeZone | TK::DoublePrecision
+            TK::TimeWithTimeZone
+            | TK::TimestampWithTimeZone
+            | TK::DoublePrecision
             | TK::Identifier => true,
             _ => false,
         }
@@ -2302,7 +2352,8 @@ impl<'a> Parser<'a> {
 
     // | ROW '(' identifier type_ (',' identifier type_)* ')'
     fn peek_row_type(&mut self) -> bool {
-        self.peek_predefined_name(PN::ROW) && self.peek_kind_offset(TK::OpenParen, 1)
+        self.peek_predefined_name(PN::ROW)
+            && self.peek_kind_offset(TK::OpenParen, 1)
             && self.peek_row_element_offset(2)
     }
 
