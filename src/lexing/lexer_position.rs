@@ -43,12 +43,7 @@ impl<'a> LexerPosition<'a> {
     }
 
     fn chars(&self) -> Chars<'a> {
-        // TODO: from_utf8_unchecked
-        if let Ok(s) = std::str::from_utf8(self.source.as_bytes()) {
-            s[self.index..].chars()
-        } else {
-            panic!("bad str")
-        }
+        unsafe { std::str::from_utf8_unchecked(self.source.as_bytes())[self.index..].chars() }
     }
 
     pub fn peek(&self) -> char {

@@ -78,10 +78,16 @@ fn read_queries_from_csv(path: &str) -> Result<Vec<String>, Box<dyn Error>> {
 fn process_csv(path: &str) -> Result<(), Box<dyn Error>> {
     println!("{}", path);
     let queries = read_queries_from_csv(path)?;
+    let mut count = 0;
     for query in &queries {
-        println!("{}", query);
+        // println!("{}", query);
         process_query(&query);
         print!(".");
+
+        count += 1;
+        if count % 80 == 0 {
+            println!("");
+        }
     }
     Ok(())
 }
