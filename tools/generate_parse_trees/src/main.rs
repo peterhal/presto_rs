@@ -420,6 +420,7 @@ fn configs() -> Vec<TreeConfig> {
             "RelationOrQuery",
             vec!["open_paren", "query_or_relation", "close_paren"],
         ),
+        ("EmptyGroupingSet", vec!["open_paren", "close_paren"]),
         // ("Class", vec![]),
     ]
 }

@@ -108,6 +108,7 @@ pub enum ParseTree<'a> {
     Delete(Delete<'a>),
     GroupingSet(GroupingSet<'a>),
     RelationOrQuery(RelationOrQuery<'a>),
+    EmptyGroupingSet(EmptyGroupingSet<'a>),
 }
 
 // The core trees
@@ -2851,6 +2852,29 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_empty_grouping_set(&self) -> bool {
+        if let ParseTree::EmptyGroupingSet(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_empty_grouping_set(&self) -> &EmptyGroupingSet {
+        if let ParseTree::EmptyGroupingSet(value) = self {
+            value
+        } else {
+            panic!("Expected EmptyGroupingSet")
+        }
+    }
+
+    pub fn unbox_empty_grouping_set(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::EmptyGroupingSet(tree) => tree.unbox(),
+            _ => panic!("Expected EmptyGroupingSet"),
+        }
+    }
+
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
         match self {
             ParseTree::Token(token) => token.children(),
@@ -2964,6 +2988,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::Delete(delete) => delete.children(),
             ParseTree::GroupingSet(grouping_set) => grouping_set.children(),
             ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.children(),
+            ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.children(),
         }
     }
 }
@@ -7406,5 +7431,38 @@ impl<'a> RelationOrQuery<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query_or_relation, *self.close_paren)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct EmptyGroupingSet<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn empty_grouping_set<'a>(
+    open_paren: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::EmptyGroupingSet(EmptyGroupingSet {
+        open_paren: Box::new(open_paren),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> EmptyGroupingSet<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::EmptyGroupingSet(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.open_paren);
+        result.push(&*self.close_paren);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.open_paren, *self.close_paren)
     }
 }

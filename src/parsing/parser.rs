@@ -1140,13 +1140,12 @@ impl<'a> Parser<'a> {
     // : '(' (expression (',' expression)*)? ')'
     // | expression
     fn parse_grouping_set(&mut self) -> ParseTree<'a> {
+        // This is a subset of expression, except that it permits '()'
         // parenthesized expressions will show up as
         // either a row constructor or a paren expression.
-        let elements = if self.peek_kind(TK::OpenParen) {
-            self.parse_parenthesized_comma_separated_opt_list(
-                |parser| parser.peek_expression(),
-                |parser| parser.parse_expression(),
-            )
+        let elements = if self.peek_kind(TK::OpenParen) && self.peek_kind_offset(TK::CloseParen, 1)
+        {
+            parse_tree::empty_grouping_set(self.eat(TK::OpenParen), self.eat(TK::CloseParen))
         } else {
             self.parse_expression()
         };
