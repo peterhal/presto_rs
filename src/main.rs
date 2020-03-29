@@ -79,6 +79,7 @@ fn process_csv(path: &str) -> Result<(), Box<dyn Error>> {
     println!("{}", path);
     let queries = read_queries_from_csv(path)?;
     for query in &queries {
+        println!("{}", query);
         process_query(&query);
         print!(".");
     }
@@ -102,6 +103,13 @@ fn main() {
         println!("Missing file name");
         return;
     }
-    // read_and_parse_files(&args[1..]);
-    process_csv(&args[1]);
+    if &args[1] == "--csv" {
+        if args.len() < 3 {
+            println!("Missing file name");
+            return;
+        }
+        process_csv(&args[2]);
+    } else {
+        read_and_parse_files(&args[1..]);
+    }
 }

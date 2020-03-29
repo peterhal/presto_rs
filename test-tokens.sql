@@ -18,6 +18,7 @@ X'abc''d'
 `abc``d`
 1234
 12.34
+1.
 .1234
 12E34
 12E+34
@@ -26,7 +27,7 @@ X'abc''d'
 .12E34
 0123abc
 SELECT 1
-x 
+x
 as
 DOUBLE PRECISION
 DOUBLE /* comment */ PRECISION

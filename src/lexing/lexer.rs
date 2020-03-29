@@ -361,7 +361,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn peek_fraction(&self) -> bool {
-        self.peek_char('.') && chars::is_digit(self.peek_offset(1))
+        self.peek_char('.')
     }
 
     pub fn peek_exponent(&self) -> bool {
