@@ -8,7 +8,7 @@ use std::mem;
 
 #[derive(Clone, Debug)]
 pub struct Lexer<'a> {
-    input: &'a str,
+    pub input: &'a str,
     position: LexerPosition<'a>,
     comments: Vec<Comment<'a>>,
     errors: Vec<SyntaxError>,

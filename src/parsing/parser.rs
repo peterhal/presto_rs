@@ -87,6 +87,7 @@ pub struct Parser<'a> {
 
 type ElementParser<'a> = fn(&mut Parser<'a>) -> ParseTree<'a>;
 type Peeker<'a> = fn(&mut Parser<'a>) -> bool;
+type OffsetPeeker<'a> = fn(&mut Parser<'a>, usize) -> bool;
 
 // Language independant parser functions
 impl<'a> Parser<'a> {
@@ -165,6 +166,8 @@ impl<'a> Parser<'a> {
                 message,
             }],
         });
+        println!("{}", self.position.lexer.input);
+        println!("{:#?}", result);
         panic!("WTF {}", format!("{:#?}", result));
         result
     }
@@ -596,7 +599,7 @@ impl<'a> Parser<'a> {
         let mut left = left;
         while self.peek_union_query_term_tail() {
             let operator = self.eat_token();
-            let set_quantifier_opt = self.parse_set_quantifier_opt();
+            let set_quantifier_opt = self.parse_set_quantifier_opt(|_parser, _offset| true);
             let right = self.parse_intersect_query_term();
             left = parse_tree::query_set_operation(left, operator, set_quantifier_opt, right);
         }
@@ -618,7 +621,7 @@ impl<'a> Parser<'a> {
         let mut left = left;
         while self.peek_intersect_query_term_tail() {
             let operator = self.eat_token();
-            let set_quantifier_opt = self.parse_set_quantifier_opt();
+            let set_quantifier_opt = self.parse_set_quantifier_opt(|_parser, _offset| true);
             let right = self.parse_query_primary();
             left = parse_tree::query_set_operation(left, operator, set_quantifier_opt, right);
         }
@@ -638,10 +641,10 @@ impl<'a> Parser<'a> {
     // setQuantifier
     // : DISTINCT
     // | ALL
-    fn parse_set_quantifier_opt(&mut self) -> ParseTree<'a> {
+    fn parse_set_quantifier_opt(&mut self, peek_tail: OffsetPeeker<'a>) -> ParseTree<'a> {
         let distinct = self.eat_opt(TK::DISTINCT);
-        if distinct.is_empty() {
-            self.eat_predefined_name_opt(PN::ALL)
+        if distinct.is_empty() && self.peek_predefined_name(PN::ALL) && peek_tail(self, 1) {
+            self.eat_token()
         } else {
             distinct
         }
@@ -703,7 +706,8 @@ impl<'a> Parser<'a> {
     //   (HAVING having=booleanExpression)?
     fn parse_query_specification(&mut self) -> ParseTree<'a> {
         let select = self.eat(TK::SELECT);
-        let set_quantifier_opt = self.parse_set_quantifier_opt();
+        let set_quantifier_opt =
+            self.parse_set_quantifier_opt(|parser, offset| parser.peek_select_item_offset(offset));
         let select_items = self.parse_comma_separated_list(|parser| parser.parse_select_item());
         let from = self.eat_opt(TK::FROM);
         let relations = if from.is_empty() {
@@ -772,6 +776,10 @@ impl<'a> Parser<'a> {
         } else {
             parse_tree::select_all(asterisk)
         }
+    }
+
+    fn peek_select_item_offset(&mut self, offset: usize) -> bool {
+        self.peek_expression_offset(offset) || self.peek_kind_offset(TK::Asterisk, offset)
     }
 
     fn peek_qualified_select_all(&mut self) -> bool {
@@ -1075,7 +1083,8 @@ impl<'a> Parser<'a> {
     // groupBy
     // : setQuantifier? groupingElement (',' groupingElement)*
     fn parse_group_by(&mut self) -> ParseTree<'a> {
-        let set_quantifier_opt = self.parse_set_quantifier_opt();
+        let set_quantifier_opt = self
+            .parse_set_quantifier_opt(|parser, offset| parser.peek_grouping_element_offset(offset));
         let grouping_elements =
             self.parse_comma_separated_list(|parser| parser.parse_grouping_element());
         parse_tree::group_by(set_quantifier_opt, grouping_elements)
@@ -1092,6 +1101,13 @@ impl<'a> Parser<'a> {
             TK::CUBE => self.parse_cube(),
             TK::GROUPING => self.parse_grouping_sets(),
             _ => self.parse_grouping_set(),
+        }
+    }
+
+    fn peek_grouping_element_offset(&mut self, offset: usize) -> bool {
+        match self.peek_offset(offset) {
+            TK::ROLLUP | TK::CUBE | TK::GROUPING => true,
+            _ => self.peek_expression_offset(offset),
         }
     }
 
@@ -1144,7 +1160,11 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_expression(&mut self) -> bool {
-        match self.peek() {
+        self.peek_expression_offset(0)
+    }
+
+    fn peek_expression_offset(&mut self, offset: usize) -> bool {
+        match self.peek_offset(offset) {
             TK::NOT
             | TK::Plus
             | TK::Minus
@@ -2182,7 +2202,11 @@ impl<'a> Parser<'a> {
         let (set_quantifier_opt, arguments, order_by_opt) = if self.peek_kind(TK::Asterisk) {
             (self.eat_empty(), self.eat(TK::Asterisk), self.eat_empty())
         } else {
-            let set_quantifier_opt = self.parse_set_quantifier_opt();
+            let set_quantifier_opt = self.parse_set_quantifier_opt(|parser, offset| {
+                parser.peek_kind_offset(TK::CloseParen, offset)
+                    || parser.peek_expression_offset(offset)
+                    || parser.peek_kind_offset(TK::ORDER, offset)
+            });
             let arguments = if set_quantifier_opt.is_empty() {
                 self.parse_comma_separated_list_opt(
                     |parser| parser.peek_expression(),
