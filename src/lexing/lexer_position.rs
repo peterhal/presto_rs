@@ -1,4 +1,5 @@
-use crate::lexing::{chars, position, position::Position, text_range::TextRange};
+use crate::lexing::chars;
+use crate::utils::{position, position::Position, text_range::TextRange};
 use std::str::Chars;
 
 /// Represents the current position while lexing some text.

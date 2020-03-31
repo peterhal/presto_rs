@@ -1,4 +1,5 @@
-use crate::lexing::{syntax_error::SyntaxError, text_range::TextRange, token};
+use crate::lexing::token;
+use crate::utils::{syntax_error::SyntaxError, text_range::TextRange};
 
 #[derive(Clone, Debug)]
 pub enum ParseTree<'a> {

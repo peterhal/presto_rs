@@ -1,4 +1,4 @@
-use crate::lexing::position;
+use crate::utils::position;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]

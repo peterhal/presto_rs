@@ -1,4 +1,4 @@
-use crate::lexing::text_range;
+use crate::utils::text_range;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]

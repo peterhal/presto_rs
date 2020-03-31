@@ -1,8 +1,11 @@
 use crate::lexing::{
     chars, comment::Comment, comment::CommentKind, keywords, keywords::Keyword,
-    lexer_position::LexerPosition, position::Position, predefined_names::PredefinedName,
-    syntax_error, syntax_error::Message, syntax_error::SyntaxError, text_range::TextRange,
-    token::Token, token_kind::TokenKind,
+    lexer_position::LexerPosition, predefined_names::PredefinedName, token::Token,
+    token_kind::TokenKind,
+};
+use crate::utils::{
+    position::Position, syntax_error, syntax_error::Message, syntax_error::SyntaxError,
+    text_range::TextRange,
 };
 use std::mem;
 

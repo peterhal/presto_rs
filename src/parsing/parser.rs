@@ -1,9 +1,12 @@
 use crate::lexing::{
-    lexer::Lexer, position, position::Position, predefined_names,
-    predefined_names::PredefinedName as PN, syntax_error, syntax_error::Message,
-    syntax_error::SyntaxError, text_range::TextRange, token::Token, token_kind::TokenKind as TK,
+    lexer::Lexer, predefined_names, predefined_names::PredefinedName as PN, token::Token,
+    token_kind::TokenKind as TK,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
+use crate::utils::{
+    position, position::Position, syntax_error, syntax_error::Message, syntax_error::SyntaxError,
+    text_range::TextRange,
+};
 
 // The location and lexing context for a Parser.
 //

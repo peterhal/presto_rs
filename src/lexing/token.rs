@@ -1,7 +1,5 @@
-use crate::lexing::{
-    comment::Comment, position::Position, syntax_error::SyntaxError, text_range::TextRange,
-    token_kind::TokenKind,
-};
+use crate::lexing::{comment::Comment, token_kind::TokenKind};
+use crate::utils::{position::Position, syntax_error::SyntaxError, text_range::TextRange};
 use std::fmt;
 
 #[derive(Clone, Debug)]

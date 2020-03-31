@@ -425,7 +425,8 @@ fn configs() -> Vec<TreeConfig> {
     ]
 }
 
-const FILE_HEADER: &str = r#"use crate::lexing::{syntax_error::SyntaxError, text_range::TextRange, token};
+const FILE_HEADER: &str = r#"use crate::lexing::token;
+use crate::utils::{syntax_error::SyntaxError, text_range::TextRange};
 
 #[derive(Clone, Debug)]
 pub enum ParseTree<'a> {

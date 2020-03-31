@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
 use crate::lexing::lexer::Lexer;
-use crate::lexing::syntax_error::SyntaxError;
 use crate::parsing::parse_tree::ParseTree;
 use crate::parsing::parse_tree_visitor::visit_post_order;
 use crate::parsing::parser::Parser;
+use crate::utils::syntax_error::SyntaxError;
 extern crate csv;
 use csv::Reader;
 use std::env;
@@ -13,6 +13,7 @@ use std::fs;
 
 mod lexing;
 mod parsing;
+mod utils;
 
 fn lex_and_dump(contents: &str) -> bool {
     let mut lexer = Lexer::new(contents);
