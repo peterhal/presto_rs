@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 use crate::lexing::Lexer;
-use crate::parsing::parse_tree::ParseTree;
-use crate::parsing::parse_tree_visitor::visit_post_order;
-use crate::parsing::parser::Parser;
+use crate::parsing::visit_post_order;
+use crate::parsing::ParseTree;
+use crate::parsing::Parser;
 use crate::utils::syntax_error::SyntaxError;
 extern crate csv;
 use csv::Reader;

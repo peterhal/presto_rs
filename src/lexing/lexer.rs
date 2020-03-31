@@ -7,6 +7,12 @@ use std::mem;
 
 /// A Lexer for the Presto SQL language.
 ///
+/// peek() operations allow interogating characters at or after
+/// the current location. peek()ing beyond the end of the string yields
+/// an infinite stream of NULL(0) characters.
+///
+/// lex_token() returns the next token and consumes it.
+///
 /// All lifetimes are scoped to the input text.
 #[derive(Clone, Debug)]
 pub struct Lexer<'a> {

@@ -1,4 +1,4 @@
-use crate::parsing::parse_tree::ParseTree;
+use super::ParseTree;
 
 pub fn visit_children<'a, F1, F2>(tree: &'a ParseTree<'a>, pre_visit: &mut F1, post_visit: &mut F2)
 where
