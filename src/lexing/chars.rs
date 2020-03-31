@@ -1,3 +1,5 @@
+//! Type tests for characters.
+
 pub const NULL: char = '\0';
 pub const TAB: char = '\t';
 pub const LINE_FEED: char = '\n';

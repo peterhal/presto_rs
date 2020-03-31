@@ -605,7 +605,7 @@ fn get_config<'a>(config: &'a TreeConfig) -> (&'static str, String, &'a Vec<&'st
             }
             ctor_name.push(ch.to_ascii_lowercase());
         } else {
-            assert!(ch.is_ascii_lowercase());
+            debug_assert!(ch.is_ascii_lowercase());
             ctor_name.push(ch);
         }
     }

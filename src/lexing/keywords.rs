@@ -1,4 +1,4 @@
-use crate::lexing::token_kind::TokenKind;
+use super::TokenKind;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]

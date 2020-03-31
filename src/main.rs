@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::lexing::lexer::Lexer;
+use crate::lexing::Lexer;
 use crate::parsing::parse_tree::ParseTree;
 use crate::parsing::parse_tree_visitor::visit_post_order;
 use crate::parsing::parser::Parser;

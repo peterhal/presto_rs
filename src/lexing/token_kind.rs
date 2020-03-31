@@ -1,5 +1,6 @@
 use std::fmt;
 
+/// The kinds of tokens in the grammar.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[allow(non_upper_case_globals, non_camel_case_types)]
 pub enum TokenKind {
@@ -223,6 +224,7 @@ impl TokenKind {
         }
     }
 
+    /// Do tokens with this kind have differing text.
     fn is_complex(&self) -> bool {
         match self {
             TokenKind::String
@@ -238,6 +240,7 @@ impl TokenKind {
         }
     }
 
+    /// Do all tokens with this kind have the same text.
     fn is_simple(&self) -> bool {
         return !self.is_complex();
     }

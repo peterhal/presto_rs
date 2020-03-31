@@ -1,3 +1,5 @@
+//! The set of non-reserved (aka non-keyword) identifiers that are
+//! special cased in the grammar.
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

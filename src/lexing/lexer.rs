@@ -1,14 +1,13 @@
-use crate::lexing::{
-    chars, comment::Comment, comment::CommentKind, keywords, keywords::Keyword,
-    lexer_position::LexerPosition, predefined_names::PredefinedName, token::Token,
-    token_kind::TokenKind,
+use super::{
+    chars, keywords, lexer_position, lexer_position::LexerPosition, Comment, CommentKind, Keyword,
+    PredefinedName, Token, TokenKind,
 };
-use crate::utils::{
-    position::Position, syntax_error, syntax_error::Message, syntax_error::SyntaxError,
-    text_range::TextRange,
-};
+use crate::utils::{syntax_error, Message, Position, SyntaxError, TextRange};
 use std::mem;
 
+/// A Lexer for the Presto SQL language.
+///
+/// All lifetimes are scoped to the input text.
 #[derive(Clone, Debug)]
 pub struct Lexer<'a> {
     pub input: &'a str,
@@ -28,6 +27,8 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Creates a new lexer from the current position.
+    /// Allows exploring forwards by tokens.
     fn try_lexer(&self) -> Lexer<'a> {
         Lexer {
             input: self.input,
@@ -37,6 +38,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Used to mark the start of a token.
     fn mark(&self) -> LexerPosition<'a> {
         self.position
     }
@@ -45,10 +47,16 @@ impl<'a> Lexer<'a> {
         self.position.position
     }
 
+    /// The next char in the input.
+    /// Does not consme the char.
     fn peek(&mut self) -> char {
         self.position.peek()
     }
 
+    /// Consumes the next character in the input
+    /// if it matches ch.
+    /// Returns whether a char was consumed.
+    /// Adds an error if a char was not consumed.
     fn eat(&mut self, ch: char) -> bool {
         if self.eat_opt(ch) {
             true
@@ -64,6 +72,9 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Consumes the next character in the input
+    /// if it matches ch.
+    /// Returns whether a char was consumed.
     fn eat_opt(&mut self, ch: char) -> bool {
         if self.peek_char(ch) {
             self.next();
@@ -73,30 +84,46 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Returns the char at offset from the current position.
+    /// Does not consume any input.
     fn peek_offset(&self, offset: i32) -> char {
         self.position.peek_offset(offset)
     }
 
+    /// Returns true if the next char matches ch.
+    /// Does not consume any input.
     fn peek_char(&self, ch: char) -> bool {
         self.position.peek_char(ch)
     }
 
+    /// Returns the next char in the input converted to lower case.
+    /// Does not consume any input.
     fn peek_char_lower(&self, ch: char) -> bool {
         self.position.peek().eq_ignore_ascii_case(&ch)
     }
 
+    /// Returns true if the char at offset matches ch.
+    /// Does not consume any input.
     fn peek_char_offset(&self, ch: char, offset: i32) -> bool {
         self.position.peek_char_offset(ch, offset)
     }
 
+    /// Are we at the end of the input.
     pub fn at_end(&self) -> bool {
         self.position.at_end()
     }
 
+    /// Returns the next char in the input.
+    /// Advanced past the char consumed.
     fn next(&mut self) -> char {
         self.position.next()
     }
 
+    /// Create a token ending at the current position.
+    /// start is typically created by calling mark() at the beginning
+    /// of the token.
+    ///
+    /// Adds leading and trailing trivia, as well as any errors.
     fn create_token(&mut self, start: &LexerPosition<'a>, kind: TokenKind) -> Token<'a> {
         let range = self.get_range(start);
         let value = self.get_text(start);
@@ -119,17 +146,19 @@ impl<'a> Lexer<'a> {
     }
 
     fn get_range(&self, start: &LexerPosition<'a>) -> TextRange {
-        start.get_range(&self.position)
+        lexer_position::get_range(start, &self.position)
     }
 
     fn get_text(&self, start: &LexerPosition<'a>) -> &'a str {
-        start.get_text(&self.position)
+        lexer_position::get_text(start, &self.position)
     }
 
+    /// Adds an error to the list of errors.
     fn add_error(&mut self, error: SyntaxError) {
         self.errors.push(error)
     }
 
+    /// Create a SyntaxError and add it to the list of errors.
     fn add_error_at(&mut self, start: &LexerPosition, error_code: i32, message: &str) {
         self.add_error(SyntaxError {
             error_code,
@@ -140,6 +169,8 @@ impl<'a> Lexer<'a> {
         })
     }
 
+    /// Create a SyntaxError, then return an Error Token
+    /// containing that SyntaxError.
     fn add_and_create_error(
         &mut self,
         start: &LexerPosition<'a>,
@@ -151,7 +182,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn create_error_token(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
-        assert!(
+        debug_assert!(
             !self.errors.is_empty(),
             "must add error before creating error token"
         );
@@ -178,17 +209,17 @@ impl<'a> Lexer<'a> {
     fn set_position(&mut self, position: &LexerPosition<'a>) {
         self.position = *position;
     }
-}
 
-// Language specific lexing goes here:
-impl<'a> Lexer<'a> {
     pub fn skip_while<P>(&mut self, predicate: P) -> bool
     where
         P: Fn(char) -> bool,
     {
         self.position.skip_while(predicate)
     }
+}
 
+// Language specific lexing goes here:
+impl<'a> Lexer<'a> {
     fn skip_whitespace(&mut self) -> bool {
         self.skip_while(chars::is_whitespace)
     }
@@ -225,9 +256,12 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Consume any comments trailing the most recently consumed token.
+    /// Must be called immediately after the last significant char in a
+    /// token is consumed.
     fn lex_trailing_trivia(&mut self) {
-        assert!(self.comments.is_empty());
-        assert!(self.errors.is_empty());
+        debug_assert!(self.comments.is_empty());
+        debug_assert!(self.errors.is_empty());
         let start = self.mark();
         while {
             let whitespace_start = self.mark();
@@ -241,7 +275,7 @@ impl<'a> Lexer<'a> {
                 self.create_and_add_comment(&start_comment, CommentKind::LineComment);
                 false
             } else if self.peek_char('/') && self.peek_char_offset('*', 1) {
-                assert!(self.errors.is_empty());
+                debug_assert!(self.errors.is_empty());
                 let start_comment = self.mark();
                 self.skip_delimited_comment_tail(&start_comment);
                 if start.line() == self.position.line() {
@@ -289,6 +323,8 @@ impl<'a> Lexer<'a> {
         self.lex_any_string_literal(start, TokenKind::BinaryLiteral)
     }
 
+    // STRING
+    // : '\'' ( ~'\'' | '\'\'' )* '\''
     // leading ' already consumed
     pub fn lex_any_string_literal(
         &mut self,
@@ -428,7 +464,8 @@ impl<'a> Lexer<'a> {
         self.create_token(start, kind)
     }
 
-    fn peek_keyword(&mut self, keyword: Keyword) -> bool {
+    /// Used for multi-word tokens; so does not check for comments.
+    fn eat_keyword(&mut self, keyword: Keyword) -> bool {
         self.skip_whitespace() && {
             let start = self.mark();
             self.skip_word();
@@ -436,7 +473,8 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn peek_predefined_name(&mut self, name: PredefinedName) -> bool {
+    /// Used for multi-word tokens; so does not check for comments.
+    fn eat_predefined_name(&mut self, name: PredefinedName) -> bool {
         self.skip_whitespace() && {
             let start = self.mark();
             self.skip_word();
@@ -444,17 +482,20 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Used for multi-word tokens; so does not check for comments.
     fn skip_whitespace_word(&mut self) {
         self.skip_whitespace();
         self.skip_word();
     }
 
+    /// Used for multi-word tokens; so does not check for comments.
     fn skip_word(&mut self) {
         self.skip_while(chars::is_identifier_part);
     }
 
+    /// Lexes an identifier, keywordor multi-word token.
     pub fn lex_word(&mut self, start: &LexerPosition<'a>, ch: char) -> Token<'a> {
-        assert!(chars::is_identifier_start(ch));
+        debug_assert!(chars::is_identifier_start(ch));
         self.skip_while(chars::is_identifier_part);
         let text = self.get_text(start);
         if let Some(keyword) = keywords::maybe_get_keyword(text) {
@@ -462,15 +503,15 @@ impl<'a> Lexer<'a> {
         } else {
             if PredefinedName::DOUBLE.matches(text) {
                 let mut lookahead = self.try_lexer();
-                if lookahead.peek_predefined_name(PredefinedName::PRECISION) {
+                if lookahead.eat_predefined_name(PredefinedName::PRECISION) {
                     self.skip_whitespace_word();
                     return self.create_token(start, TokenKind::DoublePrecision);
                 }
             } else if PredefinedName::TIME.matches(text) {
                 let mut lookahead = self.try_lexer();
-                if lookahead.peek_keyword(Keyword::WITH)
-                    && lookahead.peek_predefined_name(PredefinedName::TIME)
-                    && lookahead.peek_predefined_name(PredefinedName::ZONE)
+                if lookahead.eat_keyword(Keyword::WITH)
+                    && lookahead.eat_predefined_name(PredefinedName::TIME)
+                    && lookahead.eat_predefined_name(PredefinedName::ZONE)
                 {
                     self.skip_whitespace_word();
                     self.skip_whitespace_word();
@@ -479,9 +520,9 @@ impl<'a> Lexer<'a> {
                 }
             } else if PredefinedName::TIMESTAMP.matches(text) {
                 let mut lookahead = self.try_lexer();
-                if lookahead.peek_keyword(Keyword::WITH)
-                    && lookahead.peek_predefined_name(PredefinedName::TIME)
-                    && lookahead.peek_predefined_name(PredefinedName::ZONE)
+                if lookahead.eat_keyword(Keyword::WITH)
+                    && lookahead.eat_predefined_name(PredefinedName::TIME)
+                    && lookahead.eat_predefined_name(PredefinedName::ZONE)
                 {
                     self.skip_whitespace_word();
                     self.skip_whitespace_word();
@@ -494,6 +535,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// The main lexer entrypoint.
+    /// Returns the next token in the input.
+    /// The token includes leading and trailing trivia.
+    /// Advances past the consumed token.
     pub fn lex_token(&mut self) -> Token<'a> {
         self.skip_whitespace();
         let start = self.mark();
@@ -592,7 +637,6 @@ impl<'a> Lexer<'a> {
                         self.lex_word(&start, ch)
                     }
                 }
-                // TODO: multi-identifier lexemes
                 _ => self.add_and_create_error(
                     &start,
                     syntax_error::ERROR_INVALID_TOKEN_START,

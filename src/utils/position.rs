@@ -2,6 +2,7 @@ use std::fmt;
 
 /// A position within a text buffer.
 /// Both line and column use 0 based indexes.
+/// column indexes chars (not bytes).
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Position {
     pub line: i32,

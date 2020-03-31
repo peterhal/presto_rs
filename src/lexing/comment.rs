@@ -1,6 +1,7 @@
-use crate::utils::text_range;
+use crate::utils::TextRange;
 use std::fmt;
 
+/// The kinds of comment trivia.
 #[derive(Copy, Clone, Debug)]
 pub enum CommentKind {
     LineComment,
@@ -13,12 +14,17 @@ impl fmt::Display for CommentKind {
     }
 }
 
+/// A comment from source text.
+///
+/// The lifetime of a Comment is typically scoped to the
+/// lifetime of the source text being lexed.
+///
+/// For range and value, includes leading/trailing //, /*, */.
+/// Includes trailing NewLine for line comments if present.
 #[derive(Copy, Clone, Debug)]
 pub struct Comment<'a> {
     pub kind: CommentKind,
-    pub range: text_range::TextRange,
-    // Includes leading/trailing //, /*, */
-    // Includes trailing NewLine for line comments if present
+    pub range: TextRange,
     pub value: &'a str,
 }
 

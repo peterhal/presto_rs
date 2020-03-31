@@ -1,6 +1,5 @@
 use crate::lexing::{
-    lexer::Lexer, predefined_names, predefined_names::PredefinedName as PN, token::Token,
-    token_kind::TokenKind as TK,
+    predefined_names, predefined_names::PredefinedName as PN, Lexer, Token, TokenKind as TK,
 };
 use crate::parsing::{parse_tree, parse_tree::ParseTree};
 use crate::utils::{
@@ -41,7 +40,7 @@ impl<'a> ParsePosition<'a> {
     fn get_token(&mut self, index: usize) -> &Token<'a> {
         while index >= self.tokens.len() {
             let new_token = self.lexer.lex_token();
-            assert!(self.end_position() <= new_token.full_start());
+            debug_assert!(self.end_position() <= new_token.full_start());
             self.tokens.push(new_token);
         }
         &self.tokens[index]
@@ -76,7 +75,7 @@ impl<'a> ParsePosition<'a> {
     }
 
     fn advance(&mut self) -> Token<'a> {
-        assert!(self.index < self.tokens.len());
+        debug_assert!(self.index < self.tokens.len());
         // TODO: Can we avoid this clone?
         let token = self.peek_token().clone();
         self.index += 1;
@@ -1304,7 +1303,7 @@ impl<'a> Parser<'a> {
     // : comparisonOperator right=valueExpression                            #comparison
     // | comparisonOperator comparisonQuantifier '(' query ')'               #quantifiedComparison
     fn parse_comparison_operator_suffix(&mut self, value: ParseTree<'a>) -> ParseTree<'a> {
-        assert!(self.peek_comparison_operator());
+        debug_assert!(self.peek_comparison_operator());
         let operator = self.eat_token();
         // TODO: Need better disambiguation between function_call
         // and comparison_quantifier((query) + 1)
@@ -1341,7 +1340,7 @@ impl<'a> Parser<'a> {
     // | IS NOT? NULL                                                        #nullPredicate
     // | IS NOT? DISTINCT FROM right=valueExpression                         #distinctFrom
     fn parse_is_suffix(&mut self, value: ParseTree<'a>) -> ParseTree<'a> {
-        assert!(self.peek_kind(TK::IS));
+        debug_assert!(self.peek_kind(TK::IS));
         let is = self.eat_token();
         let not_opt = self.eat_opt(TK::NOT);
         match self.peek() {
