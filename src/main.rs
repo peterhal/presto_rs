@@ -86,7 +86,7 @@ fn process_csv(path: &str) -> Result<(), Box<dyn Error>> {
 
         count += 1;
         if count % 80 == 0 {
-            println!("");
+            println!("{}", count);
         }
     }
     Ok(())
