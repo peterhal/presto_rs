@@ -1,5 +1,8 @@
 use super::ParseTree;
 
+/// Visit all children of a node in a parse tree calling pre_visit before
+/// any children of a node have been visited and calling post_visit after
+/// all children of a node have been visited.
 pub fn visit_children<'a, F1, F2>(tree: &'a ParseTree<'a>, pre_visit: &mut F1, post_visit: &mut F2)
 where
     F1: FnMut(&'a ParseTree<'a>) -> (),
@@ -10,6 +13,9 @@ where
     }
 }
 
+/// Visit all nodes in a parse tree calling pre_visit before
+/// any children of a node have been visited and calling post_visit after
+/// all children of a node have been visited.
 pub fn visit<'a, F1, F2>(tree: &'a ParseTree<'a>, pre_visit: &mut F1, post_visit: &mut F2)
 where
     F1: FnMut(&'a ParseTree<'a>) -> (),
@@ -20,6 +26,8 @@ where
     post_visit(tree);
 }
 
+/// Visit all nodes in a parse tree calling post_visit after
+/// all children of a node have been visited.
 pub fn visit_post_order<'a, F>(tree: &'a ParseTree<'a>, post_visit: &mut F)
 where
     F: FnMut(&'a ParseTree<'a>) -> (),
@@ -27,6 +35,8 @@ where
     visit(tree, &mut |_tree| (), post_visit);
 }
 
+/// Visit all nodes in a parse tree calling pre_visit before
+/// any children of a node have been visited.
 pub fn visit_pre_order<'a, F>(tree: &'a ParseTree<'a>, pre_visit: &mut F)
 where
     F: FnMut(&'a ParseTree<'a>) -> (),

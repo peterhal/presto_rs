@@ -13,6 +13,16 @@ use std::mem;
 ///
 /// lex_token() returns the next token and consumes it.
 ///
+/// The tokens returned by lex_token will include every non-whitespace
+/// character in the input exactly once: either as a token, or as
+/// leading/trailing comments.
+///
+/// Some tokens (BeginningOfFile, EndOfFile, Error) may not include any
+/// non-whitespace characters.
+///
+/// When the end of input is rached, lex_token() will return an infinite
+/// sequence of EndOfFile tokens.
+///
 /// All lifetimes are scoped to the input text.
 #[derive(Clone, Debug)]
 pub struct Lexer<'a> {

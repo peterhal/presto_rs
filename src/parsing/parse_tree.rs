@@ -1,6 +1,54 @@
 use crate::lexing::token;
 use crate::utils::{syntax_error::SyntaxError, text_range::TextRange};
 
+/// A syntax tree for the Presto SQL language.
+///
+/// The syntax tree is mostly concrete: only non-significant whitespace
+/// is discarded, and that can be reconstituted using the TextRanges
+/// of the contained lexemes.
+///
+/// Every token consumed from the input will be present in the resulting
+/// tree.
+///
+/// There are 4 kinds of parse trees that are structural: Token, List, Empty,
+/// and Error.
+///
+/// Token parse trees consume a single token in the input. Every token consumed
+/// from the input will be present in the output parse tree as a Token tree.
+///
+/// Empty parse trees consume no input, and are a placeholder to indicate that
+/// an optional piece of syntax is not present.
+///
+/// List parse trees represent a possibly delimited, possibly separated list.
+/// If the delimiters are not present in the source, then the start_delimiter and
+/// end delimiter fields will be Empty parse trees. Similarly, if seperators
+/// are not present then they will also be Empty parse trees.
+///
+/// Error parse trees represent errors during parsing - that a given construct
+/// is malformed. Note that errors found during lexing are often attached to
+/// (non-error) tokens, so to accumulate all syntax errors both Token and
+/// Error trees must be consulted.
+///
+/// Each syntax production in the grammar is represented by a separate tree
+/// kind. Syntax production trees have a set of named children, each child
+/// is also a ParseTree. The children of a parse tree must be in the order
+/// that they appear. Iterating over the children of a parse tree iterates
+/// in source order.
+///
+/// Rust's enums are somewhat clumsy when representing class hierarchies.
+/// ParseTrees include the methods to ease ParseTree usage:
+///
+///  is_*() - returns true if the tree's kind matches *.
+///  as_*() - returns a ref to the typed tree. Must only be called it is_*() is true.
+///  unbox_*() -> consumes a parse tree, destructuring it into its unboxed components.
+///  children() -> returns a Vec containing refs to all immediate children of the tree.
+///
+/// This mod also contains a top level factory function for each kind of ParseTree.
+///
+/// Parse trees are allocated on the heap(in Boxes or Vecs); however the contained
+/// tokens have lifetime scoped to the input string which was parsed.
+/// Typically consumers will parse, then process parse trees into another format,
+/// then release both the parse tree and the input text.
 #[derive(Clone, Debug)]
 pub enum ParseTree<'a> {
     // The core trees
