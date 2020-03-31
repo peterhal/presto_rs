@@ -1,4 +1,5 @@
-use crate::utils::position;
+use super::position;
+use super::Position;
 use std::fmt;
 
 /// A range in a text buffer.
@@ -6,8 +7,8 @@ use std::fmt;
 /// Start is inclusive, end is exclusive.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct TextRange {
-    pub start: position::Position,
-    pub end: position::Position,
+    pub start: Position,
+    pub end: Position,
 }
 
 impl fmt::Display for TextRange {
@@ -17,13 +18,13 @@ impl fmt::Display for TextRange {
 }
 
 impl TextRange {
-    pub fn new(start: position::Position, end: position::Position) -> TextRange {
+    pub fn new(start: Position, end: Position) -> TextRange {
         debug_assert!(start <= end);
         TextRange { start, end }
     }
 
     /// Constructs an empty TextRange at a position.
-    pub fn empty(position: position::Position) -> TextRange {
+    pub fn empty(position: Position) -> TextRange {
         TextRange::new(position, position)
     }
 
@@ -33,7 +34,7 @@ impl TextRange {
     }
 
     /// Is position within this range?
-    pub fn contains(&self, position: position::Position) -> bool {
+    pub fn contains(&self, position: Position) -> bool {
         return position >= self.start && position < self.end;
     }
 

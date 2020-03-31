@@ -1,9 +1,9 @@
-use crate::utils::text_range;
+use super::TextRange;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Message {
-    pub range: text_range::TextRange,
+    pub range: TextRange,
     pub message: String,
 }
 
