@@ -199,7 +199,7 @@ impl<'a> Lexer<'a> {
         self.comments.push(comment)
     }
 
-    pub fn create_comment(&self, start: &LexerPosition<'a>, kind: CommentKind) -> Comment<'a> {
+    fn create_comment(&self, start: &LexerPosition<'a>, kind: CommentKind) -> Comment<'a> {
         Comment {
             kind,
             range: self.get_range(start),
@@ -216,7 +216,7 @@ impl<'a> Lexer<'a> {
         self.position = *position;
     }
 
-    pub fn skip_while<P>(&mut self, predicate: P) -> bool
+    fn skip_while<P>(&mut self, predicate: P) -> bool
     where
         P: Fn(char) -> bool,
     {
@@ -313,30 +313,26 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn lex_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+    fn lex_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
         self.lex_any_string_literal(start, TokenKind::String)
     }
 
     // UNICODE_STRING
     // : 'U&\'' ( ~'\'' | '\'\'' )* '\''
     // U& already consumed
-    pub fn lex_unicode_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+    fn lex_unicode_string_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
         self.eat('\'');
         self.lex_any_string_literal(start, TokenKind::UnicodeString)
     }
 
-    pub fn lex_binary_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+    fn lex_binary_literal(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
         self.lex_any_string_literal(start, TokenKind::BinaryLiteral)
     }
 
     // STRING
     // : '\'' ( ~'\'' | '\'\'' )* '\''
     // leading ' already consumed
-    pub fn lex_any_string_literal(
-        &mut self,
-        start: &LexerPosition<'a>,
-        kind: TokenKind,
-    ) -> Token<'a> {
+    fn lex_any_string_literal(&mut self, start: &LexerPosition<'a>, kind: TokenKind) -> Token<'a> {
         loop {
             if self.at_end() {
                 return self.add_and_create_error(
@@ -357,7 +353,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn lex_quoted_identifier(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+    fn lex_quoted_identifier(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
         loop {
             if self.at_end() {
                 return self.add_and_create_error(
@@ -378,7 +374,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn lex_back_quoted_identifier(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
+    fn lex_back_quoted_identifier(&mut self, start: &LexerPosition<'a>) -> Token<'a> {
         loop {
             if self.at_end() {
                 return self.add_and_create_error(
@@ -399,17 +395,17 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn skip_digits(&mut self) {
+    fn skip_digits(&mut self) {
         while chars::is_digit(self.peek()) {
             self.next();
         }
     }
 
-    pub fn peek_fraction(&self) -> bool {
+    fn peek_fraction(&self) -> bool {
         self.peek_char('.')
     }
 
-    pub fn peek_exponent(&self) -> bool {
+    fn peek_exponent(&self) -> bool {
         self.peek_char_lower('e') && {
             let next_char = self.peek_offset(1);
             chars::is_digit(next_char)
@@ -417,7 +413,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn skip_fraction(&mut self) -> bool {
+    fn skip_fraction(&mut self) -> bool {
         if self.peek_fraction() {
             // '.'
             self.next();
@@ -428,7 +424,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn skip_exponent(&mut self) -> bool {
+    fn skip_exponent(&mut self) -> bool {
         if self.peek_exponent() {
             // E
             self.next();
@@ -442,7 +438,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn lex_number(&mut self, start: &LexerPosition<'a>, start_char: char) -> Token<'a> {
+    fn lex_number(&mut self, start: &LexerPosition<'a>, start_char: char) -> Token<'a> {
         let kind = if start_char == '.' {
             self.skip_digits();
             if self.skip_exponent() {
@@ -500,7 +496,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Lexes an identifier, keywordor multi-word token.
-    pub fn lex_word(&mut self, start: &LexerPosition<'a>, ch: char) -> Token<'a> {
+    fn lex_word(&mut self, start: &LexerPosition<'a>, ch: char) -> Token<'a> {
         debug_assert!(chars::is_identifier_start(ch));
         self.skip_while(chars::is_identifier_part);
         let text = self.get_text(start);
