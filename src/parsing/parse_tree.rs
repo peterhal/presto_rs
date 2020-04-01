@@ -158,6 +158,7 @@ pub enum ParseTree<'a> {
     GroupingSet(GroupingSet<'a>),
     RelationOrQuery(RelationOrQuery<'a>),
     EmptyGroupingSet(EmptyGroupingSet<'a>),
+    ExpressionOrQuery(ExpressionOrQuery<'a>),
 }
 
 // The core trees
@@ -2924,6 +2925,29 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_expression_or_query(&self) -> bool {
+        if let ParseTree::ExpressionOrQuery(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_expression_or_query(&self) -> &ExpressionOrQuery {
+        if let ParseTree::ExpressionOrQuery(value) = self {
+            value
+        } else {
+            panic!("Expected ExpressionOrQuery")
+        }
+    }
+
+    pub fn unbox_expression_or_query(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::ExpressionOrQuery(tree) => tree.unbox(),
+            _ => panic!("Expected ExpressionOrQuery"),
+        }
+    }
+
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
         match self {
             ParseTree::Token(token) => token.children(),
@@ -3038,6 +3062,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::GroupingSet(grouping_set) => grouping_set.children(),
             ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.children(),
             ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.children(),
+            ParseTree::ExpressionOrQuery(expression_or_query) => expression_or_query.children(),
         }
     }
 }
@@ -7513,5 +7538,46 @@ impl<'a> EmptyGroupingSet<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.close_paren)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ExpressionOrQuery<'a> {
+    pub open_paren: Box<ParseTree<'a>>,
+    pub expression_or_query: Box<ParseTree<'a>>,
+    pub close_paren: Box<ParseTree<'a>>,
+}
+
+pub fn expression_or_query<'a>(
+    open_paren: ParseTree<'a>,
+    expression_or_query: ParseTree<'a>,
+    close_paren: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::ExpressionOrQuery(ExpressionOrQuery {
+        open_paren: Box::new(open_paren),
+        expression_or_query: Box::new(expression_or_query),
+        close_paren: Box::new(close_paren),
+    })
+}
+
+impl<'a> ExpressionOrQuery<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::ExpressionOrQuery(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.open_paren);
+        result.push(&*self.expression_or_query);
+        result.push(&*self.close_paren);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.open_paren,
+            *self.expression_or_query,
+            *self.close_paren,
+        )
     }
 }

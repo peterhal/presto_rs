@@ -427,6 +427,10 @@ fn configs() -> Vec<TreeConfig> {
             vec!["open_paren", "query_or_relation", "close_paren"],
         ),
         ("EmptyGroupingSet", vec!["open_paren", "close_paren"]),
+        (
+            "ExpressionOrQuery",
+            vec!["open_paren", "expression_or_query", "close_paren"],
+        ),
         // ("Class", vec![]),
     ]
 }

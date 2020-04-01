@@ -1329,7 +1329,17 @@ impl<'a> Parser<'a> {
         peek_operator: Peeker<'a>,
         parse_operand: ElementParser<'a>,
     ) -> ParseTree<'a> {
-        let mut left = parse_operand(self);
+        let left = parse_operand(self);
+        self.parse_binary_expression_tail(left, peek_operator, parse_operand)
+    }
+
+    fn parse_binary_expression_tail(
+        &mut self,
+        left: ParseTree<'a>,
+        peek_operator: Peeker<'a>,
+        parse_operand: ElementParser<'a>,
+    ) -> ParseTree<'a> {
+        let mut left = left;
         while peek_operator(self) {
             let operator = self.eat_token();
             let right = parse_operand(self);
@@ -1346,9 +1356,25 @@ impl<'a> Parser<'a> {
         )
     }
 
+    fn parse_or_expression_tail(&mut self, and_expression: ParseTree<'a>) -> ParseTree<'a> {
+        self.parse_binary_expression_tail(
+            and_expression,
+            |parser| parser.peek_kind(TK::OR),
+            |parser| parser.parse_and_expression(),
+        )
+    }
+
     // | left=booleanExpression operator=AND right=booleanExpression  #logicalBinary
     fn parse_and_expression(&mut self) -> ParseTree<'a> {
         self.parse_binary_expression(
+            |parser| parser.peek_kind(TK::AND),
+            |parser| parser.parse_not_expression(),
+        )
+    }
+
+    fn parse_and_expression_tail(&mut self, not_expression: ParseTree<'a>) -> ParseTree<'a> {
+        self.parse_binary_expression_tail(
+            not_expression,
             |parser| parser.peek_kind(TK::AND),
             |parser| parser.parse_not_expression(),
         )
@@ -1476,6 +1502,13 @@ impl<'a> Parser<'a> {
     // | IS NOT? DISTINCT FROM right=valueExpression                         #distinctFrom
     fn parse_predicated_expression(&mut self) -> ParseTree<'a> {
         let value = self.parse_value_expression();
+        self.parse_predicated_expression_tail(value)
+    }
+
+    fn parse_predicated_expression_tail(
+        &mut self,
+        value_expression: ParseTree<'a>,
+    ) -> ParseTree<'a> {
         match self.peek() {
             TK::Equal
             | TK::LessGreater
@@ -1483,17 +1516,17 @@ impl<'a> Parser<'a> {
             | TK::OpenAngle
             | TK::CloseAngle
             | TK::LessEqual
-            | TK::GreaterEqual => self.parse_comparison_operator_suffix(value),
-            TK::IS => self.parse_is_suffix(value),
+            | TK::GreaterEqual => self.parse_comparison_operator_suffix(value_expression),
+            TK::IS => self.parse_is_suffix(value_expression),
             _ => {
                 let not_opt = self.eat_opt(TK::NOT);
                 match self.peek() {
-                    TK::BETWEEN => self.parse_between_suffix(value, not_opt),
-                    TK::IN => self.parse_in_suffix(value, not_opt),
-                    TK::LIKE => self.parse_like_suffix(value, not_opt),
+                    TK::BETWEEN => self.parse_between_suffix(value_expression, not_opt),
+                    TK::IN => self.parse_in_suffix(value_expression, not_opt),
+                    TK::LIKE => self.parse_like_suffix(value_expression, not_opt),
                     _ => {
                         if not_opt.is_empty() {
-                            value
+                            value_expression
                         } else {
                             self.expected_error("BETWEEN, IN, LIKE")
                         }
@@ -1535,9 +1568,31 @@ impl<'a> Parser<'a> {
         )
     }
 
+    fn parse_concat_expression_tail(
+        &mut self,
+        additive_expression: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        self.parse_binary_expression_tail(
+            additive_expression,
+            |parser| parser.peek_kind(TK::BarBar),
+            |parser| parser.parse_additive_expression(),
+        )
+    }
+
     // | left=valueExpression operator=(PLUS | MINUS) right=valueExpression                #arithmeticBinary
     fn parse_additive_expression(&mut self) -> ParseTree<'a> {
         self.parse_binary_expression(
+            |parser| parser.peek_additive_operator(),
+            |parser| parser.parse_multiplicative_expression(),
+        )
+    }
+
+    fn parse_additive_expression_tail(
+        &mut self,
+        multiplicative_expression: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        self.parse_binary_expression_tail(
+            multiplicative_expression,
             |parser| parser.peek_additive_operator(),
             |parser| parser.parse_multiplicative_expression(),
         )
@@ -1553,12 +1608,27 @@ impl<'a> Parser<'a> {
     // | left=valueExpression operator=(ASTERISK | SLASH | PERCENT) right=valueExpression  #arithmeticBinary
     fn parse_multiplicative_expression(&mut self) -> ParseTree<'a> {
         self.parse_binary_expression(
-            |parser| match parser.peek() {
-                TK::Asterisk | TK::Slash | TK::Percent => true,
-                _ => false,
-            },
+            |parser| parser.peek_multiplicative_operator(),
             |parser| parser.parse_arithmetic_unary_expression(),
         )
+    }
+
+    fn parse_multiplicative_expression_tail(
+        &mut self,
+        unary_expression: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        self.parse_binary_expression_tail(
+            unary_expression,
+            |parser| parser.peek_multiplicative_operator(),
+            |parser| parser.parse_arithmetic_unary_expression(),
+        )
+    }
+
+    fn peek_multiplicative_operator(&mut self) -> bool {
+        match self.peek() {
+            TK::Asterisk | TK::Slash | TK::Percent => true,
+            _ => false,
+        }
     }
 
     // | operator=(MINUS | PLUS) valueExpression                                           #arithmeticUnary
@@ -1577,10 +1647,14 @@ impl<'a> Parser<'a> {
     // : TIME ZONE interval  #timeZoneInterval
     // | TIME ZONE string    #timeZoneString
     fn parse_at_time_zone(&mut self) -> ParseTree<'a> {
-        let value = self.parse_primary_expression();
+        let left = self.parse_primary_expression();
+        self.parse_at_time_zone_tail(left)
+    }
+
+    fn parse_at_time_zone_tail(&mut self, value_expression: ParseTree<'a>) -> ParseTree<'a> {
         let at = self.eat_predefined_name_opt(PN::AT);
         if at.is_empty() {
-            value
+            value_expression
         } else {
             let time = self.eat_predefined_name(PN::TIME);
             let zone = self.eat_predefined_name(PN::ZONE);
@@ -1589,7 +1663,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_string()
             };
-            parse_tree::at_time_zone(value, at, time, zone, specifier)
+            parse_tree::at_time_zone(value_expression, at, time, zone, specifier)
         }
     }
 
@@ -1671,14 +1745,10 @@ impl<'a> Parser<'a> {
             // | '(' query ')'                                                                       #subqueryExpression
             // | '(' expression ')'                                                                  #parenthesizedExpression
             TK::OpenParen => {
-                // TODO: need to defer ambiguity here
-                // similar to parse_relation_or_query
-                if self.peek_query_offset(1) {
-                    self.parse_subquery_expression()
-                } else if self.peek_lambda() {
+                if self.peek_lambda() {
                     self.parse_lambda()
                 } else {
-                    self.parse_row_constructor_or_paren_expression()
+                    self.parse_row_constructor_or_subquery()
                 }
             }
 
@@ -1760,7 +1830,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary_expression(&mut self) -> ParseTree<'a> {
-        let mut result = self.parse_primary_prefix_expression();
+        let operand = self.parse_primary_prefix_expression();
+        self.parse_primary_expression_tail(operand)
+    }
+
+    fn parse_primary_expression_tail(
+        &mut self,
+        primary_expression: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        let mut result = primary_expression;
         loop {
             // suffixes
             match self.peek() {
@@ -1780,6 +1858,18 @@ impl<'a> Parser<'a> {
                 _ => return result,
             }
         }
+    }
+
+    fn parse_paren_expression_tail(&mut self, paren_expression: ParseTree<'a>) -> ParseTree<'a> {
+        let primary_expression = self.parse_primary_expression_tail(paren_expression);
+        let at_time_zone = self.parse_at_time_zone_tail(primary_expression);
+        let multitplicative = self.parse_multiplicative_expression_tail(at_time_zone);
+        let additive = self.parse_additive_expression_tail(multitplicative);
+        let concat = self.parse_concat_expression_tail(additive);
+        let predicate = self.parse_predicated_expression_tail(concat);
+        let and = self.parse_and_expression_tail(predicate);
+        let or = self.parse_or_expression_tail(and);
+        or
     }
 
     // | '(' (identifier (',' identifier)*)? ')' '->' expression                             #lambda
@@ -1817,20 +1907,130 @@ impl<'a> Parser<'a> {
         parse_tree::lambda(parameters, array, body)
     }
 
-    // | '(' expression (',' expression)+ ')'                                                #rowConstructor
-    // | '(' expression ')'                                                                  #parenthesizedExpression
-    fn parse_row_constructor_or_paren_expression(&mut self) -> ParseTree<'a> {
-        let list =
-            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
-        if list.as_list().len() == 1 {
-            let (start_delimiter, mut elements_and_separators, end_delimiter) = list.unbox_list();
+    fn paren_expression_or_query_to_expression(
+        &mut self,
+        open_paren: ParseTree<'a>,
+        expression_or_query: ParseTree<'a>,
+        close_paren: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        if expression_or_query.is_query() || expression_or_query.is_query_no_with() {
+            parse_tree::subquery_expression(open_paren, expression_or_query, close_paren)
+        } else if expression_or_query.is_expression_or_query() {
             parse_tree::parenthesized_expression(
-                start_delimiter,
-                elements_and_separators.remove(0).0,
-                end_delimiter,
+                open_paren,
+                self.expression_or_query_to_expression(expression_or_query),
+                close_paren,
             )
         } else {
-            parse_tree::row_constructor(list)
+            // TODO: debug_assert!(expression_or_query.is_expression());
+            parse_tree::parenthesized_expression(open_paren, expression_or_query, close_paren)
+        }
+    }
+
+    fn expression_or_query_to_expression(
+        &mut self,
+        expression_or_query: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        if expression_or_query.is_query() || expression_or_query.is_query_no_with() {
+            // TODO: Add error: expected expression, got query
+            expression_or_query
+        } else if expression_or_query.is_expression_or_query() {
+            let (open_paren, expression_or_query, close_paren) =
+                expression_or_query.unbox_expression_or_query();
+            self.paren_expression_or_query_to_expression(
+                open_paren,
+                expression_or_query,
+                close_paren,
+            )
+        } else {
+            // TODO: debug_assert!(expression_or_query.is_expression())
+            expression_or_query
+        }
+    }
+
+    // yields one of:
+    //   one of several expression trees:
+    //   query - possibly with or without a with clause
+    //   query_no_with
+    //   expression_or_query
+    fn parse_expression_or_query(&mut self) -> ParseTree<'a> {
+        if self.peek_kind(TK::OpenParen) {
+            let (open_paren, expression_or_query, close_paren) =
+                self.parse_parenthesized(|parser| parser.parse_expression_or_query());
+            let must_be_subquery_expression =
+                expression_or_query.is_query() && !expression_or_query.as_query().with.is_empty();
+            if must_be_subquery_expression {
+                parse_tree::subquery_expression(open_paren, expression_or_query, close_paren)
+            } else if {
+                let can_be_query_primary = !must_be_subquery_expression
+                    && (expression_or_query.is_query_no_with()
+                        || expression_or_query.is_query()
+                        || expression_or_query.is_expression_or_query());
+                can_be_query_primary
+            } {
+                let must_be_query_tail = self.peek_query_primary_follow();
+                if must_be_query_tail {
+                    let subquery =
+                        parse_tree::subquery(open_paren, expression_or_query, close_paren);
+                    // this yields a query_no_with
+                    self.parse_query_primary_tail(subquery)
+                } else if self.peek_kind(TK::CloseParen) {
+                    // we have a query which can be consumed as either
+                    // a subquery or a subquery_expression...
+                    // make the decision up the tree.
+                    parse_tree::expression_or_query(open_paren, expression_or_query, close_paren)
+                } else {
+                    // we have a parenthesized query, with what looks like an expression tail
+                    // afterwards
+                    let subquery_expression = parse_tree::subquery_expression(
+                        open_paren,
+                        expression_or_query,
+                        close_paren,
+                    );
+                    self.parse_paren_expression_tail(subquery_expression)
+                }
+            } else {
+                // we have an expression
+                self.parse_paren_expression_tail(parse_tree::parenthesized_expression(
+                    open_paren,
+                    expression_or_query,
+                    close_paren,
+                ))
+            }
+        } else if self.peek_query_offset(0) {
+            // yields a query
+            self.parse_query()
+        } else {
+            self.parse_expression()
+        }
+    }
+
+    // | '(' expression (',' expression)+ ')'                                                #rowConstructor
+    // | '(' query ')'                                                                       #subqueryExpression
+    // | '(' expression ')'                                                                  #parenthesizedExpression
+    fn parse_row_constructor_or_subquery(&mut self) -> ParseTree<'a> {
+        let open_paren = self.eat(TK::OpenParen);
+        let expression_or_query = self.parse_expression_or_query();
+        if self.peek_kind(TK::Comma) {
+            // expression_or_query must be an expression
+            // parse expression_list tail and return a row constructor
+            let comma = self.eat(TK::Comma);
+            let mut elements_tail =
+                self.parse_separated_list_elements(TK::Comma, |parser| parser.parse_expression());
+            let close_paren = self.eat(TK::CloseParen);
+            let mut elements = Vec::with_capacity(elements_tail.len() + 1);
+            // TODO: verify that expression_or_query is an expression.
+            elements.push((expression_or_query, comma));
+            elements.append(&mut elements_tail);
+            parse_tree::row_constructor(parse_tree::list(open_paren, elements, close_paren))
+        } else {
+            // either expression or query is permitted
+            let close_paren = self.eat(TK::CloseParen);
+            self.paren_expression_or_query_to_expression(
+                open_paren,
+                expression_or_query,
+                close_paren,
+            )
         }
     }
 
