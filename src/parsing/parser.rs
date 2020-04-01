@@ -1,19 +1,22 @@
+use super::{parse_tree, ParseTree};
 use crate::lexing::{
     predefined_names, predefined_names::PredefinedName as PN, Lexer, Token, TokenKind as TK,
 };
-use crate::parsing::{parse_tree, parse_tree::ParseTree};
 use crate::utils::{
     position, position::Position, syntax_error, syntax_error::Message, syntax_error::SyntaxError,
     text_range::TextRange,
 };
 
-// The location and lexing context for a Parser.
-//
-// tokens contains both consumed tokens, as well as the token lookahead.
-// Tokens are lexed from the lexer on demand as they are peeked for.
-//
-// Consuming a token advances index past the token. Lex errors in the consumed tokens
-// become part of the parse results. Tokens must never be unconsumed.
+/// The location and lexing context for a Parser.
+///
+/// tokens contains both consumed tokens, as well as the token lookahead.
+/// Tokens are lexed from the lexer on demand as they are peeked for.
+///
+/// Consuming a token advances index past the token. Lex errors in the consumed tokens
+/// become part of the parse results. Tokens must never be unconsumed.
+///
+/// peek() methods inspect upcoming tokens without consuming input.
+/// Only the advance() method consumes a token.
 struct ParsePosition<'a> {
     index: usize,
     tokens: Vec<Token<'a>>,
@@ -37,6 +40,9 @@ impl<'a> ParsePosition<'a> {
         }
     }
 
+    /// Gets a token at the index from the start of self.tokens.
+    /// Will cause lexing more tokens if not enough tokens are
+    /// present.
     fn get_token(&mut self, index: usize) -> &Token<'a> {
         while index >= self.tokens.len() {
             let new_token = self.lexer.lex_token();
@@ -46,26 +52,38 @@ impl<'a> ParsePosition<'a> {
         &self.tokens[index]
     }
 
+    /// Returns the token at offset ahead of the current token in the input.
+    /// Does not consume the token.
     pub fn peek_token_offset(&mut self, offset: usize) -> &Token<'a> {
         self.get_token(self.index + offset)
     }
 
+    /// Returns the next token in the input.
+    /// Does not consume the token.
     pub fn peek_token(&mut self) -> &Token<'a> {
         self.peek_token_offset(0)
     }
 
+    /// Returns the token kind of the next token in the input.
+    /// Does not consume the token.
     pub fn peek_offset(&mut self, offset: usize) -> TK {
         self.peek_token_offset(offset).kind
     }
 
+    /// Returns the token kind of the offset token in the input.
+    /// Does not consume the token.
     pub fn peek_kind_offset(&mut self, kind: TK, offset: usize) -> bool {
         self.peek_offset(offset) == kind
     }
 
+    /// Returns true if the next token's kind matches kind.
+    /// Does not consume the token.
     pub fn peek_kind(&mut self, kind: TK) -> bool {
         self.peek_kind_offset(kind, 0)
     }
 
+    /// Returns the token kind of the next token in the input.
+    /// Does not consume the token.
     pub fn peek(&mut self) -> TK {
         self.peek_offset(0)
     }
@@ -74,6 +92,7 @@ impl<'a> ParsePosition<'a> {
         TextRange::empty(self.peek_token().full_start())
     }
 
+    /// Consumes a token in the input.
     fn advance(&mut self) -> Token<'a> {
         debug_assert!(self.index < self.tokens.len());
         // TODO: Can we avoid this clone?
@@ -83,8 +102,20 @@ impl<'a> ParsePosition<'a> {
     }
 }
 
+/// Parser for the Presto SQL dialect.
+///
+/// peek() methods inspect upcoming tokens without consuming input.
+/// Only the advance() method consumes a token.
+///
+/// eat*() methods consume a token and convert it into a Token tree.
+///
+/// *_opt() methods either parse a *, if present, or return an Empty tree.
+///
+/// parse_*() methods parse a given language syntax. They are preceded by
+/// a comment indicating the grammar being parsed.
 pub struct Parser<'a> {
     position: ParsePosition<'a>,
+    // TODO: add errors not contained in the tree here when needed
 }
 
 type ElementParser<'a> = fn(&mut Parser<'a>) -> ParseTree<'a>;
@@ -123,6 +154,7 @@ impl<'a> Parser<'a> {
         self.position.peek()
     }
 
+    /// If the token at offset is a predefined name, return it otherwise return None.
     fn maybe_peek_predefined_name_offset(&mut self, offset: usize) -> Option<PN> {
         let token = self.peek_token_offset(offset);
         if token.kind == TK::Identifier {
@@ -132,14 +164,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// If the next token is a predefined name, return it otherwise return None.
     fn maybe_peek_predefined_name(&mut self) -> Option<PN> {
         self.maybe_peek_predefined_name_offset(0)
     }
 
+    /// Returns true if the token at offset is a specific predefined name.
     fn peek_predefined_name_offset(&mut self, name: PN, offset: usize) -> bool {
         self.maybe_peek_predefined_name_offset(offset) == Some(name)
     }
 
+    /// Returns true if the next token is a specific predefined name.
     fn peek_predefined_name(&mut self, name: PN) -> bool {
         self.peek_predefined_name_offset(name, 0)
     }
@@ -148,18 +183,24 @@ impl<'a> Parser<'a> {
         self.position.advance()
     }
 
+    /// Create an empty TextRange at the current position in the input.
     fn get_empty_range(&mut self) -> TextRange {
         self.position.get_empty_range()
     }
 
+    /// Create an empty tree whose position is at the current input
+    /// position.
     fn eat_empty(&mut self) -> ParseTree<'a> {
         parse_tree::empty(self.get_empty_range())
     }
 
+    /// Consume the next token and return it wrapped in a Token tree.
     fn eat_token(&mut self) -> ParseTree<'a> {
         parse_tree::token(self.advance())
     }
 
+    /// Create an Error tree at the current location.
+    // TODO: Add error code parameter.
     fn error(&mut self, message: String) -> ParseTree<'a> {
         let result = parse_tree::error(SyntaxError {
             error_code: syntax_error::ERROR_SYNTAX_ERROR,
@@ -168,25 +209,31 @@ impl<'a> Parser<'a> {
                 message,
             }],
         });
+        // TODO: Remove this once we're debugged
         println!("{}", self.position.lexer.input);
         println!("{:#?}", result);
         panic!("WTF {}", format!("{:#?}", result));
         result
     }
 
+    /// Create an Error tree at the current location with a given message.
     fn expected_error(&mut self, expected: &str) -> ParseTree<'a> {
         let message = format!("Expected {}, found {}.", expected, self.peek());
         self.error(message)
     }
 
+    /// Creates an Error indicating that a given kind was expected.
     fn expected_error_kind(&mut self, expected: TK) -> ParseTree<'a> {
         self.expected_error(expected.to_string().as_str())
     }
 
+    /// Creates an Error indicating that a given name was expected.
     fn expected_error_name(&mut self, expected: PN) -> ParseTree<'a> {
         self.expected_error(expected.to_string().as_str())
     }
 
+    /// Consumes and returns the next token if its kind matches;
+    /// otherwise returns an expected error token.
     fn eat(&mut self, kind: TK) -> ParseTree<'a> {
         if self.peek_kind(kind) {
             self.eat_token()
@@ -195,6 +242,8 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Consumes and returns the next token if it matches the given
+    /// predefined name; otherwise returns an expected error token.
     fn eat_predefined_name(&mut self, name: PN) -> ParseTree<'a> {
         if self.peek_predefined_name(name) {
             self.eat_token()
@@ -203,6 +252,8 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Consumes and returns the next token if it matches the given
+    /// predefined name; otherwise returns an empty tree.
     fn eat_predefined_name_opt(&mut self, name: PN) -> ParseTree<'a> {
         if self.peek_predefined_name(name) {
             self.eat_token()
@@ -211,6 +262,8 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Consumes and returns the next token if it matches the given
+    /// kind; otherwise returns an empty tree.
     fn eat_opt(&mut self, kind: TK) -> ParseTree<'a> {
         if self.peek_kind(kind) {
             self.eat_token()
@@ -219,6 +272,9 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parses a delimiter token, followed by a tree, followed by
+    /// an end delimiter token. Returns a tuple with the 3 parsed
+    /// trees.
     fn parse_delimited(
         &mut self,
         start_kind: TK,
@@ -231,6 +287,8 @@ impl<'a> Parser<'a> {
         (start, element, end)
     }
 
+    /// Parses a tree enclosed in parens. Returns a tuple
+    /// containing the 3 trees.
     fn parse_parenthesized(
         &mut self,
         parse_element: ElementParser<'a>,
@@ -238,7 +296,10 @@ impl<'a> Parser<'a> {
         self.parse_delimited(TK::OpenParen, parse_element, TK::CloseParen)
     }
 
-    // parse non-empty separated list
+    /// Parse non-empty separated list elements.
+    /// The second element in each pair is the separator.
+    /// The separator for the last list element will always
+    /// be an empty tree.
     fn parse_separated_list_elements(
         &mut self,
         separator_kind: TK,
@@ -258,7 +319,8 @@ impl<'a> Parser<'a> {
         elements.into_iter().zip(seperators.into_iter()).collect()
     }
 
-    // parse non-empty  list
+    /// Parses the elements of a non-empty, non-separated list.
+    /// The second element in each pair will always be an Empty tree.
     fn parse_list_elements(
         &mut self,
         peek_element: Peeker<'a>,
@@ -271,7 +333,7 @@ impl<'a> Parser<'a> {
         elements
     }
 
-    // parse possibly empty separated list
+    /// Parse possibly empty separated list.
     fn parse_separated_list_elements_opt(
         &mut self,
         separator_kind: TK,
@@ -285,7 +347,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parse non-empty list.
+    /// Parse non-empty list.
     fn parse_list(
         &mut self,
         peek_element: Peeker<'a>,
@@ -297,8 +359,8 @@ impl<'a> Parser<'a> {
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
-    // Parse non-empty separated list.
-    // Terminating separator is not consumed.
+    /// Parse non-empty separated list.
+    /// Terminating separator is not consumed.
     fn parse_separated_list(
         &mut self,
         separator_kind: TK,
@@ -311,8 +373,8 @@ impl<'a> Parser<'a> {
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
-    // Parse possibly-empty separated list.
-    // Terminating separator is not consumed.
+    /// Parse possibly-empty separated list.
+    /// Terminating separator is not consumed.
     fn parse_separated_list_opt(
         &mut self,
         separator_kind: TK,
@@ -326,14 +388,14 @@ impl<'a> Parser<'a> {
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
-    // Parse non-empty comma separated list.
-    // Terminating commas are not consumed.
+    /// Parse non-empty comma separated list.
+    /// Terminating commas are not consumed.
     fn parse_comma_separated_list(&mut self, parse_element: ElementParser<'a>) -> ParseTree<'a> {
         self.parse_separated_list(TK::Comma, parse_element)
     }
 
-    // Parse possibly-empty comma separated list.
-    // Terminating commas are not consumed.
+    /// Parse possibly-empty comma separated list.
+    /// Terminating commas are not consumed.
     fn parse_comma_separated_list_opt(
         &mut self,
         peek_element: Peeker<'a>,
@@ -342,8 +404,8 @@ impl<'a> Parser<'a> {
         self.parse_separated_list_opt(TK::Comma, peek_element, parse_element)
     }
 
-    // Parse delimited non-empty separated list.
-    // Terminating separator is not permitted.
+    /// Parse delimited non-empty separated list.
+    /// Terminating separator is not permitted.
     fn parse_delimited_separated_list(
         &mut self,
         start_kind: TK,
@@ -358,8 +420,8 @@ impl<'a> Parser<'a> {
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
-    // Parse delimited possibly-empty separated list.
-    // Terminating separator is not permitted.
+    /// Parse delimited possibly-empty separated list.
+    /// Terminating separator is not permitted.
     fn parse_delimited_separated_list_opt(
         &mut self,
         start_kind: TK,
@@ -375,8 +437,8 @@ impl<'a> Parser<'a> {
         parse_tree::list(start_delimiter, elements_and_separators, end_delimiter)
     }
 
-    // Parse parenthesized, non-empty comma separated list.
-    // Terminating commas are not consumed.
+    /// Parse parenthesized, non-empty comma separated list.
+    /// Terminating commas are not consumed.
     fn parse_parenthesized_comma_separated_list(
         &mut self,
         parse_element: ElementParser<'a>,
@@ -384,8 +446,8 @@ impl<'a> Parser<'a> {
         self.parse_delimited_separated_list(TK::OpenParen, TK::Comma, parse_element, TK::CloseParen)
     }
 
-    // Parse optional parenthesized, non-empty comma separated list.
-    // Terminating commas are not consumed.
+    /// Parse optional parenthesized, non-empty comma separated list.
+    /// Terminating commas are not consumed.
     fn parse_parenthesized_comma_separated_list_opt(
         &mut self,
         parse_element: ElementParser<'a>,
@@ -402,8 +464,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parse parenthesized, possibly empty comma separated list.
-    // Terminating commas are not consumed.
+    /// Parse parenthesized, possibly empty comma separated list.
+    /// Terminating commas are not consumed.
     fn parse_parenthesized_comma_separated_opt_list(
         &mut self,
         peek_element: Peeker<'a>,
@@ -420,6 +482,9 @@ impl<'a> Parser<'a> {
 }
 
 // Presto Language specific functions
+//
+// Methods here are prefixed with a comment indicating the grammar
+// production being parsed.
 impl<'a> Parser<'a> {
     // query
     // :  with_? queryNoWith
