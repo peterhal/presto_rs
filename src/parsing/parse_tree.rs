@@ -1,5 +1,5 @@
 use crate::lexing::token;
-use crate::utils::{syntax_error::SyntaxError, text_range::TextRange};
+use crate::utils::{position, syntax_error::SyntaxError, text_range::TextRange};
 
 /// A syntax tree for the Presto SQL language.
 ///
@@ -240,6 +240,23 @@ impl<'a> List<'a> {
         result.push(&*self.end_delimiter);
         result
     }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        self.start_delimiter
+            .get_first_token()
+            .or_else(|| {
+                for (element, separator) in &self.elements_and_separators {
+                    let result = element
+                        .get_first_token()
+                        .or_else(|| separator.get_first_token());
+                    if result.is_some() {
+                        return result;
+                    }
+                }
+                None
+            })
+            .or_else(|| self.end_delimiter.get_first_token())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -273,6 +290,31 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    // Note: Has poor performance O(tree depth)
+    pub fn get_start(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.start,
+            ParseTree::Error(error) => error.error.get_range().start,
+            _ => match self.get_first_token() {
+                Some(token) => token.range.start,
+                // All children are empty or errors
+                None => self.get_first_child().get_start(),
+            },
+        }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_full_start(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.start,
+            ParseTree::Error(error) => error.error.get_range().start,
+            _ => match self.get_first_token() {
+                Some(token) => token.full_start(),
+                // All children are empty or errors
+                None => self.get_first_child().get_start(),
+            },
+        }
+    }
     pub fn is_list(&self) -> bool {
         if let ParseTree::List(_) = self {
             true
@@ -3065,6 +3107,270 @@ impl<'a> ParseTree<'a> {
             ParseTree::ExpressionOrQuery(expression_or_query) => expression_or_query.children(),
         }
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        match self {
+            ParseTree::Token(_) => self,
+            ParseTree::List(list) => &list.start_delimiter,
+            ParseTree::Error(_) => self,
+            ParseTree::Empty(_) => self,
+            ParseTree::Query(query) => query.get_first_child(),
+            ParseTree::With(with) => with.get_first_child(),
+            ParseTree::NamedQuery(named_query) => named_query.get_first_child(),
+            ParseTree::QueryNoWith(query_no_with) => query_no_with.get_first_child(),
+            ParseTree::OrderBy(order_by) => order_by.get_first_child(),
+            ParseTree::Limit(limit) => limit.get_first_child(),
+            ParseTree::QuerySetOperation(query_set_operation) => {
+                query_set_operation.get_first_child()
+            }
+            ParseTree::SortItem(sort_item) => sort_item.get_first_child(),
+            ParseTree::Subquery(subquery) => subquery.get_first_child(),
+            ParseTree::InlineTable(inline_table) => inline_table.get_first_child(),
+            ParseTree::Table(table) => table.get_first_child(),
+            ParseTree::QuerySpecification(query_specification) => {
+                query_specification.get_first_child()
+            }
+            ParseTree::QualifiedName(qualified_name) => qualified_name.get_first_child(),
+            ParseTree::SelectAll(select_all) => select_all.get_first_child(),
+            ParseTree::QualifiedSelectAll(qualified_select_all) => {
+                qualified_select_all.get_first_child()
+            }
+            ParseTree::SelectItem(select_item) => select_item.get_first_child(),
+            ParseTree::SubqueryRelation(subquery_relation) => subquery_relation.get_first_child(),
+            ParseTree::ParenthesizedRelation(parenthesized_relation) => {
+                parenthesized_relation.get_first_child()
+            }
+            ParseTree::TableName(table_name) => table_name.get_first_child(),
+            ParseTree::Lateral(lateral) => lateral.get_first_child(),
+            ParseTree::Unnest(unnest) => unnest.get_first_child(),
+            ParseTree::SampledRelation(sampled_relation) => sampled_relation.get_first_child(),
+            ParseTree::AliasedRelation(aliased_relation) => aliased_relation.get_first_child(),
+            ParseTree::CrossJoin(cross_join) => cross_join.get_first_child(),
+            ParseTree::Join(join) => join.get_first_child(),
+            ParseTree::NaturalJoin(natural_join) => natural_join.get_first_child(),
+            ParseTree::OuterJoinKind(outer_join_kind) => outer_join_kind.get_first_child(),
+            ParseTree::OnJoinCriteria(on_join_criteria) => on_join_criteria.get_first_child(),
+            ParseTree::UsingJoinCriteria(using_join_criteria) => {
+                using_join_criteria.get_first_child()
+            }
+            ParseTree::GroupBy(group_by) => group_by.get_first_child(),
+            ParseTree::Rollup(rollup) => rollup.get_first_child(),
+            ParseTree::Cube(cube) => cube.get_first_child(),
+            ParseTree::GroupingSets(grouping_sets) => grouping_sets.get_first_child(),
+            ParseTree::BinaryExpression(binary_expression) => binary_expression.get_first_child(),
+            ParseTree::UnaryExpression(unary_expression) => unary_expression.get_first_child(),
+            ParseTree::QuantifiedComparison(quantified_comparison) => {
+                quantified_comparison.get_first_child()
+            }
+            ParseTree::NullPredicate(null_predicate) => null_predicate.get_first_child(),
+            ParseTree::DistinctFrom(distinct_from) => distinct_from.get_first_child(),
+            ParseTree::Between(between) => between.get_first_child(),
+            ParseTree::Like(like) => like.get_first_child(),
+            ParseTree::InSubquery(in_subquery) => in_subquery.get_first_child(),
+            ParseTree::InList(in_list) => in_list.get_first_child(),
+            ParseTree::AtTimeZone(at_time_zone) => at_time_zone.get_first_child(),
+            ParseTree::Dereference(dereference) => dereference.get_first_child(),
+            ParseTree::Subscript(subscript) => subscript.get_first_child(),
+            ParseTree::Lambda(lambda) => lambda.get_first_child(),
+            ParseTree::Literal(literal) => literal.get_first_child(),
+            ParseTree::RowConstructor(row_constructor) => row_constructor.get_first_child(),
+            ParseTree::ParenthesizedExpression(parenthesized_expression) => {
+                parenthesized_expression.get_first_child()
+            }
+            ParseTree::Identifier(identifier) => identifier.get_first_child(),
+            ParseTree::FunctionCall(function_call) => function_call.get_first_child(),
+            ParseTree::Filter(filter) => filter.get_first_child(),
+            ParseTree::Over(over) => over.get_first_child(),
+            ParseTree::WindowFrame(window_frame) => window_frame.get_first_child(),
+            ParseTree::UnboundedFrame(unbounded_frame) => unbounded_frame.get_first_child(),
+            ParseTree::CurrentRowBound(current_row_bound) => current_row_bound.get_first_child(),
+            ParseTree::BoundedFrame(bounded_frame) => bounded_frame.get_first_child(),
+            ParseTree::UnicodeString(unicode_string) => unicode_string.get_first_child(),
+            ParseTree::ConfigureExpression(configure_expression) => {
+                configure_expression.get_first_child()
+            }
+            ParseTree::SubqueryExpression(subquery_expression) => {
+                subquery_expression.get_first_child()
+            }
+            ParseTree::Grouping(grouping) => grouping.get_first_child(),
+            ParseTree::Extract(extract) => extract.get_first_child(),
+            ParseTree::CurrentTime(current_time) => current_time.get_first_child(),
+            ParseTree::CurrentTimestamp(current_timestamp) => current_timestamp.get_first_child(),
+            ParseTree::Normalize(normalize) => normalize.get_first_child(),
+            ParseTree::Localtime(localtime) => localtime.get_first_child(),
+            ParseTree::Localtimestamp(localtimestamp) => localtimestamp.get_first_child(),
+            ParseTree::Cast(cast) => cast.get_first_child(),
+            ParseTree::WhenClause(when_clause) => when_clause.get_first_child(),
+            ParseTree::Case(case) => case.get_first_child(),
+            ParseTree::Exists(exists) => exists.get_first_child(),
+            ParseTree::TypeConstructor(type_constructor) => type_constructor.get_first_child(),
+            ParseTree::Array(array) => array.get_first_child(),
+            ParseTree::Interval(interval) => interval.get_first_child(),
+            ParseTree::Row(row) => row.get_first_child(),
+            ParseTree::TryCast(try_cast) => try_cast.get_first_child(),
+            ParseTree::Substring(substring) => substring.get_first_child(),
+            ParseTree::Position(position) => position.get_first_child(),
+            ParseTree::ArrayTypeSuffix(array_type_suffix) => array_type_suffix.get_first_child(),
+            ParseTree::NamedType(named_type) => named_type.get_first_child(),
+            ParseTree::ArrayType(array_type) => array_type.get_first_child(),
+            ParseTree::MapType(map_type) => map_type.get_first_child(),
+            ParseTree::RowType(row_type) => row_type.get_first_child(),
+            ParseTree::RowTypeElement(row_type_element) => row_type_element.get_first_child(),
+            ParseTree::IntervalType(interval_type) => interval_type.get_first_child(),
+            ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_first_child(),
+            ParseTree::CreateTable(create_table) => create_table.get_first_child(),
+            ParseTree::CreateTableAsSelect(create_table_as_select) => {
+                create_table_as_select.get_first_child()
+            }
+            ParseTree::WithProperties(with_properties) => with_properties.get_first_child(),
+            ParseTree::Property(property) => property.get_first_child(),
+            ParseTree::WithData(with_data) => with_data.get_first_child(),
+            ParseTree::Comment(comment) => comment.get_first_child(),
+            ParseTree::ColumnDefinition(column_definition) => column_definition.get_first_child(),
+            ParseTree::NotNull(not_null) => not_null.get_first_child(),
+            ParseTree::LikeClause(like_clause) => like_clause.get_first_child(),
+            ParseTree::InsertInto(insert_into) => insert_into.get_first_child(),
+            ParseTree::Delete(delete) => delete.get_first_child(),
+            ParseTree::GroupingSet(grouping_set) => grouping_set.get_first_child(),
+            ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.get_first_child(),
+            ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.get_first_child(),
+            ParseTree::ExpressionOrQuery(expression_or_query) => {
+                expression_or_query.get_first_child()
+            }
+        }
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        match self {
+            ParseTree::Token(token) => Some(&token.token),
+            ParseTree::List(list) => list.get_first_token(),
+            ParseTree::Error(_) => None,
+            ParseTree::Empty(_) => None,
+            ParseTree::Query(query) => query.get_first_token(),
+            ParseTree::With(with) => with.get_first_token(),
+            ParseTree::NamedQuery(named_query) => named_query.get_first_token(),
+            ParseTree::QueryNoWith(query_no_with) => query_no_with.get_first_token(),
+            ParseTree::OrderBy(order_by) => order_by.get_first_token(),
+            ParseTree::Limit(limit) => limit.get_first_token(),
+            ParseTree::QuerySetOperation(query_set_operation) => {
+                query_set_operation.get_first_token()
+            }
+            ParseTree::SortItem(sort_item) => sort_item.get_first_token(),
+            ParseTree::Subquery(subquery) => subquery.get_first_token(),
+            ParseTree::InlineTable(inline_table) => inline_table.get_first_token(),
+            ParseTree::Table(table) => table.get_first_token(),
+            ParseTree::QuerySpecification(query_specification) => {
+                query_specification.get_first_token()
+            }
+            ParseTree::QualifiedName(qualified_name) => qualified_name.get_first_token(),
+            ParseTree::SelectAll(select_all) => select_all.get_first_token(),
+            ParseTree::QualifiedSelectAll(qualified_select_all) => {
+                qualified_select_all.get_first_token()
+            }
+            ParseTree::SelectItem(select_item) => select_item.get_first_token(),
+            ParseTree::SubqueryRelation(subquery_relation) => subquery_relation.get_first_token(),
+            ParseTree::ParenthesizedRelation(parenthesized_relation) => {
+                parenthesized_relation.get_first_token()
+            }
+            ParseTree::TableName(table_name) => table_name.get_first_token(),
+            ParseTree::Lateral(lateral) => lateral.get_first_token(),
+            ParseTree::Unnest(unnest) => unnest.get_first_token(),
+            ParseTree::SampledRelation(sampled_relation) => sampled_relation.get_first_token(),
+            ParseTree::AliasedRelation(aliased_relation) => aliased_relation.get_first_token(),
+            ParseTree::CrossJoin(cross_join) => cross_join.get_first_token(),
+            ParseTree::Join(join) => join.get_first_token(),
+            ParseTree::NaturalJoin(natural_join) => natural_join.get_first_token(),
+            ParseTree::OuterJoinKind(outer_join_kind) => outer_join_kind.get_first_token(),
+            ParseTree::OnJoinCriteria(on_join_criteria) => on_join_criteria.get_first_token(),
+            ParseTree::UsingJoinCriteria(using_join_criteria) => {
+                using_join_criteria.get_first_token()
+            }
+            ParseTree::GroupBy(group_by) => group_by.get_first_token(),
+            ParseTree::Rollup(rollup) => rollup.get_first_token(),
+            ParseTree::Cube(cube) => cube.get_first_token(),
+            ParseTree::GroupingSets(grouping_sets) => grouping_sets.get_first_token(),
+            ParseTree::BinaryExpression(binary_expression) => binary_expression.get_first_token(),
+            ParseTree::UnaryExpression(unary_expression) => unary_expression.get_first_token(),
+            ParseTree::QuantifiedComparison(quantified_comparison) => {
+                quantified_comparison.get_first_token()
+            }
+            ParseTree::NullPredicate(null_predicate) => null_predicate.get_first_token(),
+            ParseTree::DistinctFrom(distinct_from) => distinct_from.get_first_token(),
+            ParseTree::Between(between) => between.get_first_token(),
+            ParseTree::Like(like) => like.get_first_token(),
+            ParseTree::InSubquery(in_subquery) => in_subquery.get_first_token(),
+            ParseTree::InList(in_list) => in_list.get_first_token(),
+            ParseTree::AtTimeZone(at_time_zone) => at_time_zone.get_first_token(),
+            ParseTree::Dereference(dereference) => dereference.get_first_token(),
+            ParseTree::Subscript(subscript) => subscript.get_first_token(),
+            ParseTree::Lambda(lambda) => lambda.get_first_token(),
+            ParseTree::Literal(literal) => literal.get_first_token(),
+            ParseTree::RowConstructor(row_constructor) => row_constructor.get_first_token(),
+            ParseTree::ParenthesizedExpression(parenthesized_expression) => {
+                parenthesized_expression.get_first_token()
+            }
+            ParseTree::Identifier(identifier) => identifier.get_first_token(),
+            ParseTree::FunctionCall(function_call) => function_call.get_first_token(),
+            ParseTree::Filter(filter) => filter.get_first_token(),
+            ParseTree::Over(over) => over.get_first_token(),
+            ParseTree::WindowFrame(window_frame) => window_frame.get_first_token(),
+            ParseTree::UnboundedFrame(unbounded_frame) => unbounded_frame.get_first_token(),
+            ParseTree::CurrentRowBound(current_row_bound) => current_row_bound.get_first_token(),
+            ParseTree::BoundedFrame(bounded_frame) => bounded_frame.get_first_token(),
+            ParseTree::UnicodeString(unicode_string) => unicode_string.get_first_token(),
+            ParseTree::ConfigureExpression(configure_expression) => {
+                configure_expression.get_first_token()
+            }
+            ParseTree::SubqueryExpression(subquery_expression) => {
+                subquery_expression.get_first_token()
+            }
+            ParseTree::Grouping(grouping) => grouping.get_first_token(),
+            ParseTree::Extract(extract) => extract.get_first_token(),
+            ParseTree::CurrentTime(current_time) => current_time.get_first_token(),
+            ParseTree::CurrentTimestamp(current_timestamp) => current_timestamp.get_first_token(),
+            ParseTree::Normalize(normalize) => normalize.get_first_token(),
+            ParseTree::Localtime(localtime) => localtime.get_first_token(),
+            ParseTree::Localtimestamp(localtimestamp) => localtimestamp.get_first_token(),
+            ParseTree::Cast(cast) => cast.get_first_token(),
+            ParseTree::WhenClause(when_clause) => when_clause.get_first_token(),
+            ParseTree::Case(case) => case.get_first_token(),
+            ParseTree::Exists(exists) => exists.get_first_token(),
+            ParseTree::TypeConstructor(type_constructor) => type_constructor.get_first_token(),
+            ParseTree::Array(array) => array.get_first_token(),
+            ParseTree::Interval(interval) => interval.get_first_token(),
+            ParseTree::Row(row) => row.get_first_token(),
+            ParseTree::TryCast(try_cast) => try_cast.get_first_token(),
+            ParseTree::Substring(substring) => substring.get_first_token(),
+            ParseTree::Position(position) => position.get_first_token(),
+            ParseTree::ArrayTypeSuffix(array_type_suffix) => array_type_suffix.get_first_token(),
+            ParseTree::NamedType(named_type) => named_type.get_first_token(),
+            ParseTree::ArrayType(array_type) => array_type.get_first_token(),
+            ParseTree::MapType(map_type) => map_type.get_first_token(),
+            ParseTree::RowType(row_type) => row_type.get_first_token(),
+            ParseTree::RowTypeElement(row_type_element) => row_type_element.get_first_token(),
+            ParseTree::IntervalType(interval_type) => interval_type.get_first_token(),
+            ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_first_token(),
+            ParseTree::CreateTable(create_table) => create_table.get_first_token(),
+            ParseTree::CreateTableAsSelect(create_table_as_select) => {
+                create_table_as_select.get_first_token()
+            }
+            ParseTree::WithProperties(with_properties) => with_properties.get_first_token(),
+            ParseTree::Property(property) => property.get_first_token(),
+            ParseTree::WithData(with_data) => with_data.get_first_token(),
+            ParseTree::Comment(comment) => comment.get_first_token(),
+            ParseTree::ColumnDefinition(column_definition) => column_definition.get_first_token(),
+            ParseTree::NotNull(not_null) => not_null.get_first_token(),
+            ParseTree::LikeClause(like_clause) => like_clause.get_first_token(),
+            ParseTree::InsertInto(insert_into) => insert_into.get_first_token(),
+            ParseTree::Delete(delete) => delete.get_first_token(),
+            ParseTree::GroupingSet(grouping_set) => grouping_set.get_first_token(),
+            ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.get_first_token(),
+            ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.get_first_token(),
+            ParseTree::ExpressionOrQuery(expression_or_query) => {
+                expression_or_query.get_first_token()
+            }
+        }
+    }
 }
 
 // The language specific trees
@@ -3095,6 +3401,20 @@ impl<'a> Query<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.with, *self.query_no_with)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.with
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query_no_with.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3132,6 +3452,23 @@ impl<'a> With<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.with, *self.recursive, *self.named_queries)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.with
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.recursive.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.named_queries.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3198,6 +3535,32 @@ impl<'a> NamedQuery<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.name
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.column_aliases_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3234,6 +3597,23 @@ impl<'a> QueryNoWith<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.query_term, *self.order_by_opt, *self.limit_opt)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.query_term
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.query_term.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.order_by_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.limit_opt.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3272,6 +3652,23 @@ impl<'a> OrderBy<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.order, *self.by, *self.sort_items)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.order
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.order.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.by.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.sort_items.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3301,6 +3698,20 @@ impl<'a> Limit<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.limit, *self.value)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.limit
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.limit.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3348,6 +3759,26 @@ impl<'a> QuerySetOperation<'a> {
             *self.right,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.left
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.left.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operator.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.set_quantifier_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3394,6 +3825,26 @@ impl<'a> SortItem<'a> {
             *self.null_ordering_opt,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.expression
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.expression.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.ordering_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.nulls.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.null_ordering_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3431,6 +3882,23 @@ impl<'a> Subquery<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query_no_with, *self.close_paren)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query_no_with.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3461,6 +3929,20 @@ impl<'a> InlineTable<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.values, *self.expressions)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.values
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.values.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3490,6 +3972,20 @@ impl<'a> Table<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.table, *self.qualified_name)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.table
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.table.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.qualified_name.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3592,6 +4088,50 @@ impl<'a> QuerySpecification<'a> {
             *self.having_predicate,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.select
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.select.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.set_quantifier_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.select_items.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.relations.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_predicate.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.group.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.by.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.group_by.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.having.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.having_predicate.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3619,6 +4159,17 @@ impl<'a> QualifiedName<'a> {
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.names,)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.names
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.names.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3645,6 +4196,17 @@ impl<'a> SelectAll<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.asterisk,)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.asterisk
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.asterisk.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3683,6 +4245,23 @@ impl<'a> QualifiedSelectAll<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.qualifier, *self.period, *self.asterisk)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.qualifier
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.qualifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.period.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.asterisk.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3719,6 +4298,23 @@ impl<'a> SelectItem<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.expression, *self.as_, *self.identifier)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.expression
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.expression.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3757,6 +4353,23 @@ impl<'a> SubqueryRelation<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query, *self.close_paren)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3794,6 +4407,23 @@ impl<'a> ParenthesizedRelation<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.relation, *self.close_paren)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.relation.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3820,6 +4450,17 @@ impl<'a> TableName<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.name,)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.name
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.name.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3867,6 +4508,26 @@ impl<'a> Lateral<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.lateral
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.lateral.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3912,6 +4573,26 @@ impl<'a> Unnest<'a> {
             *self.with,
             *self.ordinality,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.unnest
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.unnest.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.ordinality.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -3978,6 +4659,32 @@ impl<'a> SampledRelation<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.aliased_relation
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.aliased_relation.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.tablesample.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.sample_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expression.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4024,6 +4731,26 @@ impl<'a> AliasedRelation<'a> {
             *self.column_aliases_opt,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.relation_primary
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.relation_primary.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.column_aliases_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4064,6 +4791,26 @@ impl<'a> CrossJoin<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.left, *self.cross, *self.join, *self.right)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.left
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.left.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.cross.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4124,6 +4871,29 @@ impl<'a> Join<'a> {
             *self.join_criteria,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.left
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.left.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join_criteria.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4183,6 +4953,29 @@ impl<'a> NaturalJoin<'a> {
             *self.right,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.left
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.left.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.natural.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4212,6 +5005,20 @@ impl<'a> OuterJoinKind<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.kind, *self.outer_opt)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.kind
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.kind.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.outer_opt.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4243,6 +5050,20 @@ impl<'a> OnJoinCriteria<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.on, *self.predicate)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.on
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.on.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.predicate.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4272,6 +5093,20 @@ impl<'a> UsingJoinCriteria<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.using, *self.names)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.using
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.using.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.names.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4306,6 +5141,20 @@ impl<'a> GroupBy<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.set_quantifier_opt, *self.grouping_elements)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.set_quantifier_opt
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.set_quantifier_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.grouping_elements.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4336,6 +5185,20 @@ impl<'a> Rollup<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.rollup, *self.expressions)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.rollup
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.rollup.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4365,6 +5228,20 @@ impl<'a> Cube<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.cube, *self.expressions)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.cube
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.cube.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4403,6 +5280,23 @@ impl<'a> GroupingSets<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.grouping, *self.sets, *self.grouping_sets)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.grouping
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.grouping.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.sets.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.grouping_sets.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4440,6 +5334,23 @@ impl<'a> BinaryExpression<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.left, *self.operator, *self.right)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.left
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.left.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operator.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4469,6 +5380,20 @@ impl<'a> UnaryExpression<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.operator, *self.operand)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.operator
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.operator.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operand.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4535,6 +5460,32 @@ impl<'a> QuantifiedComparison<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.operand
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.operand.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operator.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comparison_quantifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4576,6 +5527,26 @@ impl<'a> NullPredicate<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.value, *self.is, *self.not_opt, *self.null)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.is.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.null.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4616,6 +5587,26 @@ impl<'a> DistinctFrom<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.left, *self.distinct, *self.from, *self.right)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.left
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.left.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.distinct.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4682,6 +5673,32 @@ impl<'a> Between<'a> {
             *self.upper,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.between.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.lower.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.and.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.upper.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4746,6 +5763,32 @@ impl<'a> Like<'a> {
             *self.escape_opt,
             *self.escape_value_opt,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.like.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.patrern.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.escape_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.escape_value_opt.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4812,6 +5855,32 @@ impl<'a> InSubquery<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.in_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4852,6 +5921,26 @@ impl<'a> InList<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.value, *self.not_opt, *self.in_, *self.expressions)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.in_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4912,6 +6001,29 @@ impl<'a> AtTimeZone<'a> {
             *self.specifier,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.at.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.time.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.zone.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.specifier.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4948,6 +6060,23 @@ impl<'a> Dereference<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.object, *self.period, *self.field_name)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.object
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.object.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.period.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.field_name.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -4995,6 +6124,26 @@ impl<'a> Subscript<'a> {
             *self.close_square,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.operand
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.operand.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_square.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.index.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_square.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5032,6 +6181,23 @@ impl<'a> Lambda<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.parameters, *self.array, *self.body)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.parameters
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.parameters.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.array.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.body.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5059,6 +6225,17 @@ impl<'a> Literal<'a> {
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.value,)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5085,6 +6262,17 @@ impl<'a> RowConstructor<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.elements,)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.elements
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5123,6 +6311,23 @@ impl<'a> ParenthesizedExpression<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.value, *self.close_paren)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5149,6 +6354,17 @@ impl<'a> Identifier<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.value,)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5227,6 +6443,38 @@ impl<'a> FunctionCall<'a> {
             *self.over_opt,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.name
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.set_quantifier_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.arguments.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.order_by_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.filter_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.over_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5285,6 +6533,29 @@ impl<'a> Filter<'a> {
             *self.predicate,
             *self.close_paren,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.filter
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.filter.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.predicate.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5363,6 +6634,38 @@ impl<'a> Over<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.over
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.over.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.partition_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.by.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.partitions.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.order_by_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.window_frame.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5422,6 +6725,29 @@ impl<'a> WindowFrame<'a> {
             *self.end,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.frame_type
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.frame_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.between_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.start.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.and.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.end.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5451,6 +6777,20 @@ impl<'a> UnboundedFrame<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.unbounded, *self.bound_type)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.unbounded
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.unbounded.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.bound_type.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5482,6 +6822,20 @@ impl<'a> CurrentRowBound<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.current, *self.row)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.current
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.current.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.row.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5511,6 +6865,20 @@ impl<'a> BoundedFrame<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.bound, *self.bound_type)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.bound
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.bound.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.bound_type.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5548,6 +6916,23 @@ impl<'a> UnicodeString<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.string, *self.uescape_opt, *self.escape)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.string
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.string.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.uescape_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.escape.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5614,6 +6999,32 @@ impl<'a> ConfigureExpression<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.configure
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.configure.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comma.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5651,6 +7062,23 @@ impl<'a> SubqueryExpression<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query, *self.close_paren)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5680,6 +7108,20 @@ impl<'a> Grouping<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.grouping, *self.groups)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.grouping
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.grouping.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.groups.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5746,6 +7188,32 @@ impl<'a> Extract<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.extract
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.extract.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5792,6 +7260,26 @@ impl<'a> CurrentTime<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.current_time
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.current_time.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5837,6 +7325,26 @@ impl<'a> CurrentTimestamp<'a> {
             *self.precision,
             *self.close_paren,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.current_timestamp
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.current_timestamp.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -5903,6 +7411,32 @@ impl<'a> Normalize<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.normalize
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.normalize.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comma_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.normal_form.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5949,6 +7483,26 @@ impl<'a> Localtime<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.localtime
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.localtime.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -5994,6 +7548,26 @@ impl<'a> Localtimestamp<'a> {
             *self.precision,
             *self.close_paren,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.localtimestamp
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.localtimestamp.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6060,6 +7634,32 @@ impl<'a> Cast<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.cast
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.cast.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6100,6 +7700,26 @@ impl<'a> WhenClause<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.when, *self.condition, *self.then, *self.result)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.when
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.when.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.condition.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.then.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.result.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6166,6 +7786,32 @@ impl<'a> Case<'a> {
             *self.end,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.case
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.case.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.when_clauses.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.else_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.default.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.end.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6212,6 +7858,26 @@ impl<'a> Exists<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.exists
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.exists.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6242,6 +7908,20 @@ impl<'a> TypeConstructor<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.type_, *self.value)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.type_
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.type_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6271,6 +7951,20 @@ impl<'a> Array<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.array, *self.elements)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.array
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.array.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6337,6 +8031,32 @@ impl<'a> Interval<'a> {
             *self.to,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.interval
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.interval.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.sign_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.to_kw_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.to.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6366,6 +8086,20 @@ impl<'a> Row<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.row, *self.elements)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.row
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.row.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6431,6 +8165,32 @@ impl<'a> TryCast<'a> {
             *self.type_,
             *self.close_paren,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.try_cast
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.try_cast.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6509,6 +8269,38 @@ impl<'a> Substring<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.substring
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.substring.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from_value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.for_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.for_value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6574,6 +8366,32 @@ impl<'a> Position<'a> {
             *self.close_paren,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.position
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.position.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.in_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.target.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6604,6 +8422,20 @@ impl<'a> ArrayTypeSuffix<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.base_type, *self.array)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.base_type
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.base_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.array.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6633,6 +8465,20 @@ impl<'a> NamedType<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.name, *self.type_parameters)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.name
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_parameters.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6679,6 +8525,26 @@ impl<'a> ArrayType<'a> {
             *self.element_type,
             *self.close_angle,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.array
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.array.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_angle.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.element_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_angle.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6745,6 +8611,32 @@ impl<'a> MapType<'a> {
             *self.close_angle,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.map
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.map.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_angle.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.key_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comma.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value_type.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_angle.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6775,6 +8667,20 @@ impl<'a> RowType<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.row, *self.element_types)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.row
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.row.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.element_types.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6804,6 +8710,20 @@ impl<'a> RowTypeElement<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.identifier, *self.type_)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6846,6 +8766,26 @@ impl<'a> IntervalType<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.interval, *self.from, *self.to_kw, *self.to)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.interval
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.interval.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.to_kw.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.to.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -6882,6 +8822,23 @@ impl<'a> IfNotExists<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.if_, *self.not, *self.exists)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.if_
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.if_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.exists.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -6953,6 +8910,35 @@ impl<'a> CreateTable<'a> {
             *self.comment_opt,
             *self.with_properties_opt,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.create
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.create.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.if_not_exists_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_elements.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comment_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with_properties_opt.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -7055,6 +9041,50 @@ impl<'a> CreateTableAsSelect<'a> {
             *self.with_data_opt,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.create
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.create.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.if_not_exists_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.column_aliases_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comment_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with_properties_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with_data_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -7084,6 +9114,20 @@ impl<'a> WithProperties<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.with, *self.properties)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.with
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.properties.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -7122,6 +9166,23 @@ impl<'a> Property<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.identifier, *self.eq, *self.value)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.eq.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -7159,6 +9220,23 @@ impl<'a> WithData<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.with, *self.no_opt, *self.data)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.with
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.no_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.data.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -7188,6 +9266,20 @@ impl<'a> Comment<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.comment, *self.value)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.comment
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.comment.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -7248,6 +9340,29 @@ impl<'a> ColumnDefinition<'a> {
             *self.with_properties_opt,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_null_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comment_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with_properties_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -7277,6 +9392,20 @@ impl<'a> NotNull<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.not, *self.null)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.not
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.not.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.null.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -7323,6 +9452,26 @@ impl<'a> LikeClause<'a> {
             *self.option_type_opt,
             *self.properties,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.like
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.like.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.option_type_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.properties.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -7383,6 +9532,29 @@ impl<'a> InsertInto<'a> {
             *self.query,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.insert
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.insert.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.into.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.column_aliases_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -7442,6 +9614,29 @@ impl<'a> Delete<'a> {
             *self.predicate,
         )
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.delete
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.delete.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.predicate.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -7468,6 +9663,17 @@ impl<'a> GroupingSet<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>,) {
         (*self.elements,)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.elements
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -7506,6 +9712,23 @@ impl<'a> RelationOrQuery<'a> {
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.query_or_relation, *self.close_paren)
     }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query_or_relation.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -7538,6 +9761,20 @@ impl<'a> EmptyGroupingSet<'a> {
 
     pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
         (*self.open_paren, *self.close_paren)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }
 
@@ -7579,5 +9816,22 @@ impl<'a> ExpressionOrQuery<'a> {
             *self.expression_or_query,
             *self.close_paren,
         )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.open_paren
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.open_paren.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expression_or_query.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
     }
 }

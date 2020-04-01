@@ -436,7 +436,7 @@ fn configs() -> Vec<TreeConfig> {
 }
 
 const FILE_HEADER: &str = r#"use crate::lexing::token;
-use crate::utils::{syntax_error::SyntaxError, text_range::TextRange};
+use crate::utils::{position, syntax_error::SyntaxError, text_range::TextRange};
 
 /// A syntax tree for the Presto SQL language.
 ///
@@ -575,6 +575,18 @@ impl<'a> List<'a> {
         result.push(&*self.end_delimiter);
         result
     }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        self.start_delimiter.get_first_token().or_else(||{
+            for (element, separator) in &self.elements_and_separators {
+                let result = element.get_first_token().or_else(||separator.get_first_token());
+                if result.is_some() {
+                    return result
+                }
+            }
+            None
+        }).or_else(||self.end_delimiter.get_first_token())
+    }
 }
 
 "#;
@@ -607,6 +619,31 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    // Note: Has poor performance O(tree depth)
+    pub fn get_start(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.start,
+            ParseTree::Error(error) => error.error.get_range().start,
+            _ => match self.get_first_token() {
+                Some(token) => token.range.start,
+                // All children are empty or errors
+                None => self.get_first_child().get_start(),
+            }
+        }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_full_start(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.start,
+            ParseTree::Error(error) => error.error.get_range().start,
+            _ => match self.get_first_token() {
+                Some(token) => token.full_start(),
+                // All children are empty or errors
+                None => self.get_first_child().get_start(),
+            }
+        }
+    }
 "#;
 
 fn print_is_as_impl(ctor_name: &str, class_name: &str) {
@@ -667,7 +704,22 @@ fn get_config<'a>(config: &'a TreeConfig) -> (&'static str, String, &'a Vec<&'st
             ctor_name.push(ch);
         }
     }
-    (config.0, ctor_name, &config.1)
+    let field_names = &config.1;
+    debug_assert!(field_names.len() > 0);
+
+    (config.0, ctor_name, field_names)
+}
+
+fn print_switch_body(cs: &Vec<TreeConfig>, method_name: &str) {
+    for config in cs {
+        let (class_name, ctor_name, _) = get_config(config);
+        println!(
+            "            ParseTree::{0}({1}) => {1}.{2}(),",
+            class_name, ctor_name, method_name
+        );
+    }
+    print!("        }}\n");
+    print!("{}", END);
 }
 
 fn main() {
@@ -687,7 +739,7 @@ fn main() {
     print!("{}{}", STRUCT_HEADER, LIST_DEFINITION);
     print!("{}{}", STRUCT_HEADER, ERROR_DEFINITION);
 
-    // fn is_*()
+    // impl ParseTree
     print!("{}", CORE_IMPL);
     print_is_as_impl("list", "List");
     print_is_as_impl("empty", "Empty");
@@ -705,17 +757,24 @@ fn main() {
     print!("            ParseTree::List(list) => list.children(),\n");
     print!("            ParseTree::Error(error) => error.children(),\n");
     print!("            ParseTree::Empty(empty) => empty.children(),\n");
-    for config in &cs {
-        let (class_name, ctor_name, _) = get_config(config);
-        print!(
-            "            ParseTree::{0}({1}) => {1}.children(),",
-            class_name, ctor_name
-        );
-    }
-    print!("        }}\n");
-
-    print!("{}", END);
-
+    print_switch_body(&cs, "children");
+    // get_first_child
+    print!("    pub fn get_first_child(&self) -> &ParseTree<'a> {{\n");
+    print!("        match self {{\n");
+    print!("            ParseTree::Token(_) => self,\n");
+    print!("            ParseTree::List(list) => &list.start_delimiter,\n");
+    print!("            ParseTree::Error(_) => self,\n");
+    print!("            ParseTree::Empty(_) => self,\n");
+    print_switch_body(&cs, "get_first_child");
+    // get_first_token
+    print!("    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {{\n");
+    print!("        match self {{\n");
+    print!("            ParseTree::Token(token) => Some(&token.token),\n");
+    print!("            ParseTree::List(list) => list.get_first_token(),\n");
+    print!("            ParseTree::Error(_) => None,\n");
+    print!("            ParseTree::Empty(_) => None,\n");
+    print_switch_body(&cs, "get_first_token");
+    // end impl
     print!("{}", END);
 
     print!("{}", "// The language specific trees\n");
@@ -778,6 +837,24 @@ fn main() {
         }
         print!("    )\n");
         print!("{}", END);
+
+        // get_first_child
+        println!("    pub fn get_first_child(&self) -> &ParseTree<'a> {{");
+        println!("        &self.{}", fields[0]);
+        print!("{}", END);
+
+        // get_first_token
+        println!("    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {{");
+        for field_name in fields {
+            println!(
+                "        if let Some(token) = self.{}.get_first_token() {{",
+                field_name
+            );
+            println!("            return Some(token);");
+            println!("        }}");
+        }
+        println!("        None");
+        println!("    }}");
 
         // end impl
         print!("{}", END);

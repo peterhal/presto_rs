@@ -35,6 +35,12 @@ impl fmt::Display for SyntaxError {
     }
 }
 
+impl SyntaxError {
+    pub fn get_range(&self) -> TextRange {
+        self.messages[0].range
+    }
+}
+
 // lex errors 100-199
 pub const ERROR_EXPECTED_CHAR: i32 = 101;
 pub const ERROR_UNTERMINATED_DELIMITED_COMMENT: i32 = 102;

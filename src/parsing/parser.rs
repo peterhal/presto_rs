@@ -1479,14 +1479,26 @@ impl<'a> Parser<'a> {
     // | NOT? IN '(' query ')'                                               #inSubquery
     fn parse_in_suffix(&mut self, value: ParseTree<'a>, not_opt: ParseTree<'a>) -> ParseTree<'a> {
         let in_ = self.eat(TK::IN);
-        // TODO: need better disambiguation between paren_expression and subquery
-        if self.peek_kind(TK::OpenParen) && self.peek_query_primary_offset(1) {
-            let (open_paren, query, close_paren) = self.parse_parenthesized_query();
-            parse_tree::in_subquery(value, not_opt, in_, open_paren, query, close_paren)
-        } else {
-            let expressions =
-                self.parse_parenthesized_comma_separated_list(|parser| parser.parse_expression());
+        let expression_or_query = self.parse_row_constructor_or_subquery();
+        if expression_or_query.is_parenthesized_expression() {
+            let (open_paren, expression, close_paren) =
+                expression_or_query.unbox_parenthesized_expression();
+            let expressions = parse_tree::list(
+                open_paren,
+                vec![(
+                    expression,
+                    parse_tree::empty(TextRange::empty(close_paren.get_full_start())),
+                )],
+                close_paren,
+            );
             parse_tree::in_list(value, not_opt, in_, expressions)
+        } else if expression_or_query.is_row_constructor() {
+            let (expressions,) = expression_or_query.unbox_row_constructor();
+            parse_tree::in_list(value, not_opt, in_, expressions)
+        } else {
+            debug_assert!(expression_or_query.is_subquery_expression(),);
+            let (open_paren, query, close_paren) = expression_or_query.unbox_subquery_expression();
+            parse_tree::in_subquery(value, not_opt, in_, open_paren, query, close_paren)
         }
     }
 
