@@ -613,10 +613,7 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_query_no_with_tail(&mut self) -> bool {
-        self.peek_kind(TK::ORDER)
-            || (self.peek_predefined_name(PN::LIMIT)
-                && (self.peek_predefined_name_offset(PN::ALL, 1)
-                    || self.peek_kind_offset(TK::Integer, 1)))
+        self.peek_kind(TK::ORDER) || self.peek_limit_offset(0)
     }
 
     fn parse_query_no_with_tail(&mut self, query_term: ParseTree<'a>) -> ParseTree<'a> {
@@ -683,6 +680,12 @@ impl<'a> Parser<'a> {
             };
             parse_tree::limit(limit, value)
         }
+    }
+
+    fn peek_limit_offset(&mut self, offset: usize) -> bool {
+        self.peek_predefined_name_offset(PN::LIMIT, offset)
+            && (self.peek_predefined_name_offset(PN::ALL, offset + 1)
+                || self.peek_kind_offset(TK::Integer, offset + 1))
     }
 
     // queryTerm
@@ -1052,6 +1055,8 @@ impl<'a> Parser<'a> {
         // This is due to the ANTLR grammar being recursive
         // through the relation production.
         !self.peek_tablesample_suffix_offset(offset)
+        // need to avoid consuming the LIMIT(non-keyword) as an alias.
+        && !self.peek_limit_offset(offset)
     }
 
     fn parse_aliased_relation_tail(&mut self, relation_primary: ParseTree<'a>) -> ParseTree<'a> {

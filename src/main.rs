@@ -44,30 +44,20 @@ fn process_query(query: &str) {
     }
 }
 
-fn read_queries_from_csv(path: &str) -> Result<Vec<String>, Box<dyn Error>> {
-    let mut result = Vec::new();
+fn process_csv(path: &str) -> Result<(), Box<dyn Error>> {
+    println!("{}", path);
+    let mut count = 0;
     let mut rdr = Reader::from_path(path)?;
     for record_result in rdr.records() {
         let record = record_result?;
         if let Some(field) = record.get(1) {
-            result.push(field.to_string());
-        }
-    }
-    Ok(result)
-}
+            process_query(&field.to_string());
+            if count % 80 == 0 {
+                println!("{}", count);
+            }
+            print!(".");
 
-fn process_csv(path: &str) -> Result<(), Box<dyn Error>> {
-    println!("{}", path);
-    let queries = read_queries_from_csv(path)?;
-    let mut count = 0;
-    for query in &queries {
-        // println!("{}", query);
-        process_query(&query);
-        print!(".");
-
-        count += 1;
-        if count % 80 == 0 {
-            println!("{}", count);
+            count += 1;
         }
     }
     Ok(())
