@@ -2,8 +2,6 @@
 
 use crate::lexing::Lexer;
 use crate::parsing::parse_statement;
-use crate::parsing::ParseTree;
-use crate::utils::syntax_error::SyntaxError;
 extern crate csv;
 use csv::Reader;
 use std::env;
@@ -32,7 +30,7 @@ fn lex_and_dump(contents: &str) -> bool {
 }
 
 fn parse(contents: &str) {
-    let (tree, errors) = parse_statement(contents);
+    let (_tree, errors) = parse_statement(contents);
     if errors.is_empty() {
         // println!("{:#?}", tree);
     } else {
@@ -97,7 +95,7 @@ fn main() {
             println!("Missing file name");
             return;
         }
-        process_csv(&args[2]);
+        let _result = process_csv(&args[2]);
     } else {
         read_and_parse_files(&args[1..]);
     }

@@ -235,7 +235,7 @@ impl<'a> Parser<'a> {
         println!("{}", self.position.lexer.input);
         println!("{:#?}", result);
         panic!("WTF {}", format!("{:#?}", result));
-        result
+        // TODO: result
     }
 
     /// Create an Error tree at the current location with a given message.
