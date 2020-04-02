@@ -99,7 +99,7 @@ impl<'a> LexerPosition<'a> {
 
     /// Are we at the end of the source.
     pub fn at_end(&self) -> bool {
-        self.peek_char(chars::NULL)
+        self.peek_char_opt().is_none()
     }
 
     fn advance_index_of_char(&mut self, ch: Option<char>) {
