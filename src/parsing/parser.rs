@@ -1996,47 +1996,58 @@ impl<'a> Parser<'a> {
     //   expression_or_query
     fn parse_expression_or_query(&mut self) -> ParseTree<'a> {
         if self.peek_kind(TK::OpenParen) {
-            let (open_paren, expression_or_query, close_paren) =
-                self.parse_parenthesized(|parser| parser.parse_expression_or_query());
-            let must_be_subquery_expression =
-                expression_or_query.is_query() && !expression_or_query.as_query().with.is_empty();
-            if must_be_subquery_expression {
-                parse_tree::subquery_expression(open_paren, expression_or_query, close_paren)
-            } else if {
-                let can_be_query_primary = !must_be_subquery_expression
-                    && (expression_or_query.is_query_no_with()
-                        || expression_or_query.is_query()
-                        || expression_or_query.is_expression_or_query());
-                can_be_query_primary
-            } {
-                let must_be_query_tail = self.peek_query_primary_follow();
-                if must_be_query_tail {
-                    let subquery =
-                        parse_tree::subquery(open_paren, expression_or_query, close_paren);
-                    // this yields a query_no_with
-                    self.parse_query_primary_tail(subquery)
-                } else if self.peek_kind(TK::CloseParen) {
-                    // we have a query which can be consumed as either
-                    // a subquery or a subquery_expression...
-                    // make the decision up the tree.
-                    parse_tree::expression_or_query(open_paren, expression_or_query, close_paren)
+            let open_paren = self.eat(TK::OpenParen);
+            let expression_or_query = self.parse_expression_or_query();
+            if self.peek_kind(TK::Comma) {
+                let row_constructor =
+                    self.parse_row_constructor_tail(open_paren, expression_or_query);
+                self.parse_paren_expression_tail(row_constructor)
+            } else {
+                let close_paren = self.eat(TK::CloseParen);
+                let must_be_subquery_expression = expression_or_query.is_query()
+                    && !expression_or_query.as_query().with.is_empty();
+                if must_be_subquery_expression {
+                    parse_tree::subquery_expression(open_paren, expression_or_query, close_paren)
+                } else if {
+                    let can_be_query_primary = !must_be_subquery_expression
+                        && (expression_or_query.is_query_no_with()
+                            || expression_or_query.is_query()
+                            || expression_or_query.is_expression_or_query());
+                    can_be_query_primary
+                } {
+                    let must_be_query_tail = self.peek_query_primary_follow();
+                    if must_be_query_tail {
+                        let subquery =
+                            parse_tree::subquery(open_paren, expression_or_query, close_paren);
+                        // this yields a query_no_with
+                        self.parse_query_primary_tail(subquery)
+                    } else if self.peek_kind(TK::CloseParen) {
+                        // we have a query which can be consumed as either
+                        // a subquery or a subquery_expression...
+                        // make the decision up the tree.
+                        parse_tree::expression_or_query(
+                            open_paren,
+                            expression_or_query,
+                            close_paren,
+                        )
+                    } else {
+                        // we have a parenthesized query, with what looks like an expression tail
+                        // afterwards
+                        let subquery_expression = parse_tree::subquery_expression(
+                            open_paren,
+                            expression_or_query,
+                            close_paren,
+                        );
+                        self.parse_paren_expression_tail(subquery_expression)
+                    }
                 } else {
-                    // we have a parenthesized query, with what looks like an expression tail
-                    // afterwards
-                    let subquery_expression = parse_tree::subquery_expression(
+                    // we have an expression
+                    self.parse_paren_expression_tail(parse_tree::parenthesized_expression(
                         open_paren,
                         expression_or_query,
                         close_paren,
-                    );
-                    self.parse_paren_expression_tail(subquery_expression)
+                    ))
                 }
-            } else {
-                // we have an expression
-                self.parse_paren_expression_tail(parse_tree::parenthesized_expression(
-                    open_paren,
-                    expression_or_query,
-                    close_paren,
-                ))
             }
         } else if self.peek_query_offset(0) {
             // yields a query
@@ -2053,17 +2064,7 @@ impl<'a> Parser<'a> {
         let open_paren = self.eat(TK::OpenParen);
         let expression_or_query = self.parse_expression_or_query();
         if self.peek_kind(TK::Comma) {
-            // parse expression_list tail and return a row constructor
-            let comma = self.eat(TK::Comma);
-            let mut elements_tail =
-                self.parse_separated_list_elements(TK::Comma, |parser| parser.parse_expression());
-            let close_paren = self.eat(TK::CloseParen);
-            let mut elements = Vec::with_capacity(elements_tail.len() + 1);
-            // validate that expression_or_query is actually an expression.
-            let expression = self.expression_or_query_to_expression(expression_or_query);
-            elements.push((expression, comma));
-            elements.append(&mut elements_tail);
-            parse_tree::row_constructor(parse_tree::list(open_paren, elements, close_paren))
+            self.parse_row_constructor_tail(open_paren, expression_or_query)
         } else {
             // either expression or query is permitted
             let close_paren = self.eat(TK::CloseParen);
@@ -2073,6 +2074,24 @@ impl<'a> Parser<'a> {
                 close_paren,
             )
         }
+    }
+
+    /// parse expression_list tail and return a row constructor
+    fn parse_row_constructor_tail(
+        &mut self,
+        open_paren: ParseTree<'a>,
+        expression_or_query: ParseTree<'a>,
+    ) -> ParseTree<'a> {
+        let comma = self.eat(TK::Comma);
+        let mut elements_tail =
+            self.parse_separated_list_elements(TK::Comma, |parser| parser.parse_expression());
+        let close_paren = self.eat(TK::CloseParen);
+        let mut elements = Vec::with_capacity(elements_tail.len() + 1);
+        // validate that expression_or_query is actually an expression.
+        let expression = self.expression_or_query_to_expression(expression_or_query);
+        elements.push((expression, comma));
+        elements.append(&mut elements_tail);
+        parse_tree::row_constructor(parse_tree::list(open_paren, elements, close_paren))
     }
 
     // | POSITION '(' valueExpression IN valueExpression ')'                                 #position
