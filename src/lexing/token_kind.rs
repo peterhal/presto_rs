@@ -84,7 +84,6 @@ pub enum TokenKind {
     FOR,
     FROM,
     FULL,
-    FUNCTION,
     GROUP,
     GROUPING,
     HAVING,
@@ -175,7 +174,6 @@ impl TokenKind {
             | TokenKind::FOR
             | TokenKind::FROM
             | TokenKind::FULL
-            | TokenKind::FUNCTION
             | TokenKind::GROUP
             | TokenKind::GROUPING
             | TokenKind::HAVING
