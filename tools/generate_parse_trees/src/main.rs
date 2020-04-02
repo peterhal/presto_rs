@@ -587,6 +587,18 @@ impl<'a> List<'a> {
             None
         }).or_else(||self.end_delimiter.get_first_token())
     }
+
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        self.end_delimiter.get_last_token().or_else(||{
+            for (element, separator) in self.elements_and_separators.iter().rev() {
+                let result = element.get_last_token().or_else(||separator.get_last_token());
+                if result.is_some() {
+                    return result
+                }
+            }
+            None
+        }).or_else(||self.start_delimiter.get_last_token())
+    }
 }
 
 "#;
@@ -643,6 +655,37 @@ impl<'a> ParseTree<'a> {
                 None => self.get_first_child().get_start(),
             }
         }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_end(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.end,
+            ParseTree::Error(error) => error.error.get_range().end,
+            _ => match self.get_last_token() {
+                Some(token) => token.range.end,
+                // All children are empty or errors
+                None => self.get_last_child().get_end(),
+            }
+        }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_full_end(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.end,
+            ParseTree::Error(error) => error.error.get_range().end,
+            _ => match self.get_last_token() {
+                Some(token) => token.full_end(),
+                // All children are empty or errors
+                None => self.get_last_child().get_full_end(),
+            }
+        }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_range(&self) -> TextRange {
+        TextRange::new(self.get_start(), self.get_end())
     }
 "#;
 
@@ -722,6 +765,18 @@ fn print_switch_body(cs: &Vec<TreeConfig>, method_name: &str) {
     print!("{}", END);
 }
 
+fn print_switch_body_rev(cs: &Vec<TreeConfig>, method_name: &str) {
+    for config in cs.iter().rev() {
+        let (class_name, ctor_name, _) = get_config(config);
+        println!(
+            "            ParseTree::{0}({1}) => {1}.{2}(),",
+            class_name, ctor_name, method_name
+        );
+    }
+    print!("        }}\n");
+    print!("{}", END);
+}
+
 fn main() {
     let cs = configs();
 
@@ -766,6 +821,14 @@ fn main() {
     print!("            ParseTree::Error(_) => self,\n");
     print!("            ParseTree::Empty(_) => self,\n");
     print_switch_body(&cs, "get_first_child");
+    // get_last_child
+    print!("    pub fn get_last_child(&self) -> &ParseTree<'a> {{\n");
+    print!("        match self {{\n");
+    print!("            ParseTree::Token(_) => self,\n");
+    print!("            ParseTree::List(list) => &list.end_delimiter,\n");
+    print!("            ParseTree::Error(_) => self,\n");
+    print!("            ParseTree::Empty(_) => self,\n");
+    print_switch_body(&cs, "get_last_child");
     // get_first_token
     print!("    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {{\n");
     print!("        match self {{\n");
@@ -774,6 +837,14 @@ fn main() {
     print!("            ParseTree::Error(_) => None,\n");
     print!("            ParseTree::Empty(_) => None,\n");
     print_switch_body(&cs, "get_first_token");
+    // get_last_token
+    print!("    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {{\n");
+    print!("        match self {{\n");
+    print!("            ParseTree::Token(token) => Some(&token.token),\n");
+    print!("            ParseTree::List(list) => list.get_last_token(),\n");
+    print!("            ParseTree::Error(_) => None,\n");
+    print!("            ParseTree::Empty(_) => None,\n");
+    print_switch_body_rev(&cs, "get_last_token");
     // end impl
     print!("{}", END);
 
@@ -843,11 +914,29 @@ fn main() {
         println!("        &self.{}", fields[0]);
         print!("{}", END);
 
+        // get_last_child
+        println!("    pub fn get_last_child(&self) -> &ParseTree<'a> {{");
+        println!("        &self.{}", fields[fields.len() - 1]);
+        print!("{}", END);
+
         // get_first_token
         println!("    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {{");
         for field_name in fields {
             println!(
                 "        if let Some(token) = self.{}.get_first_token() {{",
+                field_name
+            );
+            println!("            return Some(token);");
+            println!("        }}");
+        }
+        println!("        None");
+        println!("    }}");
+
+        // get_last_token
+        println!("    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {{");
+        for field_name in fields.iter().rev() {
+            println!(
+                "        if let Some(token) = self.{}.get_last_token() {{",
                 field_name
             );
             println!("            return Some(token);");

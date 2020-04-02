@@ -13,6 +13,12 @@ impl fmt::Display for Message {
     }
 }
 
+impl Message {
+    pub fn new(range: TextRange, message: String) -> Message {
+        Message { range, message }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SyntaxError {
     pub error_code: i32,
@@ -36,6 +42,16 @@ impl fmt::Display for SyntaxError {
 }
 
 impl SyntaxError {
+    pub fn new(error_code: i32, messages: Vec<Message>) -> SyntaxError {
+        SyntaxError {
+            error_code,
+            messages,
+        }
+    }
+
+    pub fn from_message(error_code: i32, message: Message) -> SyntaxError {
+        SyntaxError::new(error_code, vec![message])
+    }
     pub fn get_range(&self) -> TextRange {
         self.messages[0].range
     }

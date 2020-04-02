@@ -257,6 +257,23 @@ impl<'a> List<'a> {
             })
             .or_else(|| self.end_delimiter.get_first_token())
     }
+
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        self.end_delimiter
+            .get_last_token()
+            .or_else(|| {
+                for (element, separator) in self.elements_and_separators.iter().rev() {
+                    let result = element
+                        .get_last_token()
+                        .or_else(|| separator.get_last_token());
+                    if result.is_some() {
+                        return result;
+                    }
+                }
+                None
+            })
+            .or_else(|| self.start_delimiter.get_last_token())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -314,6 +331,37 @@ impl<'a> ParseTree<'a> {
                 None => self.get_first_child().get_start(),
             },
         }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_end(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.end,
+            ParseTree::Error(error) => error.error.get_range().end,
+            _ => match self.get_last_token() {
+                Some(token) => token.range.end,
+                // All children are empty or errors
+                None => self.get_last_child().get_end(),
+            },
+        }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_full_end(&self) -> position::Position {
+        match self {
+            ParseTree::Empty(empty) => empty.range.end,
+            ParseTree::Error(error) => error.error.get_range().end,
+            _ => match self.get_last_token() {
+                Some(token) => token.full_end(),
+                // All children are empty or errors
+                None => self.get_last_child().get_full_end(),
+            },
+        }
+    }
+
+    // Note: Has poor performance O(tree depth)
+    pub fn get_range(&self) -> TextRange {
+        TextRange::new(self.get_start(), self.get_end())
     }
     pub fn is_list(&self) -> bool {
         if let ParseTree::List(_) = self {
@@ -3240,6 +3288,138 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        match self {
+            ParseTree::Token(_) => self,
+            ParseTree::List(list) => &list.end_delimiter,
+            ParseTree::Error(_) => self,
+            ParseTree::Empty(_) => self,
+            ParseTree::Query(query) => query.get_last_child(),
+            ParseTree::With(with) => with.get_last_child(),
+            ParseTree::NamedQuery(named_query) => named_query.get_last_child(),
+            ParseTree::QueryNoWith(query_no_with) => query_no_with.get_last_child(),
+            ParseTree::OrderBy(order_by) => order_by.get_last_child(),
+            ParseTree::Limit(limit) => limit.get_last_child(),
+            ParseTree::QuerySetOperation(query_set_operation) => {
+                query_set_operation.get_last_child()
+            }
+            ParseTree::SortItem(sort_item) => sort_item.get_last_child(),
+            ParseTree::Subquery(subquery) => subquery.get_last_child(),
+            ParseTree::InlineTable(inline_table) => inline_table.get_last_child(),
+            ParseTree::Table(table) => table.get_last_child(),
+            ParseTree::QuerySpecification(query_specification) => {
+                query_specification.get_last_child()
+            }
+            ParseTree::QualifiedName(qualified_name) => qualified_name.get_last_child(),
+            ParseTree::SelectAll(select_all) => select_all.get_last_child(),
+            ParseTree::QualifiedSelectAll(qualified_select_all) => {
+                qualified_select_all.get_last_child()
+            }
+            ParseTree::SelectItem(select_item) => select_item.get_last_child(),
+            ParseTree::SubqueryRelation(subquery_relation) => subquery_relation.get_last_child(),
+            ParseTree::ParenthesizedRelation(parenthesized_relation) => {
+                parenthesized_relation.get_last_child()
+            }
+            ParseTree::TableName(table_name) => table_name.get_last_child(),
+            ParseTree::Lateral(lateral) => lateral.get_last_child(),
+            ParseTree::Unnest(unnest) => unnest.get_last_child(),
+            ParseTree::SampledRelation(sampled_relation) => sampled_relation.get_last_child(),
+            ParseTree::AliasedRelation(aliased_relation) => aliased_relation.get_last_child(),
+            ParseTree::CrossJoin(cross_join) => cross_join.get_last_child(),
+            ParseTree::Join(join) => join.get_last_child(),
+            ParseTree::NaturalJoin(natural_join) => natural_join.get_last_child(),
+            ParseTree::OuterJoinKind(outer_join_kind) => outer_join_kind.get_last_child(),
+            ParseTree::OnJoinCriteria(on_join_criteria) => on_join_criteria.get_last_child(),
+            ParseTree::UsingJoinCriteria(using_join_criteria) => {
+                using_join_criteria.get_last_child()
+            }
+            ParseTree::GroupBy(group_by) => group_by.get_last_child(),
+            ParseTree::Rollup(rollup) => rollup.get_last_child(),
+            ParseTree::Cube(cube) => cube.get_last_child(),
+            ParseTree::GroupingSets(grouping_sets) => grouping_sets.get_last_child(),
+            ParseTree::BinaryExpression(binary_expression) => binary_expression.get_last_child(),
+            ParseTree::UnaryExpression(unary_expression) => unary_expression.get_last_child(),
+            ParseTree::QuantifiedComparison(quantified_comparison) => {
+                quantified_comparison.get_last_child()
+            }
+            ParseTree::NullPredicate(null_predicate) => null_predicate.get_last_child(),
+            ParseTree::DistinctFrom(distinct_from) => distinct_from.get_last_child(),
+            ParseTree::Between(between) => between.get_last_child(),
+            ParseTree::Like(like) => like.get_last_child(),
+            ParseTree::InSubquery(in_subquery) => in_subquery.get_last_child(),
+            ParseTree::InList(in_list) => in_list.get_last_child(),
+            ParseTree::AtTimeZone(at_time_zone) => at_time_zone.get_last_child(),
+            ParseTree::Dereference(dereference) => dereference.get_last_child(),
+            ParseTree::Subscript(subscript) => subscript.get_last_child(),
+            ParseTree::Lambda(lambda) => lambda.get_last_child(),
+            ParseTree::Literal(literal) => literal.get_last_child(),
+            ParseTree::RowConstructor(row_constructor) => row_constructor.get_last_child(),
+            ParseTree::ParenthesizedExpression(parenthesized_expression) => {
+                parenthesized_expression.get_last_child()
+            }
+            ParseTree::Identifier(identifier) => identifier.get_last_child(),
+            ParseTree::FunctionCall(function_call) => function_call.get_last_child(),
+            ParseTree::Filter(filter) => filter.get_last_child(),
+            ParseTree::Over(over) => over.get_last_child(),
+            ParseTree::WindowFrame(window_frame) => window_frame.get_last_child(),
+            ParseTree::UnboundedFrame(unbounded_frame) => unbounded_frame.get_last_child(),
+            ParseTree::CurrentRowBound(current_row_bound) => current_row_bound.get_last_child(),
+            ParseTree::BoundedFrame(bounded_frame) => bounded_frame.get_last_child(),
+            ParseTree::UnicodeString(unicode_string) => unicode_string.get_last_child(),
+            ParseTree::ConfigureExpression(configure_expression) => {
+                configure_expression.get_last_child()
+            }
+            ParseTree::SubqueryExpression(subquery_expression) => {
+                subquery_expression.get_last_child()
+            }
+            ParseTree::Grouping(grouping) => grouping.get_last_child(),
+            ParseTree::Extract(extract) => extract.get_last_child(),
+            ParseTree::CurrentTime(current_time) => current_time.get_last_child(),
+            ParseTree::CurrentTimestamp(current_timestamp) => current_timestamp.get_last_child(),
+            ParseTree::Normalize(normalize) => normalize.get_last_child(),
+            ParseTree::Localtime(localtime) => localtime.get_last_child(),
+            ParseTree::Localtimestamp(localtimestamp) => localtimestamp.get_last_child(),
+            ParseTree::Cast(cast) => cast.get_last_child(),
+            ParseTree::WhenClause(when_clause) => when_clause.get_last_child(),
+            ParseTree::Case(case) => case.get_last_child(),
+            ParseTree::Exists(exists) => exists.get_last_child(),
+            ParseTree::TypeConstructor(type_constructor) => type_constructor.get_last_child(),
+            ParseTree::Array(array) => array.get_last_child(),
+            ParseTree::Interval(interval) => interval.get_last_child(),
+            ParseTree::Row(row) => row.get_last_child(),
+            ParseTree::TryCast(try_cast) => try_cast.get_last_child(),
+            ParseTree::Substring(substring) => substring.get_last_child(),
+            ParseTree::Position(position) => position.get_last_child(),
+            ParseTree::ArrayTypeSuffix(array_type_suffix) => array_type_suffix.get_last_child(),
+            ParseTree::NamedType(named_type) => named_type.get_last_child(),
+            ParseTree::ArrayType(array_type) => array_type.get_last_child(),
+            ParseTree::MapType(map_type) => map_type.get_last_child(),
+            ParseTree::RowType(row_type) => row_type.get_last_child(),
+            ParseTree::RowTypeElement(row_type_element) => row_type_element.get_last_child(),
+            ParseTree::IntervalType(interval_type) => interval_type.get_last_child(),
+            ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_last_child(),
+            ParseTree::CreateTable(create_table) => create_table.get_last_child(),
+            ParseTree::CreateTableAsSelect(create_table_as_select) => {
+                create_table_as_select.get_last_child()
+            }
+            ParseTree::WithProperties(with_properties) => with_properties.get_last_child(),
+            ParseTree::Property(property) => property.get_last_child(),
+            ParseTree::WithData(with_data) => with_data.get_last_child(),
+            ParseTree::Comment(comment) => comment.get_last_child(),
+            ParseTree::ColumnDefinition(column_definition) => column_definition.get_last_child(),
+            ParseTree::NotNull(not_null) => not_null.get_last_child(),
+            ParseTree::LikeClause(like_clause) => like_clause.get_last_child(),
+            ParseTree::InsertInto(insert_into) => insert_into.get_last_child(),
+            ParseTree::Delete(delete) => delete.get_last_child(),
+            ParseTree::GroupingSet(grouping_set) => grouping_set.get_last_child(),
+            ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.get_last_child(),
+            ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.get_last_child(),
+            ParseTree::ExpressionOrQuery(expression_or_query) => {
+                expression_or_query.get_last_child()
+            }
+        }
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         match self {
             ParseTree::Token(token) => Some(&token.token),
@@ -3371,6 +3551,138 @@ impl<'a> ParseTree<'a> {
             }
         }
     }
+
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        match self {
+            ParseTree::Token(token) => Some(&token.token),
+            ParseTree::List(list) => list.get_last_token(),
+            ParseTree::Error(_) => None,
+            ParseTree::Empty(_) => None,
+            ParseTree::ExpressionOrQuery(expression_or_query) => {
+                expression_or_query.get_last_token()
+            }
+            ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.get_last_token(),
+            ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.get_last_token(),
+            ParseTree::GroupingSet(grouping_set) => grouping_set.get_last_token(),
+            ParseTree::Delete(delete) => delete.get_last_token(),
+            ParseTree::InsertInto(insert_into) => insert_into.get_last_token(),
+            ParseTree::LikeClause(like_clause) => like_clause.get_last_token(),
+            ParseTree::NotNull(not_null) => not_null.get_last_token(),
+            ParseTree::ColumnDefinition(column_definition) => column_definition.get_last_token(),
+            ParseTree::Comment(comment) => comment.get_last_token(),
+            ParseTree::WithData(with_data) => with_data.get_last_token(),
+            ParseTree::Property(property) => property.get_last_token(),
+            ParseTree::WithProperties(with_properties) => with_properties.get_last_token(),
+            ParseTree::CreateTableAsSelect(create_table_as_select) => {
+                create_table_as_select.get_last_token()
+            }
+            ParseTree::CreateTable(create_table) => create_table.get_last_token(),
+            ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_last_token(),
+            ParseTree::IntervalType(interval_type) => interval_type.get_last_token(),
+            ParseTree::RowTypeElement(row_type_element) => row_type_element.get_last_token(),
+            ParseTree::RowType(row_type) => row_type.get_last_token(),
+            ParseTree::MapType(map_type) => map_type.get_last_token(),
+            ParseTree::ArrayType(array_type) => array_type.get_last_token(),
+            ParseTree::NamedType(named_type) => named_type.get_last_token(),
+            ParseTree::ArrayTypeSuffix(array_type_suffix) => array_type_suffix.get_last_token(),
+            ParseTree::Position(position) => position.get_last_token(),
+            ParseTree::Substring(substring) => substring.get_last_token(),
+            ParseTree::TryCast(try_cast) => try_cast.get_last_token(),
+            ParseTree::Row(row) => row.get_last_token(),
+            ParseTree::Interval(interval) => interval.get_last_token(),
+            ParseTree::Array(array) => array.get_last_token(),
+            ParseTree::TypeConstructor(type_constructor) => type_constructor.get_last_token(),
+            ParseTree::Exists(exists) => exists.get_last_token(),
+            ParseTree::Case(case) => case.get_last_token(),
+            ParseTree::WhenClause(when_clause) => when_clause.get_last_token(),
+            ParseTree::Cast(cast) => cast.get_last_token(),
+            ParseTree::Localtimestamp(localtimestamp) => localtimestamp.get_last_token(),
+            ParseTree::Localtime(localtime) => localtime.get_last_token(),
+            ParseTree::Normalize(normalize) => normalize.get_last_token(),
+            ParseTree::CurrentTimestamp(current_timestamp) => current_timestamp.get_last_token(),
+            ParseTree::CurrentTime(current_time) => current_time.get_last_token(),
+            ParseTree::Extract(extract) => extract.get_last_token(),
+            ParseTree::Grouping(grouping) => grouping.get_last_token(),
+            ParseTree::SubqueryExpression(subquery_expression) => {
+                subquery_expression.get_last_token()
+            }
+            ParseTree::ConfigureExpression(configure_expression) => {
+                configure_expression.get_last_token()
+            }
+            ParseTree::UnicodeString(unicode_string) => unicode_string.get_last_token(),
+            ParseTree::BoundedFrame(bounded_frame) => bounded_frame.get_last_token(),
+            ParseTree::CurrentRowBound(current_row_bound) => current_row_bound.get_last_token(),
+            ParseTree::UnboundedFrame(unbounded_frame) => unbounded_frame.get_last_token(),
+            ParseTree::WindowFrame(window_frame) => window_frame.get_last_token(),
+            ParseTree::Over(over) => over.get_last_token(),
+            ParseTree::Filter(filter) => filter.get_last_token(),
+            ParseTree::FunctionCall(function_call) => function_call.get_last_token(),
+            ParseTree::Identifier(identifier) => identifier.get_last_token(),
+            ParseTree::ParenthesizedExpression(parenthesized_expression) => {
+                parenthesized_expression.get_last_token()
+            }
+            ParseTree::RowConstructor(row_constructor) => row_constructor.get_last_token(),
+            ParseTree::Literal(literal) => literal.get_last_token(),
+            ParseTree::Lambda(lambda) => lambda.get_last_token(),
+            ParseTree::Subscript(subscript) => subscript.get_last_token(),
+            ParseTree::Dereference(dereference) => dereference.get_last_token(),
+            ParseTree::AtTimeZone(at_time_zone) => at_time_zone.get_last_token(),
+            ParseTree::InList(in_list) => in_list.get_last_token(),
+            ParseTree::InSubquery(in_subquery) => in_subquery.get_last_token(),
+            ParseTree::Like(like) => like.get_last_token(),
+            ParseTree::Between(between) => between.get_last_token(),
+            ParseTree::DistinctFrom(distinct_from) => distinct_from.get_last_token(),
+            ParseTree::NullPredicate(null_predicate) => null_predicate.get_last_token(),
+            ParseTree::QuantifiedComparison(quantified_comparison) => {
+                quantified_comparison.get_last_token()
+            }
+            ParseTree::UnaryExpression(unary_expression) => unary_expression.get_last_token(),
+            ParseTree::BinaryExpression(binary_expression) => binary_expression.get_last_token(),
+            ParseTree::GroupingSets(grouping_sets) => grouping_sets.get_last_token(),
+            ParseTree::Cube(cube) => cube.get_last_token(),
+            ParseTree::Rollup(rollup) => rollup.get_last_token(),
+            ParseTree::GroupBy(group_by) => group_by.get_last_token(),
+            ParseTree::UsingJoinCriteria(using_join_criteria) => {
+                using_join_criteria.get_last_token()
+            }
+            ParseTree::OnJoinCriteria(on_join_criteria) => on_join_criteria.get_last_token(),
+            ParseTree::OuterJoinKind(outer_join_kind) => outer_join_kind.get_last_token(),
+            ParseTree::NaturalJoin(natural_join) => natural_join.get_last_token(),
+            ParseTree::Join(join) => join.get_last_token(),
+            ParseTree::CrossJoin(cross_join) => cross_join.get_last_token(),
+            ParseTree::AliasedRelation(aliased_relation) => aliased_relation.get_last_token(),
+            ParseTree::SampledRelation(sampled_relation) => sampled_relation.get_last_token(),
+            ParseTree::Unnest(unnest) => unnest.get_last_token(),
+            ParseTree::Lateral(lateral) => lateral.get_last_token(),
+            ParseTree::TableName(table_name) => table_name.get_last_token(),
+            ParseTree::ParenthesizedRelation(parenthesized_relation) => {
+                parenthesized_relation.get_last_token()
+            }
+            ParseTree::SubqueryRelation(subquery_relation) => subquery_relation.get_last_token(),
+            ParseTree::SelectItem(select_item) => select_item.get_last_token(),
+            ParseTree::QualifiedSelectAll(qualified_select_all) => {
+                qualified_select_all.get_last_token()
+            }
+            ParseTree::SelectAll(select_all) => select_all.get_last_token(),
+            ParseTree::QualifiedName(qualified_name) => qualified_name.get_last_token(),
+            ParseTree::QuerySpecification(query_specification) => {
+                query_specification.get_last_token()
+            }
+            ParseTree::Table(table) => table.get_last_token(),
+            ParseTree::InlineTable(inline_table) => inline_table.get_last_token(),
+            ParseTree::Subquery(subquery) => subquery.get_last_token(),
+            ParseTree::SortItem(sort_item) => sort_item.get_last_token(),
+            ParseTree::QuerySetOperation(query_set_operation) => {
+                query_set_operation.get_last_token()
+            }
+            ParseTree::Limit(limit) => limit.get_last_token(),
+            ParseTree::OrderBy(order_by) => order_by.get_last_token(),
+            ParseTree::QueryNoWith(query_no_with) => query_no_with.get_last_token(),
+            ParseTree::NamedQuery(named_query) => named_query.get_last_token(),
+            ParseTree::With(with) => with.get_last_token(),
+            ParseTree::Query(query) => query.get_last_token(),
+        }
+    }
 }
 
 // The language specific trees
@@ -3407,11 +3719,24 @@ impl<'a> Query<'a> {
         &self.with
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.query_no_with
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.with.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.query_no_with.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.query_no_with.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with.get_last_token() {
             return Some(token);
         }
         None
@@ -3458,6 +3783,10 @@ impl<'a> With<'a> {
         &self.with
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.named_queries
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.with.get_first_token() {
             return Some(token);
@@ -3466,6 +3795,18 @@ impl<'a> With<'a> {
             return Some(token);
         }
         if let Some(token) = self.named_queries.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.named_queries.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.recursive.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with.get_last_token() {
             return Some(token);
         }
         None
@@ -3540,6 +3881,10 @@ impl<'a> NamedQuery<'a> {
         &self.name
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.name.get_first_token() {
             return Some(token);
@@ -3557,6 +3902,27 @@ impl<'a> NamedQuery<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.column_aliases_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.name.get_last_token() {
             return Some(token);
         }
         None
@@ -3603,6 +3969,10 @@ impl<'a> QueryNoWith<'a> {
         &self.query_term
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.limit_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.query_term.get_first_token() {
             return Some(token);
@@ -3611,6 +3981,18 @@ impl<'a> QueryNoWith<'a> {
             return Some(token);
         }
         if let Some(token) = self.limit_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.limit_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.order_by_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query_term.get_last_token() {
             return Some(token);
         }
         None
@@ -3657,6 +4039,10 @@ impl<'a> OrderBy<'a> {
         &self.order
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.sort_items
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.order.get_first_token() {
             return Some(token);
@@ -3665,6 +4051,18 @@ impl<'a> OrderBy<'a> {
             return Some(token);
         }
         if let Some(token) = self.sort_items.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.sort_items.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.by.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.order.get_last_token() {
             return Some(token);
         }
         None
@@ -3704,11 +4102,24 @@ impl<'a> Limit<'a> {
         &self.limit
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.limit.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.limit.get_last_token() {
             return Some(token);
         }
         None
@@ -3764,6 +4175,10 @@ impl<'a> QuerySetOperation<'a> {
         &self.left
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.right
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.left.get_first_token() {
             return Some(token);
@@ -3775,6 +4190,21 @@ impl<'a> QuerySetOperation<'a> {
             return Some(token);
         }
         if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.right.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.set_quantifier_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operator.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.left.get_last_token() {
             return Some(token);
         }
         None
@@ -3830,6 +4260,10 @@ impl<'a> SortItem<'a> {
         &self.expression
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.null_ordering_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.expression.get_first_token() {
             return Some(token);
@@ -3841,6 +4275,21 @@ impl<'a> SortItem<'a> {
             return Some(token);
         }
         if let Some(token) = self.null_ordering_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.null_ordering_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.nulls.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.ordering_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expression.get_last_token() {
             return Some(token);
         }
         None
@@ -3887,6 +4336,10 @@ impl<'a> Subquery<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
@@ -3895,6 +4348,18 @@ impl<'a> Subquery<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query_no_with.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None
@@ -3934,11 +4399,24 @@ impl<'a> InlineTable<'a> {
         &self.values
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.expressions
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.values.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.expressions.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.values.get_last_token() {
             return Some(token);
         }
         None
@@ -3978,11 +4456,24 @@ impl<'a> Table<'a> {
         &self.table
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.qualified_name
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.table.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.qualified_name.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.qualified_name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table.get_last_token() {
             return Some(token);
         }
         None
@@ -4093,6 +4584,10 @@ impl<'a> QuerySpecification<'a> {
         &self.select
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.having_predicate
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.select.get_first_token() {
             return Some(token);
@@ -4132,6 +4627,45 @@ impl<'a> QuerySpecification<'a> {
         }
         None
     }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.having_predicate.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.having.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.group_by.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.by.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.group.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_predicate.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.relations.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.select_items.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.set_quantifier_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.select.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -4164,8 +4698,18 @@ impl<'a> QualifiedName<'a> {
         &self.names
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.names
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.names.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.names.get_last_token() {
             return Some(token);
         }
         None
@@ -4202,8 +4746,18 @@ impl<'a> SelectAll<'a> {
         &self.asterisk
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.asterisk
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.asterisk.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.asterisk.get_last_token() {
             return Some(token);
         }
         None
@@ -4250,6 +4804,10 @@ impl<'a> QualifiedSelectAll<'a> {
         &self.qualifier
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.asterisk
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.qualifier.get_first_token() {
             return Some(token);
@@ -4258,6 +4816,18 @@ impl<'a> QualifiedSelectAll<'a> {
             return Some(token);
         }
         if let Some(token) = self.asterisk.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.asterisk.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.period.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.qualifier.get_last_token() {
             return Some(token);
         }
         None
@@ -4304,6 +4874,10 @@ impl<'a> SelectItem<'a> {
         &self.expression
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.expression.get_first_token() {
             return Some(token);
@@ -4312,6 +4886,18 @@ impl<'a> SelectItem<'a> {
             return Some(token);
         }
         if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expression.get_last_token() {
             return Some(token);
         }
         None
@@ -4358,6 +4944,10 @@ impl<'a> SubqueryRelation<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
@@ -4366,6 +4956,18 @@ impl<'a> SubqueryRelation<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None
@@ -4412,6 +5014,10 @@ impl<'a> ParenthesizedRelation<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
@@ -4420,6 +5026,18 @@ impl<'a> ParenthesizedRelation<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.relation.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None
@@ -4456,8 +5074,18 @@ impl<'a> TableName<'a> {
         &self.name
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.name
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.name.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.name.get_last_token() {
             return Some(token);
         }
         None
@@ -4513,6 +5141,10 @@ impl<'a> Lateral<'a> {
         &self.lateral
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.lateral.get_first_token() {
             return Some(token);
@@ -4524,6 +5156,21 @@ impl<'a> Lateral<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.lateral.get_last_token() {
             return Some(token);
         }
         None
@@ -4579,6 +5226,10 @@ impl<'a> Unnest<'a> {
         &self.unnest
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.ordinality
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.unnest.get_first_token() {
             return Some(token);
@@ -4590,6 +5241,21 @@ impl<'a> Unnest<'a> {
             return Some(token);
         }
         if let Some(token) = self.ordinality.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.ordinality.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expressions.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.unnest.get_last_token() {
             return Some(token);
         }
         None
@@ -4664,6 +5330,10 @@ impl<'a> SampledRelation<'a> {
         &self.aliased_relation
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.aliased_relation.get_first_token() {
             return Some(token);
@@ -4681,6 +5351,27 @@ impl<'a> SampledRelation<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expression.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.sample_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.tablesample.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.aliased_relation.get_last_token() {
             return Some(token);
         }
         None
@@ -4736,6 +5427,10 @@ impl<'a> AliasedRelation<'a> {
         &self.relation_primary
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.column_aliases_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.relation_primary.get_first_token() {
             return Some(token);
@@ -4747,6 +5442,21 @@ impl<'a> AliasedRelation<'a> {
             return Some(token);
         }
         if let Some(token) = self.column_aliases_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.column_aliases_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.relation_primary.get_last_token() {
             return Some(token);
         }
         None
@@ -4797,6 +5507,10 @@ impl<'a> CrossJoin<'a> {
         &self.left
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.right
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.left.get_first_token() {
             return Some(token);
@@ -4808,6 +5522,21 @@ impl<'a> CrossJoin<'a> {
             return Some(token);
         }
         if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.right.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.cross.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.left.get_last_token() {
             return Some(token);
         }
         None
@@ -4876,6 +5605,10 @@ impl<'a> Join<'a> {
         &self.left
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.join_criteria
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.left.get_first_token() {
             return Some(token);
@@ -4890,6 +5623,24 @@ impl<'a> Join<'a> {
             return Some(token);
         }
         if let Some(token) = self.join_criteria.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.join_criteria.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.right.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.left.get_last_token() {
             return Some(token);
         }
         None
@@ -4958,6 +5709,10 @@ impl<'a> NaturalJoin<'a> {
         &self.left
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.right
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.left.get_first_token() {
             return Some(token);
@@ -4972,6 +5727,24 @@ impl<'a> NaturalJoin<'a> {
             return Some(token);
         }
         if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.right.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.join_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.natural.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.left.get_last_token() {
             return Some(token);
         }
         None
@@ -5011,11 +5784,24 @@ impl<'a> OuterJoinKind<'a> {
         &self.kind
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.outer_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.kind.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.outer_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.outer_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.kind.get_last_token() {
             return Some(token);
         }
         None
@@ -5055,11 +5841,24 @@ impl<'a> OnJoinCriteria<'a> {
         &self.on
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.predicate
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.on.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.predicate.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.predicate.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.on.get_last_token() {
             return Some(token);
         }
         None
@@ -5099,11 +5898,24 @@ impl<'a> UsingJoinCriteria<'a> {
         &self.using
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.names
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.using.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.names.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.names.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.using.get_last_token() {
             return Some(token);
         }
         None
@@ -5146,11 +5958,24 @@ impl<'a> GroupBy<'a> {
         &self.set_quantifier_opt
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.grouping_elements
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.set_quantifier_opt.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.grouping_elements.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.grouping_elements.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.set_quantifier_opt.get_last_token() {
             return Some(token);
         }
         None
@@ -5190,11 +6015,24 @@ impl<'a> Rollup<'a> {
         &self.rollup
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.expressions
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.rollup.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.expressions.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.rollup.get_last_token() {
             return Some(token);
         }
         None
@@ -5234,11 +6072,24 @@ impl<'a> Cube<'a> {
         &self.cube
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.expressions
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.cube.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.expressions.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.cube.get_last_token() {
             return Some(token);
         }
         None
@@ -5285,6 +6136,10 @@ impl<'a> GroupingSets<'a> {
         &self.grouping
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.grouping_sets
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.grouping.get_first_token() {
             return Some(token);
@@ -5293,6 +6148,18 @@ impl<'a> GroupingSets<'a> {
             return Some(token);
         }
         if let Some(token) = self.grouping_sets.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.grouping_sets.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.sets.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.grouping.get_last_token() {
             return Some(token);
         }
         None
@@ -5339,6 +6206,10 @@ impl<'a> BinaryExpression<'a> {
         &self.left
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.right
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.left.get_first_token() {
             return Some(token);
@@ -5347,6 +6218,18 @@ impl<'a> BinaryExpression<'a> {
             return Some(token);
         }
         if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.right.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operator.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.left.get_last_token() {
             return Some(token);
         }
         None
@@ -5386,11 +6269,24 @@ impl<'a> UnaryExpression<'a> {
         &self.operator
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.operand
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.operator.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.operand.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.operand.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operator.get_last_token() {
             return Some(token);
         }
         None
@@ -5465,6 +6361,10 @@ impl<'a> QuantifiedComparison<'a> {
         &self.operand
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.operand.get_first_token() {
             return Some(token);
@@ -5482,6 +6382,27 @@ impl<'a> QuantifiedComparison<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comparison_quantifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operator.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operand.get_last_token() {
             return Some(token);
         }
         None
@@ -5532,6 +6453,10 @@ impl<'a> NullPredicate<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.null
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
             return Some(token);
@@ -5543,6 +6468,21 @@ impl<'a> NullPredicate<'a> {
             return Some(token);
         }
         if let Some(token) = self.null.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.null.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.is.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -5593,6 +6533,10 @@ impl<'a> DistinctFrom<'a> {
         &self.left
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.right
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.left.get_first_token() {
             return Some(token);
@@ -5604,6 +6548,21 @@ impl<'a> DistinctFrom<'a> {
             return Some(token);
         }
         if let Some(token) = self.right.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.right.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.distinct.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.left.get_last_token() {
             return Some(token);
         }
         None
@@ -5678,6 +6637,10 @@ impl<'a> Between<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.upper
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
             return Some(token);
@@ -5695,6 +6658,27 @@ impl<'a> Between<'a> {
             return Some(token);
         }
         if let Some(token) = self.upper.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.upper.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.and.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.lower.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.between.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -5769,6 +6753,10 @@ impl<'a> Like<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.escape_value_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
             return Some(token);
@@ -5786,6 +6774,27 @@ impl<'a> Like<'a> {
             return Some(token);
         }
         if let Some(token) = self.escape_value_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.escape_value_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.escape_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.patrern.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.like.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -5860,6 +6869,10 @@ impl<'a> InSubquery<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
             return Some(token);
@@ -5877,6 +6890,27 @@ impl<'a> InSubquery<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.in_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -5927,6 +6961,10 @@ impl<'a> InList<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.expressions
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
             return Some(token);
@@ -5938,6 +6976,21 @@ impl<'a> InList<'a> {
             return Some(token);
         }
         if let Some(token) = self.expressions.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.expressions.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.in_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -6006,6 +7059,10 @@ impl<'a> AtTimeZone<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.specifier
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
             return Some(token);
@@ -6020,6 +7077,24 @@ impl<'a> AtTimeZone<'a> {
             return Some(token);
         }
         if let Some(token) = self.specifier.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.specifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.zone.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.time.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.at.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -6066,6 +7141,10 @@ impl<'a> Dereference<'a> {
         &self.object
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.field_name
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.object.get_first_token() {
             return Some(token);
@@ -6074,6 +7153,18 @@ impl<'a> Dereference<'a> {
             return Some(token);
         }
         if let Some(token) = self.field_name.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.field_name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.period.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.object.get_last_token() {
             return Some(token);
         }
         None
@@ -6129,6 +7220,10 @@ impl<'a> Subscript<'a> {
         &self.operand
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_square
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.operand.get_first_token() {
             return Some(token);
@@ -6140,6 +7235,21 @@ impl<'a> Subscript<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_square.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_square.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.index.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_square.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.operand.get_last_token() {
             return Some(token);
         }
         None
@@ -6186,6 +7296,10 @@ impl<'a> Lambda<'a> {
         &self.parameters
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.body
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.parameters.get_first_token() {
             return Some(token);
@@ -6194,6 +7308,18 @@ impl<'a> Lambda<'a> {
             return Some(token);
         }
         if let Some(token) = self.body.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.body.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.array.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.parameters.get_last_token() {
             return Some(token);
         }
         None
@@ -6230,8 +7356,18 @@ impl<'a> Literal<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -6268,8 +7404,18 @@ impl<'a> RowConstructor<'a> {
         &self.elements
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.elements
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.elements.get_last_token() {
             return Some(token);
         }
         None
@@ -6316,6 +7462,10 @@ impl<'a> ParenthesizedExpression<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
@@ -6324,6 +7474,18 @@ impl<'a> ParenthesizedExpression<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None
@@ -6360,8 +7522,18 @@ impl<'a> Identifier<'a> {
         &self.value
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_last_token() {
             return Some(token);
         }
         None
@@ -6448,6 +7620,10 @@ impl<'a> FunctionCall<'a> {
         &self.name
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.over_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.name.get_first_token() {
             return Some(token);
@@ -6471,6 +7647,33 @@ impl<'a> FunctionCall<'a> {
             return Some(token);
         }
         if let Some(token) = self.over_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.over_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.filter_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.order_by_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.arguments.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.set_quantifier_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.name.get_last_token() {
             return Some(token);
         }
         None
@@ -6539,6 +7742,10 @@ impl<'a> Filter<'a> {
         &self.filter
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.filter.get_first_token() {
             return Some(token);
@@ -6553,6 +7760,24 @@ impl<'a> Filter<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.predicate.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.filter.get_last_token() {
             return Some(token);
         }
         None
@@ -6639,6 +7864,10 @@ impl<'a> Over<'a> {
         &self.over
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.over.get_first_token() {
             return Some(token);
@@ -6662,6 +7891,33 @@ impl<'a> Over<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.window_frame.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.order_by_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.partitions.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.by.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.partition_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.over.get_last_token() {
             return Some(token);
         }
         None
@@ -6730,6 +7986,10 @@ impl<'a> WindowFrame<'a> {
         &self.frame_type
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.end
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.frame_type.get_first_token() {
             return Some(token);
@@ -6744,6 +8004,24 @@ impl<'a> WindowFrame<'a> {
             return Some(token);
         }
         if let Some(token) = self.end.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.end.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.and.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.start.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.between_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.frame_type.get_last_token() {
             return Some(token);
         }
         None
@@ -6783,11 +8061,24 @@ impl<'a> UnboundedFrame<'a> {
         &self.unbounded
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.bound_type
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.unbounded.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.bound_type.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.bound_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.unbounded.get_last_token() {
             return Some(token);
         }
         None
@@ -6827,11 +8118,24 @@ impl<'a> CurrentRowBound<'a> {
         &self.current
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.row
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.current.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.row.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.row.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.current.get_last_token() {
             return Some(token);
         }
         None
@@ -6871,11 +8175,24 @@ impl<'a> BoundedFrame<'a> {
         &self.bound
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.bound_type
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.bound.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.bound_type.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.bound_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.bound.get_last_token() {
             return Some(token);
         }
         None
@@ -6922,6 +8239,10 @@ impl<'a> UnicodeString<'a> {
         &self.string
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.escape
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.string.get_first_token() {
             return Some(token);
@@ -6930,6 +8251,18 @@ impl<'a> UnicodeString<'a> {
             return Some(token);
         }
         if let Some(token) = self.escape.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.escape.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.uescape_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.string.get_last_token() {
             return Some(token);
         }
         None
@@ -7004,6 +8337,10 @@ impl<'a> ConfigureExpression<'a> {
         &self.configure
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.configure.get_first_token() {
             return Some(token);
@@ -7021,6 +8358,27 @@ impl<'a> ConfigureExpression<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comma.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.configure.get_last_token() {
             return Some(token);
         }
         None
@@ -7067,6 +8425,10 @@ impl<'a> SubqueryExpression<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
@@ -7075,6 +8437,18 @@ impl<'a> SubqueryExpression<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None
@@ -7114,11 +8488,24 @@ impl<'a> Grouping<'a> {
         &self.grouping
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.groups
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.grouping.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.groups.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.groups.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.grouping.get_last_token() {
             return Some(token);
         }
         None
@@ -7193,6 +8580,10 @@ impl<'a> Extract<'a> {
         &self.extract
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.extract.get_first_token() {
             return Some(token);
@@ -7210,6 +8601,27 @@ impl<'a> Extract<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.extract.get_last_token() {
             return Some(token);
         }
         None
@@ -7265,6 +8677,10 @@ impl<'a> CurrentTime<'a> {
         &self.current_time
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.current_time.get_first_token() {
             return Some(token);
@@ -7276,6 +8692,21 @@ impl<'a> CurrentTime<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.current_time.get_last_token() {
             return Some(token);
         }
         None
@@ -7331,6 +8762,10 @@ impl<'a> CurrentTimestamp<'a> {
         &self.current_timestamp
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.current_timestamp.get_first_token() {
             return Some(token);
@@ -7342,6 +8777,21 @@ impl<'a> CurrentTimestamp<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.current_timestamp.get_last_token() {
             return Some(token);
         }
         None
@@ -7416,6 +8866,10 @@ impl<'a> Normalize<'a> {
         &self.normalize
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.normalize.get_first_token() {
             return Some(token);
@@ -7433,6 +8887,27 @@ impl<'a> Normalize<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.normal_form.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comma_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.normalize.get_last_token() {
             return Some(token);
         }
         None
@@ -7488,6 +8963,10 @@ impl<'a> Localtime<'a> {
         &self.localtime
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.localtime.get_first_token() {
             return Some(token);
@@ -7499,6 +8978,21 @@ impl<'a> Localtime<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.localtime.get_last_token() {
             return Some(token);
         }
         None
@@ -7554,6 +9048,10 @@ impl<'a> Localtimestamp<'a> {
         &self.localtimestamp
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.localtimestamp.get_first_token() {
             return Some(token);
@@ -7565,6 +9063,21 @@ impl<'a> Localtimestamp<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.precision.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.localtimestamp.get_last_token() {
             return Some(token);
         }
         None
@@ -7639,6 +9152,10 @@ impl<'a> Cast<'a> {
         &self.cast
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.cast.get_first_token() {
             return Some(token);
@@ -7656,6 +9173,27 @@ impl<'a> Cast<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.cast.get_last_token() {
             return Some(token);
         }
         None
@@ -7706,6 +9244,10 @@ impl<'a> WhenClause<'a> {
         &self.when
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.result
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.when.get_first_token() {
             return Some(token);
@@ -7717,6 +9259,21 @@ impl<'a> WhenClause<'a> {
             return Some(token);
         }
         if let Some(token) = self.result.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.result.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.then.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.condition.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.when.get_last_token() {
             return Some(token);
         }
         None
@@ -7791,6 +9348,10 @@ impl<'a> Case<'a> {
         &self.case
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.end
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.case.get_first_token() {
             return Some(token);
@@ -7808,6 +9369,27 @@ impl<'a> Case<'a> {
             return Some(token);
         }
         if let Some(token) = self.end.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.end.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.default.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.else_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.when_clauses.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.case.get_last_token() {
             return Some(token);
         }
         None
@@ -7863,6 +9445,10 @@ impl<'a> Exists<'a> {
         &self.exists
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.exists.get_first_token() {
             return Some(token);
@@ -7874,6 +9460,21 @@ impl<'a> Exists<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.exists.get_last_token() {
             return Some(token);
         }
         None
@@ -7913,11 +9514,24 @@ impl<'a> TypeConstructor<'a> {
         &self.type_
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.type_.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_last_token() {
             return Some(token);
         }
         None
@@ -7957,11 +9571,24 @@ impl<'a> Array<'a> {
         &self.array
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.elements
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.array.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.elements.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.array.get_last_token() {
             return Some(token);
         }
         None
@@ -8036,6 +9663,10 @@ impl<'a> Interval<'a> {
         &self.interval
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.to
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.interval.get_first_token() {
             return Some(token);
@@ -8053,6 +9684,27 @@ impl<'a> Interval<'a> {
             return Some(token);
         }
         if let Some(token) = self.to.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.to.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.to_kw_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.sign_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.interval.get_last_token() {
             return Some(token);
         }
         None
@@ -8092,11 +9744,24 @@ impl<'a> Row<'a> {
         &self.row
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.elements
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.row.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.elements.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.row.get_last_token() {
             return Some(token);
         }
         None
@@ -8171,6 +9836,10 @@ impl<'a> TryCast<'a> {
         &self.try_cast
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.try_cast.get_first_token() {
             return Some(token);
@@ -8188,6 +9857,27 @@ impl<'a> TryCast<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.try_cast.get_last_token() {
             return Some(token);
         }
         None
@@ -8274,6 +9964,10 @@ impl<'a> Substring<'a> {
         &self.substring
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.substring.get_first_token() {
             return Some(token);
@@ -8297,6 +9991,33 @@ impl<'a> Substring<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.for_value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.for_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from_value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.substring.get_last_token() {
             return Some(token);
         }
         None
@@ -8371,6 +10092,10 @@ impl<'a> Position<'a> {
         &self.position
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.position.get_first_token() {
             return Some(token);
@@ -8388,6 +10113,27 @@ impl<'a> Position<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.target.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.in_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.position.get_last_token() {
             return Some(token);
         }
         None
@@ -8427,11 +10173,24 @@ impl<'a> ArrayTypeSuffix<'a> {
         &self.base_type
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.array
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.base_type.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.array.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.array.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.base_type.get_last_token() {
             return Some(token);
         }
         None
@@ -8471,11 +10230,24 @@ impl<'a> NamedType<'a> {
         &self.name
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.type_parameters
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.name.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.type_parameters.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.type_parameters.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.name.get_last_token() {
             return Some(token);
         }
         None
@@ -8531,6 +10303,10 @@ impl<'a> ArrayType<'a> {
         &self.array
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_angle
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.array.get_first_token() {
             return Some(token);
@@ -8542,6 +10318,21 @@ impl<'a> ArrayType<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_angle.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_angle.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.element_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_angle.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.array.get_last_token() {
             return Some(token);
         }
         None
@@ -8616,6 +10407,10 @@ impl<'a> MapType<'a> {
         &self.map
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_angle
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.map.get_first_token() {
             return Some(token);
@@ -8633,6 +10428,27 @@ impl<'a> MapType<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_angle.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_angle.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.value_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comma.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.key_type.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_angle.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.map.get_last_token() {
             return Some(token);
         }
         None
@@ -8672,11 +10488,24 @@ impl<'a> RowType<'a> {
         &self.row
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.element_types
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.row.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.element_types.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.element_types.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.row.get_last_token() {
             return Some(token);
         }
         None
@@ -8716,11 +10545,24 @@ impl<'a> RowTypeElement<'a> {
         &self.identifier
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.type_
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.identifier.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.type_.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.type_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_last_token() {
             return Some(token);
         }
         None
@@ -8771,6 +10613,10 @@ impl<'a> IntervalType<'a> {
         &self.interval
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.to
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.interval.get_first_token() {
             return Some(token);
@@ -8782,6 +10628,21 @@ impl<'a> IntervalType<'a> {
             return Some(token);
         }
         if let Some(token) = self.to.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.to.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.to_kw.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.interval.get_last_token() {
             return Some(token);
         }
         None
@@ -8828,6 +10689,10 @@ impl<'a> IfNotExists<'a> {
         &self.if_
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.exists
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.if_.get_first_token() {
             return Some(token);
@@ -8836,6 +10701,18 @@ impl<'a> IfNotExists<'a> {
             return Some(token);
         }
         if let Some(token) = self.exists.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.exists.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.if_.get_last_token() {
             return Some(token);
         }
         None
@@ -8916,6 +10793,10 @@ impl<'a> CreateTable<'a> {
         &self.create
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.with_properties_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.create.get_first_token() {
             return Some(token);
@@ -8936,6 +10817,30 @@ impl<'a> CreateTable<'a> {
             return Some(token);
         }
         if let Some(token) = self.with_properties_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with_properties_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comment_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_elements.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.if_not_exists_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.create.get_last_token() {
             return Some(token);
         }
         None
@@ -9046,6 +10951,10 @@ impl<'a> CreateTableAsSelect<'a> {
         &self.create
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.with_data_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.create.get_first_token() {
             return Some(token);
@@ -9085,6 +10994,45 @@ impl<'a> CreateTableAsSelect<'a> {
         }
         None
     }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with_data_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.close_paren_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with_properties_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comment_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.column_aliases_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.if_not_exists_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.create.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -9120,11 +11068,24 @@ impl<'a> WithProperties<'a> {
         &self.with
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.properties
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.with.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.properties.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.properties.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with.get_last_token() {
             return Some(token);
         }
         None
@@ -9171,6 +11132,10 @@ impl<'a> Property<'a> {
         &self.identifier
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.identifier.get_first_token() {
             return Some(token);
@@ -9179,6 +11144,18 @@ impl<'a> Property<'a> {
             return Some(token);
         }
         if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.eq.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_last_token() {
             return Some(token);
         }
         None
@@ -9225,6 +11202,10 @@ impl<'a> WithData<'a> {
         &self.with
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.data
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.with.get_first_token() {
             return Some(token);
@@ -9233,6 +11214,18 @@ impl<'a> WithData<'a> {
             return Some(token);
         }
         if let Some(token) = self.data.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.data.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.no_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with.get_last_token() {
             return Some(token);
         }
         None
@@ -9272,11 +11265,24 @@ impl<'a> Comment<'a> {
         &self.comment
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.value
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.comment.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.value.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.value.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comment.get_last_token() {
             return Some(token);
         }
         None
@@ -9345,6 +11351,10 @@ impl<'a> ColumnDefinition<'a> {
         &self.identifier
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.with_properties_opt
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.identifier.get_first_token() {
             return Some(token);
@@ -9359,6 +11369,24 @@ impl<'a> ColumnDefinition<'a> {
             return Some(token);
         }
         if let Some(token) = self.with_properties_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with_properties_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.comment_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not_null_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.type_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_last_token() {
             return Some(token);
         }
         None
@@ -9398,11 +11426,24 @@ impl<'a> NotNull<'a> {
         &self.not
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.null
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.not.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.null.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.null.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.not.get_last_token() {
             return Some(token);
         }
         None
@@ -9458,6 +11499,10 @@ impl<'a> LikeClause<'a> {
         &self.like
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.properties
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.like.get_first_token() {
             return Some(token);
@@ -9469,6 +11514,21 @@ impl<'a> LikeClause<'a> {
             return Some(token);
         }
         if let Some(token) = self.properties.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.properties.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.option_type_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.like.get_last_token() {
             return Some(token);
         }
         None
@@ -9537,6 +11597,10 @@ impl<'a> InsertInto<'a> {
         &self.insert
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.query
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.insert.get_first_token() {
             return Some(token);
@@ -9551,6 +11615,24 @@ impl<'a> InsertInto<'a> {
             return Some(token);
         }
         if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.column_aliases_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.into.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.insert.get_last_token() {
             return Some(token);
         }
         None
@@ -9619,6 +11701,10 @@ impl<'a> Delete<'a> {
         &self.delete
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.predicate
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.delete.get_first_token() {
             return Some(token);
@@ -9633,6 +11719,24 @@ impl<'a> Delete<'a> {
             return Some(token);
         }
         if let Some(token) = self.predicate.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.predicate.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.where_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.table_name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.from.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.delete.get_last_token() {
             return Some(token);
         }
         None
@@ -9669,8 +11773,18 @@ impl<'a> GroupingSet<'a> {
         &self.elements
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.elements
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.elements.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.elements.get_last_token() {
             return Some(token);
         }
         None
@@ -9717,6 +11831,10 @@ impl<'a> RelationOrQuery<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
@@ -9725,6 +11843,18 @@ impl<'a> RelationOrQuery<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query_or_relation.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None
@@ -9767,11 +11897,24 @@ impl<'a> EmptyGroupingSet<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None
@@ -9822,6 +11965,10 @@ impl<'a> ExpressionOrQuery<'a> {
         &self.open_paren
     }
 
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.close_paren
+    }
+
     pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.open_paren.get_first_token() {
             return Some(token);
@@ -9830,6 +11977,18 @@ impl<'a> ExpressionOrQuery<'a> {
             return Some(token);
         }
         if let Some(token) = self.close_paren.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.close_paren.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.expression_or_query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.open_paren.get_last_token() {
             return Some(token);
         }
         None

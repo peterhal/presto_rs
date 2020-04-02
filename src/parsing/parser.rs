@@ -95,7 +95,6 @@ impl<'a> ParsePosition<'a> {
     /// Consumes a token in the input.
     fn advance(&mut self) -> Token<'a> {
         debug_assert!(self.index < self.tokens.len());
-        // TODO: Can we avoid this clone?
         let token = self.peek_token().clone();
         self.index += 1;
         token
@@ -115,7 +114,7 @@ impl<'a> ParsePosition<'a> {
 /// a comment indicating the grammar being parsed.
 pub struct Parser<'a> {
     position: ParsePosition<'a>,
-    // TODO: add errors not contained in the tree here when needed
+    errors: Vec<SyntaxError>,
 }
 
 type ElementParser<'a> = fn(&mut Parser<'a>) -> ParseTree<'a>;
@@ -127,7 +126,19 @@ impl<'a> Parser<'a> {
     pub fn new(value: &'a str) -> Parser<'a> {
         Parser {
             position: ParsePosition::new(value),
+            errors: Vec::new(),
         }
+    }
+
+    fn add_error(&mut self, error: SyntaxError) {
+        self.errors.push(error);
+    }
+
+    fn add_error_of_tree(&mut self, location: &ParseTree<'a>, message: &str) {
+        self.add_error(SyntaxError::from_message(
+            syntax_error::ERROR_SYNTAX_ERROR,
+            Message::new(location.get_range(), message.to_string()),
+        ))
     }
 
     fn peek_token_offset(&mut self, offset: usize) -> &Token<'a> {
@@ -202,13 +213,13 @@ impl<'a> Parser<'a> {
     /// Create an Error tree at the current location.
     // TODO: Add error code parameter.
     fn error(&mut self, message: String) -> ParseTree<'a> {
-        let result = parse_tree::error(SyntaxError {
-            error_code: syntax_error::ERROR_SYNTAX_ERROR,
-            messages: vec![Message {
+        let result = parse_tree::error(SyntaxError::from_message(
+            syntax_error::ERROR_SYNTAX_ERROR,
+            Message {
                 range: self.get_empty_range(),
                 message,
-            }],
-        });
+            },
+        ));
         // TODO: Remove this once we're debugged
         println!("{}", self.position.lexer.input);
         println!("{:#?}", result);
@@ -1934,7 +1945,7 @@ impl<'a> Parser<'a> {
                 close_paren,
             )
         } else {
-            // TODO: debug_assert!(expression_or_query.is_expression());
+            // TODO: debug_assert!(expression_or_query.is_any_expression());
             parse_tree::parenthesized_expression(open_paren, expression_or_query, close_paren)
         }
     }
@@ -1944,7 +1955,7 @@ impl<'a> Parser<'a> {
         expression_or_query: ParseTree<'a>,
     ) -> ParseTree<'a> {
         if expression_or_query.is_query() || expression_or_query.is_query_no_with() {
-            // TODO: Add error: expected expression, got query
+            self.add_error_of_tree(&expression_or_query, "Expected expression, found query.");
             expression_or_query
         } else if expression_or_query.is_expression_or_query() {
             let (open_paren, expression_or_query, close_paren) =
@@ -1955,7 +1966,7 @@ impl<'a> Parser<'a> {
                 close_paren,
             )
         } else {
-            // TODO: debug_assert!(expression_or_query.is_expression())
+            // TODO: debug_assert!(expression_or_query.is_any_expression())
             expression_or_query
         }
     }
@@ -2024,15 +2035,15 @@ impl<'a> Parser<'a> {
         let open_paren = self.eat(TK::OpenParen);
         let expression_or_query = self.parse_expression_or_query();
         if self.peek_kind(TK::Comma) {
-            // expression_or_query must be an expression
             // parse expression_list tail and return a row constructor
             let comma = self.eat(TK::Comma);
             let mut elements_tail =
                 self.parse_separated_list_elements(TK::Comma, |parser| parser.parse_expression());
             let close_paren = self.eat(TK::CloseParen);
             let mut elements = Vec::with_capacity(elements_tail.len() + 1);
-            // TODO: verify that expression_or_query is an expression.
-            elements.push((expression_or_query, comma));
+            // validate that expression_or_query is actually an expression.
+            let expression = self.expression_or_query_to_expression(expression_or_query);
+            elements.push((expression, comma));
             elements.append(&mut elements_tail);
             parse_tree::row_constructor(parse_tree::list(open_paren, elements, close_paren))
         } else {
