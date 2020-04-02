@@ -2962,7 +2962,7 @@ impl<'a> Parser<'a> {
 
     // (WITH (NO)? DATA)?
     fn parse_with_data_opt(&mut self) -> ParseTree<'a> {
-        let with = self.eat(TK::WITH);
+        let with = self.eat_opt(TK::WITH);
         if with.is_empty() {
             with
         } else {
