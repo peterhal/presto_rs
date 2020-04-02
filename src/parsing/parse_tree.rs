@@ -159,6 +159,7 @@ pub enum ParseTree<'a> {
     RelationOrQuery(RelationOrQuery<'a>),
     EmptyGroupingSet(EmptyGroupingSet<'a>),
     ExpressionOrQuery(ExpressionOrQuery<'a>),
+    Entrypoint(Entrypoint<'a>),
 }
 
 // The core trees
@@ -3038,6 +3039,29 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_entrypoint(&self) -> bool {
+        if let ParseTree::Entrypoint(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_entrypoint(&self) -> &Entrypoint {
+        if let ParseTree::Entrypoint(value) = self {
+            value
+        } else {
+            panic!("Expected Entrypoint")
+        }
+    }
+
+    pub fn unbox_entrypoint(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::Entrypoint(tree) => tree.unbox(),
+            _ => panic!("Expected Entrypoint"),
+        }
+    }
+
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
         match self {
             ParseTree::Token(token) => token.children(),
@@ -3153,6 +3177,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::RelationOrQuery(relation_or_query) => relation_or_query.children(),
             ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.children(),
             ParseTree::ExpressionOrQuery(expression_or_query) => expression_or_query.children(),
+            ParseTree::Entrypoint(entrypoint) => entrypoint.children(),
         }
     }
 
@@ -3285,6 +3310,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::ExpressionOrQuery(expression_or_query) => {
                 expression_or_query.get_first_child()
             }
+            ParseTree::Entrypoint(entrypoint) => entrypoint.get_first_child(),
         }
     }
 
@@ -3417,6 +3443,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::ExpressionOrQuery(expression_or_query) => {
                 expression_or_query.get_last_child()
             }
+            ParseTree::Entrypoint(entrypoint) => entrypoint.get_last_child(),
         }
     }
 
@@ -3549,6 +3576,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::ExpressionOrQuery(expression_or_query) => {
                 expression_or_query.get_first_token()
             }
+            ParseTree::Entrypoint(entrypoint) => entrypoint.get_first_token(),
         }
     }
 
@@ -3558,6 +3586,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::List(list) => list.get_last_token(),
             ParseTree::Error(_) => None,
             ParseTree::Empty(_) => None,
+            ParseTree::Entrypoint(entrypoint) => entrypoint.get_last_token(),
             ParseTree::ExpressionOrQuery(expression_or_query) => {
                 expression_or_query.get_last_token()
             }
@@ -11989,6 +12018,76 @@ impl<'a> ExpressionOrQuery<'a> {
             return Some(token);
         }
         if let Some(token) = self.open_paren.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Entrypoint<'a> {
+    pub beginning_of_file: Box<ParseTree<'a>>,
+    pub tree: Box<ParseTree<'a>>,
+    pub end_of_file: Box<ParseTree<'a>>,
+}
+
+pub fn entrypoint<'a>(
+    beginning_of_file: ParseTree<'a>,
+    tree: ParseTree<'a>,
+    end_of_file: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::Entrypoint(Entrypoint {
+        beginning_of_file: Box::new(beginning_of_file),
+        tree: Box::new(tree),
+        end_of_file: Box::new(end_of_file),
+    })
+}
+
+impl<'a> Entrypoint<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::Entrypoint(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.beginning_of_file);
+        result.push(&*self.tree);
+        result.push(&*self.end_of_file);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.beginning_of_file, *self.tree, *self.end_of_file)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.beginning_of_file
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.end_of_file
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.beginning_of_file.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.tree.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.end_of_file.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.end_of_file.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.tree.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.beginning_of_file.get_last_token() {
             return Some(token);
         }
         None

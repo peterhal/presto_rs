@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
 use crate::lexing::Lexer;
-use crate::parsing::visit_post_order;
+use crate::parsing::parse_statement;
 use crate::parsing::ParseTree;
-use crate::parsing::Parser;
 use crate::utils::syntax_error::SyntaxError;
 extern crate csv;
 use csv::Reader;
@@ -32,25 +31,8 @@ fn lex_and_dump(contents: &str) -> bool {
     had_error
 }
 
-fn errors_of_tree<'a>(tree: &'a ParseTree<'a>) -> Vec<&'a SyntaxError> {
-    let mut errors: Vec<&'a SyntaxError> = Vec::new();
-    let mut visit = |tree: &'a ParseTree<'a>| match tree {
-        ParseTree::Token(tree) => {
-            for error in &tree.token.errors {
-                errors.push(&error)
-            }
-        }
-        ParseTree::Error(error) => errors.push(&error.error),
-        _ => (),
-    };
-    visit_post_order(tree, &mut visit);
-    errors
-}
-
 fn parse(contents: &str) {
-    let mut parser = Parser::new(contents);
-    let tree = parser.parse_statement();
-    let errors = errors_of_tree(&tree);
+    let (tree, errors) = parse_statement(contents);
     if errors.is_empty() {
         // println!("{:#?}", tree);
     } else {

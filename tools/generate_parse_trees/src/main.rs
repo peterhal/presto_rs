@@ -431,6 +431,10 @@ fn configs() -> Vec<TreeConfig> {
             "ExpressionOrQuery",
             vec!["open_paren", "expression_or_query", "close_paren"],
         ),
+        (
+            "Entrypoint",
+            vec!["beginning_of_file", "tree", "end_of_file"],
+        ),
         // ("Class", vec![]),
     ]
 }

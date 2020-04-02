@@ -41,6 +41,24 @@ impl fmt::Display for Token<'_> {
 }
 
 impl<'a> Token<'a> {
+    pub fn new(
+        kind: TokenKind,
+        range: TextRange,
+        value: &'a str,
+        leading_comments: Vec<Comment<'a>>,
+        trailing_comments: Vec<Comment<'a>>,
+        errors: Vec<SyntaxError>,
+    ) -> Token<'a> {
+        Token {
+            kind,
+            range,
+            value,
+            leading_comments,
+            trailing_comments,
+            errors,
+        }
+    }
+
     /// The starting position including trivia.
     pub fn full_start(&self) -> Position {
         if let Some(comment) = self.leading_comments.last() {

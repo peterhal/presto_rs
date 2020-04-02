@@ -1,10 +1,10 @@
-use super::{parse_tree, ParseTree};
+use super::{parse_tree, visit_post_order, ParseTree};
 use crate::lexing::{
     predefined_names, predefined_names::PredefinedName as PN, Lexer, Token, TokenKind as TK,
 };
 use crate::utils::{
     position, position::Position, syntax_error, syntax_error::Message, syntax_error::SyntaxError,
-    text_range::TextRange,
+    text_range, text_range::TextRange,
 };
 
 /// The location and lexing context for a Parser.
@@ -27,7 +27,18 @@ impl<'a> ParsePosition<'a> {
     pub fn new(value: &'a str) -> ParsePosition<'a> {
         ParsePosition {
             index: 0,
-            tokens: Vec::new(),
+            tokens: vec![
+                // kinda goofy, but we add the BOF token here so that
+                // the lexer doesn't need to special case the first token
+                Token::new(
+                    TK::BeginningOfFile,
+                    text_range::NONE,
+                    &value[0..0],
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                ),
+            ],
             lexer: Lexer::new(value),
         }
     }
@@ -112,7 +123,7 @@ impl<'a> ParsePosition<'a> {
 ///
 /// parse_*() methods parse a given language syntax. They are preceded by
 /// a comment indicating the grammar being parsed.
-pub struct Parser<'a> {
+struct Parser<'a> {
     position: ParsePosition<'a>,
     errors: Vec<SyntaxError>,
 }
@@ -489,6 +500,13 @@ impl<'a> Parser<'a> {
             parse_element,
             TK::CloseParen,
         )
+    }
+
+    /// Parses a grammar entrypoint; ensures all input is consumed.
+    fn parse_entrypoint(&mut self, parse_element: ElementParser<'a>) -> ParseTree<'a> {
+        let (bof, tree, eof) =
+            self.parse_delimited(TK::BeginningOfFile, parse_element, TK::EndOfFile);
+        parse_tree::entrypoint(bof, tree, eof)
     }
 }
 
@@ -3033,4 +3051,41 @@ impl<'a> Parser<'a> {
         };
         parse_tree::delete(delete, from, table_name, where_opt, predicate)
     }
+}
+
+fn errors_of_tree<'a>(tree: &'a ParseTree<'a>) -> Vec<&'a SyntaxError> {
+    let mut errors: Vec<&'a SyntaxError> = Vec::new();
+    let mut visit = |tree: &'a ParseTree<'a>| match tree {
+        ParseTree::Token(tree) => {
+            for error in &tree.token.errors {
+                errors.push(&error)
+            }
+        }
+        ParseTree::Error(error) => errors.push(&error.error),
+        _ => (),
+    };
+    visit_post_order(tree, &mut visit);
+    errors
+}
+
+type ParseResult<'a> = (ParseTree<'a>, Vec<SyntaxError>);
+
+/// Parses text for the given element.
+/// Returns the parse tree and all errors.
+fn parse_entrypoint<'a>(text: &'a str, parse_element: ElementParser<'a>) -> ParseResult<'a> {
+    let mut parser = Parser::new(text);
+    let tree = parser.parse_entrypoint(parse_element);
+    let mut errors = Vec::new();
+    for error in errors_of_tree(&tree) {
+        errors.push(error.clone())
+    }
+    errors.append(&mut parser.errors);
+    errors.sort_by_key(|error| error.get_range());
+    (tree, errors)
+}
+
+/// Parses text containing a statement.
+/// The errors returned includes all errors contained within the tree.
+pub fn parse_statement<'a>(text: &'a str) -> ParseResult<'a> {
+    parse_entrypoint(text, |parser| parser.parse_statement())
 }
