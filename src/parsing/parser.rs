@@ -591,7 +591,16 @@ impl<'a> Parser<'a> {
     // columnAliases
     // : '(' identifier (',' identifier)* ')'
     fn parse_column_aliases_opt(&mut self) -> ParseTree<'a> {
-        self.parse_parenthesized_comma_separated_list_opt(|parser| parser.parse_identifier())
+        if self.peek_column_aliases() {
+            self.parse_parenthesized_comma_separated_list(|parser| parser.parse_identifier())
+        } else {
+            self.eat_empty()
+        }
+    }
+
+    fn peek_column_aliases(&mut self) -> bool {
+        // need to disambiguate with query in an insert into
+        self.peek_kind(TK::OpenParen) && self.peek_identifier_offset(1)
     }
 
     // queryNoWith:
@@ -2895,6 +2904,7 @@ impl<'a> Parser<'a> {
             let as_ = self.eat(TK::AS);
             let (open_paren_opt, query, close_paren_opt) = if self.peek_kind(TK::OpenParen) {
                 self.parse_parenthesized_query()
+            // TODO: Need to handle (query_no_with) query_primary_tail
             } else {
                 (self.eat_empty(), self.parse_query(), self.eat_empty())
             };
