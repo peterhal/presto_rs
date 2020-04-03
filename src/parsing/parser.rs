@@ -232,10 +232,13 @@ impl<'a> Parser<'a> {
             },
         ));
         // TODO: Remove this once we're debugged
-        println!("{}", self.position.lexer.input);
-        println!("{:#?}", result);
-        panic!("WTF {}", format!("{:#?}", result));
-        // TODO: result
+        panic!(
+            "WTF\n{}\n {}",
+            self.position.lexer.input,
+            format!("{:#?}", result)
+        );
+        // TODO: restore this once we're debugged
+        // result
     }
 
     /// Create an Error tree at the current location with a given message.

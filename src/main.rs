@@ -52,13 +52,18 @@ fn process_csv(path: &str) -> Result<(), Box<dyn Error>> {
         let record = record_result?;
         if let Some(field) = record.get(1) {
             process_query(&field.to_string());
-            if count % 80 == 0 {
-                println!("{}", count);
+            if count % 100 == 0 {
+                print!("{} ", count);
             }
             print!(".");
-
             count += 1;
+            if count % 100 == 0 {
+                println!("");
+            }
         }
+    }
+    if count % 100 != 0 {
+        println!("");
     }
     Ok(())
 }
