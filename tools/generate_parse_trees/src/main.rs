@@ -189,6 +189,7 @@ fn configs() -> Vec<TreeConfig> {
                 "order_by_opt",
                 "close_paren",
                 "filter_opt",
+                "null_treatment_opt",
                 "over_opt",
             ],
         ),
@@ -435,6 +436,7 @@ fn configs() -> Vec<TreeConfig> {
             "Entrypoint",
             vec!["beginning_of_file", "tree", "end_of_file"],
         ),
+        ("NullTreatment", vec!["treatment", "nulls"]),
         // ("Class", vec![]),
     ]
 }

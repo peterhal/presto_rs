@@ -160,6 +160,7 @@ pub enum ParseTree<'a> {
     EmptyGroupingSet(EmptyGroupingSet<'a>),
     ExpressionOrQuery(ExpressionOrQuery<'a>),
     Entrypoint(Entrypoint<'a>),
+    NullTreatment(NullTreatment<'a>),
 }
 
 // The core trees
@@ -1706,6 +1707,7 @@ impl<'a> ParseTree<'a> {
         ParseTree<'a>,
         ParseTree<'a>,
         ParseTree<'a>,
+        ParseTree<'a>,
     ) {
         match self {
             ParseTree::FunctionCall(tree) => tree.unbox(),
@@ -3062,6 +3064,29 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_null_treatment(&self) -> bool {
+        if let ParseTree::NullTreatment(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_null_treatment(&self) -> &NullTreatment {
+        if let ParseTree::NullTreatment(value) = self {
+            value
+        } else {
+            panic!("Expected NullTreatment")
+        }
+    }
+
+    pub fn unbox_null_treatment(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::NullTreatment(tree) => tree.unbox(),
+            _ => panic!("Expected NullTreatment"),
+        }
+    }
+
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
         match self {
             ParseTree::Token(token) => token.children(),
@@ -3178,6 +3203,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::EmptyGroupingSet(empty_grouping_set) => empty_grouping_set.children(),
             ParseTree::ExpressionOrQuery(expression_or_query) => expression_or_query.children(),
             ParseTree::Entrypoint(entrypoint) => entrypoint.children(),
+            ParseTree::NullTreatment(null_treatment) => null_treatment.children(),
         }
     }
 
@@ -3311,6 +3337,7 @@ impl<'a> ParseTree<'a> {
                 expression_or_query.get_first_child()
             }
             ParseTree::Entrypoint(entrypoint) => entrypoint.get_first_child(),
+            ParseTree::NullTreatment(null_treatment) => null_treatment.get_first_child(),
         }
     }
 
@@ -3444,6 +3471,7 @@ impl<'a> ParseTree<'a> {
                 expression_or_query.get_last_child()
             }
             ParseTree::Entrypoint(entrypoint) => entrypoint.get_last_child(),
+            ParseTree::NullTreatment(null_treatment) => null_treatment.get_last_child(),
         }
     }
 
@@ -3577,6 +3605,7 @@ impl<'a> ParseTree<'a> {
                 expression_or_query.get_first_token()
             }
             ParseTree::Entrypoint(entrypoint) => entrypoint.get_first_token(),
+            ParseTree::NullTreatment(null_treatment) => null_treatment.get_first_token(),
         }
     }
 
@@ -3586,6 +3615,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::List(list) => list.get_last_token(),
             ParseTree::Error(_) => None,
             ParseTree::Empty(_) => None,
+            ParseTree::NullTreatment(null_treatment) => null_treatment.get_last_token(),
             ParseTree::Entrypoint(entrypoint) => entrypoint.get_last_token(),
             ParseTree::ExpressionOrQuery(expression_or_query) => {
                 expression_or_query.get_last_token()
@@ -7578,6 +7608,7 @@ pub struct FunctionCall<'a> {
     pub order_by_opt: Box<ParseTree<'a>>,
     pub close_paren: Box<ParseTree<'a>>,
     pub filter_opt: Box<ParseTree<'a>>,
+    pub null_treatment_opt: Box<ParseTree<'a>>,
     pub over_opt: Box<ParseTree<'a>>,
 }
 
@@ -7589,6 +7620,7 @@ pub fn function_call<'a>(
     order_by_opt: ParseTree<'a>,
     close_paren: ParseTree<'a>,
     filter_opt: ParseTree<'a>,
+    null_treatment_opt: ParseTree<'a>,
     over_opt: ParseTree<'a>,
 ) -> ParseTree<'a> {
     ParseTree::FunctionCall(FunctionCall {
@@ -7599,6 +7631,7 @@ pub fn function_call<'a>(
         order_by_opt: Box::new(order_by_opt),
         close_paren: Box::new(close_paren),
         filter_opt: Box::new(filter_opt),
+        null_treatment_opt: Box::new(null_treatment_opt),
         over_opt: Box::new(over_opt),
     })
 }
@@ -7609,7 +7642,7 @@ impl<'a> FunctionCall<'a> {
     }
 
     pub fn children(&self) -> Vec<&ParseTree<'a>> {
-        let mut result = Vec::with_capacity(8);
+        let mut result = Vec::with_capacity(9);
         result.push(&*self.name);
         result.push(&*self.open_paren);
         result.push(&*self.set_quantifier_opt);
@@ -7617,6 +7650,7 @@ impl<'a> FunctionCall<'a> {
         result.push(&*self.order_by_opt);
         result.push(&*self.close_paren);
         result.push(&*self.filter_opt);
+        result.push(&*self.null_treatment_opt);
         result.push(&*self.over_opt);
         result
     }
@@ -7624,6 +7658,7 @@ impl<'a> FunctionCall<'a> {
     pub fn unbox(
         self,
     ) -> (
+        ParseTree<'a>,
         ParseTree<'a>,
         ParseTree<'a>,
         ParseTree<'a>,
@@ -7641,6 +7676,7 @@ impl<'a> FunctionCall<'a> {
             *self.order_by_opt,
             *self.close_paren,
             *self.filter_opt,
+            *self.null_treatment_opt,
             *self.over_opt,
         )
     }
@@ -7675,6 +7711,9 @@ impl<'a> FunctionCall<'a> {
         if let Some(token) = self.filter_opt.get_first_token() {
             return Some(token);
         }
+        if let Some(token) = self.null_treatment_opt.get_first_token() {
+            return Some(token);
+        }
         if let Some(token) = self.over_opt.get_first_token() {
             return Some(token);
         }
@@ -7682,6 +7721,9 @@ impl<'a> FunctionCall<'a> {
     }
     pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
         if let Some(token) = self.over_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.null_treatment_opt.get_last_token() {
             return Some(token);
         }
         if let Some(token) = self.filter_opt.get_last_token() {
@@ -12088,6 +12130,63 @@ impl<'a> Entrypoint<'a> {
             return Some(token);
         }
         if let Some(token) = self.beginning_of_file.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct NullTreatment<'a> {
+    pub treatment: Box<ParseTree<'a>>,
+    pub nulls: Box<ParseTree<'a>>,
+}
+
+pub fn null_treatment<'a>(treatment: ParseTree<'a>, nulls: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::NullTreatment(NullTreatment {
+        treatment: Box::new(treatment),
+        nulls: Box::new(nulls),
+    })
+}
+
+impl<'a> NullTreatment<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::NullTreatment(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.treatment);
+        result.push(&*self.nulls);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.treatment, *self.nulls)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.treatment
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.nulls
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.treatment.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.nulls.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.nulls.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.treatment.get_last_token() {
             return Some(token);
         }
         None

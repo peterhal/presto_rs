@@ -2531,7 +2531,7 @@ impl<'a> Parser<'a> {
     //     (ORDER BY sortItem (',' sortItem)*)? ')' filter_? over?                            #functionCall
     fn peek_function_call(&mut self) -> bool {
         let mut offset = 1;
-        while self.peek_kind(TK::Period) {
+        while self.peek_kind_offset(TK::Period, offset) {
             offset += 1;
             if self.peek_identifier_offset(offset) {
                 offset += 1;
@@ -2545,8 +2545,25 @@ impl<'a> Parser<'a> {
     fn parse_function_call(&mut self) -> ParseTree<'a> {
         let name = self.parse_qualified_name();
         let open_paren = self.eat(TK::OpenParen);
-        let (set_quantifier_opt, arguments, order_by_opt) = if self.peek_kind(TK::Asterisk) {
-            (self.eat_empty(), self.eat(TK::Asterisk), self.eat_empty())
+        if self.peek_kind(TK::Asterisk) {
+            let set_quantifier_opt = self.eat_empty();
+            let arguments = self.eat(TK::Asterisk);
+            let order_by_opt = self.eat_empty();
+            let close_paren = self.eat(TK::CloseParen);
+            let filter_opt = self.parse_filter_opt();
+            let null_treatment_opt = self.eat_empty();
+            let over_opt = self.parse_over_opt();
+            parse_tree::function_call(
+                name,
+                open_paren,
+                set_quantifier_opt,
+                arguments,
+                order_by_opt,
+                close_paren,
+                filter_opt,
+                null_treatment_opt,
+                over_opt,
+            )
         } else {
             let set_quantifier_opt = self.parse_set_quantifier_opt(|parser, offset| {
                 parser.peek_kind_offset(TK::CloseParen, offset)
@@ -2562,21 +2579,26 @@ impl<'a> Parser<'a> {
                 self.parse_comma_separated_list(|parser| parser.parse_expression())
             };
             let order_by_opt = self.parse_order_by_opt();
-            (set_quantifier_opt, arguments, order_by_opt)
-        };
-        let close_paren = self.eat(TK::CloseParen);
-        let filter_opt = self.parse_filter_opt();
-        let over_opt = self.parse_over_opt();
-        parse_tree::function_call(
-            name,
-            open_paren,
-            set_quantifier_opt,
-            arguments,
-            order_by_opt,
-            close_paren,
-            filter_opt,
-            over_opt,
-        )
+            let close_paren = self.eat(TK::CloseParen);
+            let filter_opt = self.parse_filter_opt();
+            let null_treatment_opt = self.parse_null_treatment_opt();
+            let over_opt = if null_treatment_opt.is_empty() {
+                self.parse_over_opt()
+            } else {
+                self.parse_over()
+            };
+            parse_tree::function_call(
+                name,
+                open_paren,
+                set_quantifier_opt,
+                arguments,
+                order_by_opt,
+                close_paren,
+                filter_opt,
+                null_treatment_opt,
+                over_opt,
+            )
+        }
     }
 
     fn parse_filter_opt(&mut self) -> ParseTree<'a> {
@@ -2599,34 +2621,58 @@ impl<'a> Parser<'a> {
     //     windowFrame?
     //   ')'
     fn parse_over_opt(&mut self) -> ParseTree<'a> {
-        let over = self.eat_predefined_name_opt(PN::OVER);
-        if over.is_empty() {
-            over
+        if self.peek_predefined_name(PN::OVER) {
+            self.parse_over()
         } else {
-            let open_paren = self.eat(TK::OpenParen);
-            let partition_opt = self.eat_predefined_name_opt(PN::PARTITION);
-            let (by, partitions) = if partition_opt.is_empty() {
-                (self.eat_empty(), self.eat_empty())
-            } else {
-                (
-                    self.eat(TK::BY),
-                    self.parse_comma_separated_list(|parser| parser.parse_expression()),
-                )
-            };
-            let order_by_opt = self.parse_order_by_opt();
-            let window_frame = self.parse_window_frame_opt();
-            let close_paren = self.eat(TK::CloseParen);
-            parse_tree::over(
-                over,
-                open_paren,
-                partition_opt,
-                by,
-                partitions,
-                order_by_opt,
-                window_frame,
-                close_paren,
-            )
+            self.eat_empty()
         }
+    }
+
+    fn parse_over(&mut self) -> ParseTree<'a> {
+        let over = self.eat_predefined_name(PN::OVER);
+        let open_paren = self.eat(TK::OpenParen);
+        let partition_opt = self.eat_predefined_name_opt(PN::PARTITION);
+        let (by, partitions) = if partition_opt.is_empty() {
+            (self.eat_empty(), self.eat_empty())
+        } else {
+            (
+                self.eat(TK::BY),
+                self.parse_comma_separated_list(|parser| parser.parse_expression()),
+            )
+        };
+        let order_by_opt = self.parse_order_by_opt();
+        let window_frame = self.parse_window_frame_opt();
+        let close_paren = self.eat(TK::CloseParen);
+        parse_tree::over(
+            over,
+            open_paren,
+            partition_opt,
+            by,
+            partitions,
+            order_by_opt,
+            window_frame,
+            close_paren,
+        )
+    }
+
+    // nullTreatment
+    // : IGNORE NULLS
+    // | RESPECT NULLS
+    fn parse_null_treatment_opt(&mut self) -> ParseTree<'a> {
+        if self.peek_null_treatment() {
+            let treatment = self.eat(TK::Identifier);
+            let nulls = self.eat_predefined_name(PN::NULLS);
+            parse_tree::null_treatment(treatment, nulls)
+        } else {
+            self.eat_empty()
+        }
+    }
+
+    fn peek_null_treatment(&mut self) -> bool {
+        (self.peek_predefined_name(PN::IGNORE) || self.peek_predefined_name(PN::RESPECT))
+        && self.peek_predefined_name_offset(PN::NULLS, 1)
+        // null treatement must be followed by OVER
+        && self.peek_predefined_name_offset(PN::OVER, 2)
     }
 
     // windowFrame
