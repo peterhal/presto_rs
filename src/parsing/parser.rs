@@ -1089,7 +1089,10 @@ impl<'a> Parser<'a> {
             let must_be_subquery_relation =
                 relation_or_query.is_query() && !relation_or_query.as_query().with.is_empty();
             if must_be_subquery_relation {
-                parse_tree::subquery_relation(open_paren, relation_or_query, close_paren)
+                let subquery_relation =
+                    parse_tree::subquery_relation(open_paren, relation_or_query, close_paren);
+                let sampled_relation = self.parse_sampled_relation_tail(subquery_relation);
+                self.parse_join_relation_tail(sampled_relation)
             } else if {
                 let can_be_query_primary = !must_be_subquery_relation
                     && (relation_or_query.is_query_no_with()
