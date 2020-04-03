@@ -2400,7 +2400,7 @@ impl<'a> Parser<'a> {
 
     // | name=LOCALTIMESTAMP ('(' precision=INTEGER_VALUE ')')?                              #specialDateTimeFunction
     fn parse_localtimestamp(&mut self) -> ParseTree<'a> {
-        let localtimestamp = self.eat(TK::CURRENT_TIME);
+        let localtimestamp = self.eat(TK::LOCALTIMESTAMP);
         let (open_paren, precision, close_paren) = if self.peek_kind(TK::OpenParen) {
             self.parse_parenthesized(|parser| parser.eat(TK::Integer))
         } else {
@@ -2411,7 +2411,7 @@ impl<'a> Parser<'a> {
 
     // | name=LOCALTIME ('(' precision=INTEGER_VALUE ')')?                                   #specialDateTimeFunction
     fn parse_localtime(&mut self) -> ParseTree<'a> {
-        let localtime = self.eat(TK::CURRENT_TIME);
+        let localtime = self.eat(TK::LOCALTIME);
         let (open_paren, precision, close_paren) = if self.peek_kind(TK::OpenParen) {
             self.parse_parenthesized(|parser| parser.eat(TK::Integer))
         } else {
