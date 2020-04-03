@@ -2601,17 +2601,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // filter
+    // : FILTER '(' WHERE booleanExpression ')'
     fn parse_filter_opt(&mut self) -> ParseTree<'a> {
-        let filter = self.eat_predefined_name_opt(PN::FILTER);
-        if filter.is_empty() {
-            filter
-        } else {
+        if self.peek_filter() {
+            let filter = self.eat_predefined_name(PN::FILTER);
             let open_paren = self.eat(TK::OpenParen);
             let where_ = self.eat(TK::WHERE);
             let predicate = self.parse_boolean_expression();
             let close_paren = self.eat(TK::CloseParen);
             parse_tree::filter(filter, open_paren, where_, predicate, close_paren)
+        } else {
+            self.eat_empty()
         }
+    }
+
+    fn peek_filter(&mut self) -> bool {
+        self.peek_predefined_name(PN::FILTER) && self.peek_kind_offset(TK::OpenParen, 1)
     }
 
     // over
@@ -2621,7 +2627,7 @@ impl<'a> Parser<'a> {
     //     windowFrame?
     //   ')'
     fn parse_over_opt(&mut self) -> ParseTree<'a> {
-        if self.peek_predefined_name(PN::OVER) {
+        if self.peek_over() {
             self.parse_over()
         } else {
             self.eat_empty()
@@ -2653,6 +2659,10 @@ impl<'a> Parser<'a> {
             window_frame,
             close_paren,
         )
+    }
+
+    fn peek_over(&mut self) -> bool {
+        self.peek_predefined_name(PN::OVER) && self.peek_kind_offset(TK::OpenParen, 1)
     }
 
     // nullTreatment
