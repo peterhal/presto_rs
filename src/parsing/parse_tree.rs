@@ -145,6 +145,11 @@ pub enum ParseTree<'a> {
     IntervalType(IntervalType<'a>),
     IfNotExists(IfNotExists<'a>),
     CreateTable(CreateTable<'a>),
+    CreateRole(CreateRole<'a>),
+    WithAdminGrantor(WithAdminGrantor<'a>),
+    UserPrincipal(UserPrincipal<'a>),
+    RolePrincipal(RolePrincipal<'a>),
+    UnspecifiedPrincipal(UnspecifiedPrincipal<'a>),
     CreateTableAsSelect(CreateTableAsSelect<'a>),
     WithProperties(WithProperties<'a>),
     Property(Property<'a>),
@@ -2680,6 +2685,121 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_create_role(&self) -> bool {
+        if let ParseTree::CreateRole(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_create_role(&self) -> &CreateRole {
+        if let ParseTree::CreateRole(value) = self {
+            value
+        } else {
+            panic!("Expected CreateRole")
+        }
+    }
+
+    pub fn unbox_create_role(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::CreateRole(tree) => tree.unbox(),
+            _ => panic!("Expected CreateRole"),
+        }
+    }
+
+    pub fn is_with_admin_grantor(&self) -> bool {
+        if let ParseTree::WithAdminGrantor(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_with_admin_grantor(&self) -> &WithAdminGrantor {
+        if let ParseTree::WithAdminGrantor(value) = self {
+            value
+        } else {
+            panic!("Expected WithAdminGrantor")
+        }
+    }
+
+    pub fn unbox_with_admin_grantor(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::WithAdminGrantor(tree) => tree.unbox(),
+            _ => panic!("Expected WithAdminGrantor"),
+        }
+    }
+
+    pub fn is_user_principal(&self) -> bool {
+        if let ParseTree::UserPrincipal(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_user_principal(&self) -> &UserPrincipal {
+        if let ParseTree::UserPrincipal(value) = self {
+            value
+        } else {
+            panic!("Expected UserPrincipal")
+        }
+    }
+
+    pub fn unbox_user_principal(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::UserPrincipal(tree) => tree.unbox(),
+            _ => panic!("Expected UserPrincipal"),
+        }
+    }
+
+    pub fn is_role_principal(&self) -> bool {
+        if let ParseTree::RolePrincipal(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_role_principal(&self) -> &RolePrincipal {
+        if let ParseTree::RolePrincipal(value) = self {
+            value
+        } else {
+            panic!("Expected RolePrincipal")
+        }
+    }
+
+    pub fn unbox_role_principal(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        match self {
+            ParseTree::RolePrincipal(tree) => tree.unbox(),
+            _ => panic!("Expected RolePrincipal"),
+        }
+    }
+
+    pub fn is_unspecified_principal(&self) -> bool {
+        if let ParseTree::UnspecifiedPrincipal(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_unspecified_principal(&self) -> &UnspecifiedPrincipal {
+        if let ParseTree::UnspecifiedPrincipal(value) = self {
+            value
+        } else {
+            panic!("Expected UnspecifiedPrincipal")
+        }
+    }
+
+    pub fn unbox_unspecified_principal(self) -> (ParseTree<'a>,) {
+        match self {
+            ParseTree::UnspecifiedPrincipal(tree) => tree.unbox(),
+            _ => panic!("Expected UnspecifiedPrincipal"),
+        }
+    }
+
     pub fn is_create_table_as_select(&self) -> bool {
         if let ParseTree::CreateTableAsSelect(_) = self {
             true
@@ -3186,6 +3306,13 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.children(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.children(),
             ParseTree::CreateTable(create_table) => create_table.children(),
+            ParseTree::CreateRole(create_role) => create_role.children(),
+            ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.children(),
+            ParseTree::UserPrincipal(user_principal) => user_principal.children(),
+            ParseTree::RolePrincipal(role_principal) => role_principal.children(),
+            ParseTree::UnspecifiedPrincipal(unspecified_principal) => {
+                unspecified_principal.children()
+            }
             ParseTree::CreateTableAsSelect(create_table_as_select) => {
                 create_table_as_select.children()
             }
@@ -3318,6 +3445,13 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.get_first_child(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_first_child(),
             ParseTree::CreateTable(create_table) => create_table.get_first_child(),
+            ParseTree::CreateRole(create_role) => create_role.get_first_child(),
+            ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_first_child(),
+            ParseTree::UserPrincipal(user_principal) => user_principal.get_first_child(),
+            ParseTree::RolePrincipal(role_principal) => role_principal.get_first_child(),
+            ParseTree::UnspecifiedPrincipal(unspecified_principal) => {
+                unspecified_principal.get_first_child()
+            }
             ParseTree::CreateTableAsSelect(create_table_as_select) => {
                 create_table_as_select.get_first_child()
             }
@@ -3452,6 +3586,13 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.get_last_child(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_last_child(),
             ParseTree::CreateTable(create_table) => create_table.get_last_child(),
+            ParseTree::CreateRole(create_role) => create_role.get_last_child(),
+            ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_last_child(),
+            ParseTree::UserPrincipal(user_principal) => user_principal.get_last_child(),
+            ParseTree::RolePrincipal(role_principal) => role_principal.get_last_child(),
+            ParseTree::UnspecifiedPrincipal(unspecified_principal) => {
+                unspecified_principal.get_last_child()
+            }
             ParseTree::CreateTableAsSelect(create_table_as_select) => {
                 create_table_as_select.get_last_child()
             }
@@ -3586,6 +3727,13 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.get_first_token(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_first_token(),
             ParseTree::CreateTable(create_table) => create_table.get_first_token(),
+            ParseTree::CreateRole(create_role) => create_role.get_first_token(),
+            ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_first_token(),
+            ParseTree::UserPrincipal(user_principal) => user_principal.get_first_token(),
+            ParseTree::RolePrincipal(role_principal) => role_principal.get_first_token(),
+            ParseTree::UnspecifiedPrincipal(unspecified_principal) => {
+                unspecified_principal.get_first_token()
+            }
             ParseTree::CreateTableAsSelect(create_table_as_select) => {
                 create_table_as_select.get_first_token()
             }
@@ -3635,6 +3783,13 @@ impl<'a> ParseTree<'a> {
             ParseTree::CreateTableAsSelect(create_table_as_select) => {
                 create_table_as_select.get_last_token()
             }
+            ParseTree::UnspecifiedPrincipal(unspecified_principal) => {
+                unspecified_principal.get_last_token()
+            }
+            ParseTree::RolePrincipal(role_principal) => role_principal.get_last_token(),
+            ParseTree::UserPrincipal(user_principal) => user_principal.get_last_token(),
+            ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_last_token(),
+            ParseTree::CreateRole(create_role) => create_role.get_last_token(),
             ParseTree::CreateTable(create_table) => create_table.get_last_token(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_last_token(),
             ParseTree::IntervalType(interval_type) => interval_type.get_last_token(),
@@ -10912,6 +11067,323 @@ impl<'a> CreateTable<'a> {
             return Some(token);
         }
         if let Some(token) = self.create.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateRole<'a> {
+    pub create: Box<ParseTree<'a>>,
+    pub role: Box<ParseTree<'a>>,
+    pub name: Box<ParseTree<'a>>,
+    pub with_admin_grantor_opt: Box<ParseTree<'a>>,
+}
+
+pub fn create_role<'a>(
+    create: ParseTree<'a>,
+    role: ParseTree<'a>,
+    name: ParseTree<'a>,
+    with_admin_grantor_opt: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::CreateRole(CreateRole {
+        create: Box::new(create),
+        role: Box::new(role),
+        name: Box::new(name),
+        with_admin_grantor_opt: Box::new(with_admin_grantor_opt),
+    })
+}
+
+impl<'a> CreateRole<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CreateRole(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(4);
+        result.push(&*self.create);
+        result.push(&*self.role);
+        result.push(&*self.name);
+        result.push(&*self.with_admin_grantor_opt);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (
+            *self.create,
+            *self.role,
+            *self.name,
+            *self.with_admin_grantor_opt,
+        )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.create
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.with_admin_grantor_opt
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.create.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.role.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with_admin_grantor_opt.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with_admin_grantor_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.role.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.create.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WithAdminGrantor<'a> {
+    pub with: Box<ParseTree<'a>>,
+    pub admin: Box<ParseTree<'a>>,
+    pub grantor: Box<ParseTree<'a>>,
+}
+
+pub fn with_admin_grantor<'a>(
+    with: ParseTree<'a>,
+    admin: ParseTree<'a>,
+    grantor: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::WithAdminGrantor(WithAdminGrantor {
+        with: Box::new(with),
+        admin: Box::new(admin),
+        grantor: Box::new(grantor),
+    })
+}
+
+impl<'a> WithAdminGrantor<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::WithAdminGrantor(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(3);
+        result.push(&*self.with);
+        result.push(&*self.admin);
+        result.push(&*self.grantor);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>, ParseTree<'a>) {
+        (*self.with, *self.admin, *self.grantor)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.with
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.grantor
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.with.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.admin.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.grantor.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.grantor.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.admin.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.with.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct UserPrincipal<'a> {
+    pub user: Box<ParseTree<'a>>,
+    pub identifier: Box<ParseTree<'a>>,
+}
+
+pub fn user_principal<'a>(user: ParseTree<'a>, identifier: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::UserPrincipal(UserPrincipal {
+        user: Box::new(user),
+        identifier: Box::new(identifier),
+    })
+}
+
+impl<'a> UserPrincipal<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::UserPrincipal(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.user);
+        result.push(&*self.identifier);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.user, *self.identifier)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.user
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.user.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.user.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RolePrincipal<'a> {
+    pub role: Box<ParseTree<'a>>,
+    pub identifier: Box<ParseTree<'a>>,
+}
+
+pub fn role_principal<'a>(role: ParseTree<'a>, identifier: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::RolePrincipal(RolePrincipal {
+        role: Box::new(role),
+        identifier: Box::new(identifier),
+    })
+}
+
+impl<'a> RolePrincipal<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::RolePrincipal(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(2);
+        result.push(&*self.role);
+        result.push(&*self.identifier);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>, ParseTree<'a>) {
+        (*self.role, *self.identifier)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.role
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.role.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.role.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct UnspecifiedPrincipal<'a> {
+    pub identifier: Box<ParseTree<'a>>,
+}
+
+pub fn unspecified_principal<'a>(identifier: ParseTree<'a>) -> ParseTree<'a> {
+    ParseTree::UnspecifiedPrincipal(UnspecifiedPrincipal {
+        identifier: Box::new(identifier),
+    })
+}
+
+impl<'a> UnspecifiedPrincipal<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::UnspecifiedPrincipal(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(1);
+        result.push(&*self.identifier);
+        result
+    }
+
+    pub fn unbox(self) -> (ParseTree<'a>,) {
+        (*self.identifier,)
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.identifier
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.identifier.get_last_token() {
             return Some(token);
         }
         None

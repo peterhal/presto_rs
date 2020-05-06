@@ -3015,6 +3015,46 @@ impl<'a> Parser<'a> {
             parse_tree::comment(comment, value)
         }
     }
+    // principal
+    // : USER identifier       #userPrincipal
+    // | ROLE identifier       #rolePrincipal
+    // | identifier            #unspecifiedPrincipal
+    // ;
+    fn parse_principal(&mut self) -> ParseTree<'a> {
+        match self.maybe_peek_predefined_name() {
+            Some(PN::USER) => parse_tree::user_principal(self.eat_predefined_name(PN::USER), self.parse_identifier()),
+            Some(PN::ROLE) => parse_tree::role_principal(self.eat_predefined_name(PN::ROLE), self.parse_identifier()),
+            _ => parse_tree::unspecified_principal(self.parse_identifier()),
+
+        }
+    }
+    // grantor
+    // : CURRENT_USER          #currentUserGrantor
+    // | CURRENT_ROLE          #currentRoleGrantor
+    // | principal             #specifiedPrincipal
+    // ;
+    fn parse_grantor(&mut self) -> ParseTree<'a> {
+        if self.peek_kind(TK::CURRENT_USER) {
+            self.eat_token()
+        } else if (self.peek_predefined_name(PN::CURRENT_ROLE)) {
+            self.eat_predefined_name(PN::CURRENT_ROLE)
+        }
+        else {
+            self.parse_principal()
+        }
+    }
+
+    // (WITH ADMIN grantor)?
+    fn parse_with_admin_grantor_opt(&mut self) -> ParseTree<'a> {
+        let with = self.eat_opt(TK::WITH);
+        if with.is_empty() {
+            with
+        } else {
+            let admin = self.eat_predefined_name(PN::ADMIN);
+            let grantor = self.parse_grantor();
+            parse_tree::with_admin_grantor(with, admin, grantor)
+        }
+    }
 
     // (WITH properties)?
     fn parse_with_properties_opt(&mut self) -> ParseTree<'a> {
@@ -3121,7 +3161,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_create_role(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let create = self.eat(TK::CREATE);
+        let role = self.eat_predefined_name(PN::ROLE);
+        let name = self.parse_identifier();
+        let with_admin_grantor_opt = self.parse_with_admin_grantor_opt();
+        parse_tree::create_role(create, role, name, with_admin_grantor_opt)
     }
 
     // | INSERT INTO qualifiedName columnAliases? query                   #insertInto
