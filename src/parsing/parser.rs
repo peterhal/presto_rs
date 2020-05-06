@@ -3021,10 +3021,12 @@ impl<'a> Parser<'a> {
     // | identifier            #unspecifiedPrincipal
     // ;
     fn parse_principal(&mut self) -> ParseTree<'a> {
-        match self.maybe_peek_predefined_name() {
-            Some(PN::USER) => parse_tree::user_principal(self.eat_predefined_name(PN::USER), self.parse_identifier()),
-            Some(PN::ROLE) => parse_tree::role_principal(self.eat_predefined_name(PN::ROLE), self.parse_identifier()),
-            _ => parse_tree::unspecified_principal(self.parse_identifier()),
+        let name = self.maybe_peek_predefined_name();
+        let is_identifier = self.peek_identifier_offset(1);
+        match (is_identifier, name) {
+            (true, Some(PN::USER))  => parse_tree::user_principal(self.eat_predefined_name(PN::USER), self.parse_identifier()),
+            (true, Some(PN::ROLE)) => parse_tree::role_principal(self.eat_predefined_name(PN::ROLE), self.parse_identifier()),
+            (_, _) => parse_tree::unspecified_principal(self.parse_identifier()),
 
         }
     }
@@ -3036,7 +3038,7 @@ impl<'a> Parser<'a> {
     fn parse_grantor(&mut self) -> ParseTree<'a> {
         if self.peek_kind(TK::CURRENT_USER) {
             self.eat_token()
-        } else if (self.peek_predefined_name(PN::CURRENT_ROLE)) {
+        } else if self.peek_predefined_name(PN::CURRENT_ROLE) {
             self.eat_predefined_name(PN::CURRENT_ROLE)
         }
         else {
