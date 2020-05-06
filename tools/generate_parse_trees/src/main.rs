@@ -373,6 +373,43 @@ fn configs() -> Vec<TreeConfig> {
             ],
         ),
         (
+            "CreateRole",
+            vec![
+                "create",
+                "role",
+                "name",
+                "with_admin_grantor_opt",
+            ],
+        ),
+        (
+            "WithAdminGrantor",
+            vec![
+                "with",
+                "admin",
+                "grantor",
+            ],
+        ),
+        (
+            "UserPrincipal",
+            vec![
+                "user",
+                "identifier",
+            ],
+        ),
+        (
+            "RolePrincipal",
+            vec![
+                "role",
+                "identifier",
+            ],
+        ),
+        (
+            "UnspecifiedPrincipal",
+            vec![
+                "identifier",
+            ],
+        ),
+        (
             "CreateTableAsSelect",
             vec![
                 "create",
