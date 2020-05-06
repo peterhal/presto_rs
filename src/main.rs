@@ -32,8 +32,7 @@ fn lex_and_dump(contents: &str) -> bool {
 fn parse(contents: &str) {
     let (_tree, errors) = parse_statement(contents);
     if errors.is_empty() {
-        println!("{:#?}", _tree);
-    // println!("{:#?}", tree);
+        // println!("{:#?}", tree);
     } else {
         println!("{:#?}", errors[0]);
     }
@@ -82,19 +81,18 @@ fn read_and_parse_files(file_names: &[String]) {
 }
 
 fn main() {
-    read_and_parse_files(&["private/test.sql".to_owned()]);
-    //   let args: Vec<String> = env::args().collect();
-    //    if args.len() < 2 {
-    //        println!("Missing file name");
-    //        return;
-    //    }
-    //    if &args[1] == "--csv" {
-    //        if args.len() < 3 {
-    //            println!("Missing file name");
-    //            return;
-    //        }
-    //        let _result = process_csv(&args[2]);
-    //    } else {
-    //        read_and_parse_files(&args[1..]);
-    //    }
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Missing file name");
+        return;
+    }
+    if &args[1] == "--csv" {
+        if args.len() < 3 {
+            println!("Missing file name");
+            return;
+        }
+        let _result = process_csv(&args[2]);
+    } else {
+        read_and_parse_files(&args[1..]);
+    }
 }
