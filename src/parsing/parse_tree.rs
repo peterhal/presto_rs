@@ -145,6 +145,7 @@ pub enum ParseTree<'a> {
     IntervalType(IntervalType<'a>),
     IfNotExists(IfNotExists<'a>),
     CreateTable(CreateTable<'a>),
+    CreateView(CreateView<'a>),
     CreateRole(CreateRole<'a>),
     WithAdminGrantor(WithAdminGrantor<'a>),
     UserPrincipal(UserPrincipal<'a>),
@@ -2685,6 +2686,39 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    pub fn is_create_view(&self) -> bool {
+        if let ParseTree::CreateView(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn as_create_view(&self) -> &CreateView {
+        if let ParseTree::CreateView(value) = self {
+            value
+        } else {
+            panic!("Expected CreateView")
+        }
+    }
+
+    pub fn unbox_create_view(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        match self {
+            ParseTree::CreateView(tree) => tree.unbox(),
+            _ => panic!("Expected CreateView"),
+        }
+    }
+
     pub fn is_create_role(&self) -> bool {
         if let ParseTree::CreateRole(_) = self {
             true
@@ -3306,6 +3340,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.children(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.children(),
             ParseTree::CreateTable(create_table) => create_table.children(),
+            ParseTree::CreateView(create_view) => create_view.children(),
             ParseTree::CreateRole(create_role) => create_role.children(),
             ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.children(),
             ParseTree::UserPrincipal(user_principal) => user_principal.children(),
@@ -3445,6 +3480,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.get_first_child(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_first_child(),
             ParseTree::CreateTable(create_table) => create_table.get_first_child(),
+            ParseTree::CreateView(create_view) => create_view.get_first_child(),
             ParseTree::CreateRole(create_role) => create_role.get_first_child(),
             ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_first_child(),
             ParseTree::UserPrincipal(user_principal) => user_principal.get_first_child(),
@@ -3586,6 +3622,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.get_last_child(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_last_child(),
             ParseTree::CreateTable(create_table) => create_table.get_last_child(),
+            ParseTree::CreateView(create_view) => create_view.get_last_child(),
             ParseTree::CreateRole(create_role) => create_role.get_last_child(),
             ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_last_child(),
             ParseTree::UserPrincipal(user_principal) => user_principal.get_last_child(),
@@ -3727,6 +3764,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::IntervalType(interval_type) => interval_type.get_first_token(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_first_token(),
             ParseTree::CreateTable(create_table) => create_table.get_first_token(),
+            ParseTree::CreateView(create_view) => create_view.get_first_token(),
             ParseTree::CreateRole(create_role) => create_role.get_first_token(),
             ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_first_token(),
             ParseTree::UserPrincipal(user_principal) => user_principal.get_first_token(),
@@ -3790,6 +3828,7 @@ impl<'a> ParseTree<'a> {
             ParseTree::UserPrincipal(user_principal) => user_principal.get_last_token(),
             ParseTree::WithAdminGrantor(with_admin_grantor) => with_admin_grantor.get_last_token(),
             ParseTree::CreateRole(create_role) => create_role.get_last_token(),
+            ParseTree::CreateView(create_view) => create_view.get_last_token(),
             ParseTree::CreateTable(create_table) => create_table.get_last_token(),
             ParseTree::IfNotExists(if_not_exists) => if_not_exists.get_last_token(),
             ParseTree::IntervalType(interval_type) => interval_type.get_last_token(),
@@ -11064,6 +11103,134 @@ impl<'a> CreateTable<'a> {
             return Some(token);
         }
         if let Some(token) = self.table.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.create.get_last_token() {
+            return Some(token);
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateView<'a> {
+    pub create: Box<ParseTree<'a>>,
+    pub or_opt: Box<ParseTree<'a>>,
+    pub replace_opt: Box<ParseTree<'a>>,
+    pub view: Box<ParseTree<'a>>,
+    pub qualified_name: Box<ParseTree<'a>>,
+    pub as_: Box<ParseTree<'a>>,
+    pub query: Box<ParseTree<'a>>,
+}
+
+pub fn create_view<'a>(
+    create: ParseTree<'a>,
+    or_opt: ParseTree<'a>,
+    replace_opt: ParseTree<'a>,
+    view: ParseTree<'a>,
+    qualified_name: ParseTree<'a>,
+    as_: ParseTree<'a>,
+    query: ParseTree<'a>,
+) -> ParseTree<'a> {
+    ParseTree::CreateView(CreateView {
+        create: Box::new(create),
+        or_opt: Box::new(or_opt),
+        replace_opt: Box::new(replace_opt),
+        view: Box::new(view),
+        qualified_name: Box::new(qualified_name),
+        as_: Box::new(as_),
+        query: Box::new(query),
+    })
+}
+
+impl<'a> CreateView<'a> {
+    pub fn to_tree(self) -> ParseTree<'a> {
+        ParseTree::CreateView(self)
+    }
+
+    pub fn children(&self) -> Vec<&ParseTree<'a>> {
+        let mut result = Vec::with_capacity(7);
+        result.push(&*self.create);
+        result.push(&*self.or_opt);
+        result.push(&*self.replace_opt);
+        result.push(&*self.view);
+        result.push(&*self.qualified_name);
+        result.push(&*self.as_);
+        result.push(&*self.query);
+        result
+    }
+
+    pub fn unbox(
+        self,
+    ) -> (
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+        ParseTree<'a>,
+    ) {
+        (
+            *self.create,
+            *self.or_opt,
+            *self.replace_opt,
+            *self.view,
+            *self.qualified_name,
+            *self.as_,
+            *self.query,
+        )
+    }
+
+    pub fn get_first_child(&self) -> &ParseTree<'a> {
+        &self.create
+    }
+
+    pub fn get_last_child(&self) -> &ParseTree<'a> {
+        &self.query
+    }
+
+    pub fn get_first_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.create.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.or_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.replace_opt.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.view.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.qualified_name.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_first_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.query.get_first_token() {
+            return Some(token);
+        }
+        None
+    }
+    pub fn get_last_token(&self) -> Option<&token::Token<'a>> {
+        if let Some(token) = self.query.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.as_.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.qualified_name.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.view.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.replace_opt.get_last_token() {
+            return Some(token);
+        }
+        if let Some(token) = self.or_opt.get_last_token() {
             return Some(token);
         }
         if let Some(token) = self.create.get_last_token() {

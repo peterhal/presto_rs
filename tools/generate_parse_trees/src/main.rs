@@ -373,6 +373,18 @@ fn configs() -> Vec<TreeConfig> {
             ],
         ),
         (
+            "CreateView",
+            vec![
+                "create",
+                "or_opt",
+                "replace_opt",
+                "view",
+                "qualified_name",
+                "as_",
+                "query",
+            ],
+        ),
+        (
             "CreateRole",
             vec![
                 "create",
