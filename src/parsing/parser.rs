@@ -6,6 +6,7 @@ use crate::utils::{
     position, position::Position, syntax_error, syntax_error::Message, syntax_error::SyntaxError,
     text_range, text_range::TextRange,
 };
+use parsing::parse_tree::ParseTree::Empty;
 
 /// The location and lexing context for a Parser.
 ///
@@ -1349,7 +1350,7 @@ impl<'a> Parser<'a> {
             // | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
             //
             // TODO: The disambiguation of several of these is incorrect
-            // Currently we're prefering the special syntgax form
+            // Currently we're preferring the special syntax form
             // when we could have a function call. This applies to:
             //    POSITION
             //    TRY_CAST
@@ -3015,17 +3016,25 @@ impl<'a> Parser<'a> {
             parse_tree::comment(comment, value)
         }
     }
+
     // principal
     // : USER identifier       #userPrincipal
     // | ROLE identifier       #rolePrincipal
     // | identifier            #unspecifiedPrincipal
     // ;
     fn parse_principal(&mut self) -> ParseTree<'a> {
-        match self.maybe_peek_predefined_name() {
-            Some(PN::USER) => parse_tree::user_principal(self.eat_predefined_name(PN::USER), self.parse_identifier()),
-            Some(PN::ROLE) => parse_tree::role_principal(self.eat_predefined_name(PN::ROLE), self.parse_identifier()),
-            _ => parse_tree::unspecified_principal(self.parse_identifier()),
-
+        let name = self.maybe_peek_predefined_name();
+        let is_identifier = self.peek_identifier_offset(1);
+        match (is_identifier, name) {
+            (true, Some(PN::USER)) => parse_tree::user_principal(
+                self.eat_predefined_name(PN::USER),
+                self.parse_identifier(),
+            ),
+            (true, Some(PN::ROLE)) => parse_tree::role_principal(
+                self.eat_predefined_name(PN::ROLE),
+                self.parse_identifier(),
+            ),
+            (_, _) => parse_tree::unspecified_principal(self.parse_identifier()),
         }
     }
     // grantor
@@ -3036,10 +3045,9 @@ impl<'a> Parser<'a> {
     fn parse_grantor(&mut self) -> ParseTree<'a> {
         if self.peek_kind(TK::CURRENT_USER) {
             self.eat_token()
-        } else if (self.peek_predefined_name(PN::CURRENT_ROLE)) {
+        } else if self.peek_predefined_name(PN::CURRENT_ROLE) {
             self.eat_predefined_name(PN::CURRENT_ROLE)
-        }
-        else {
+        } else {
             self.parse_principal()
         }
     }
@@ -3153,7 +3161,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_create_view(&mut self) -> ParseTree<'a> {
-        panic!("TODO")
+        let create = self.eat(TK::CREATE);
+
+        let (or, replace) = match self.peek_kind(TK::OR) {
+            true => (self.eat_token(), self.eat_predefined_name(PN::REPLACE)),
+            false => (self.eat_empty(), self.eat_empty()),
+        };
+        let view = self.eat_predefined_name(PN::VIEW);
+        let qualified_name = self.parse_qualified_name();
+        let as_ = self.eat(TK::AS);
+        let query = self.parse_query();
+        parse_tree::create_view(create, or ,replace, view, qualified_name, as_, query)
     }
 
     fn parse_create_schema(&mut self) -> ParseTree<'a> {
